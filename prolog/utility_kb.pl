@@ -1055,6 +1055,12 @@ complex_subClassOf(M,Classes,complementOf(C),D,Expl):-
   trill:find_neg_class(C,D),
   trill:hier_ax2ex(M,equivalentClasses([complementOf(C),D]),Expl).
 
+% TO CHECK if this creates problems during expansion and slows down reasoning
+%complex_subClassOf(M,Classes,C,D,Expl):-
+%  member(C,Classes),
+%  M:propertyDomain(_,_),
+%  trill:find_sub_sup_class_roles(M,C,D,Expl).
+
 %complex_subClassOf(M,Classes,intersectionOf(Cs),D,Expl):-
 %  member(intersectionOf(Cs),Classes),
 %  member(D,Cs),

@@ -174,6 +174,18 @@ find_sub_sup_class(M,minCardinality(N,R,C),minCardinality(N,R,D),Ax):-
 find_sub_sup_class(M,minCardinality(N,R,C),minCardinality(N,S,C),subPropertyOf(R,S)):-
   M:subPropertyOf(R,S).
 
+
+:- multifile find_sub_sup_class_dir_roles/4.
+
+find_sub_sup_class_dir_roles(M,C,R,Ax):-
+  find_sub_sup_class_dir(M,C,exactCardinality(_,R,_),Ax).
+
+find_sub_sup_class_dir_roles(M,C,R,Ax):-
+  find_sub_sup_class_dir(M,C,maxCardinality(_,R,_),Ax).
+
+find_sub_sup_class_dir_roles(M,C,R,Ax):-
+  find_sub_sup_class_dir(M,C,minCardinality(_,R,_),Ax).
+
 /* ************* */
 
 /***********

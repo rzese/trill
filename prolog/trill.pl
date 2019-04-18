@@ -1253,6 +1253,21 @@ find_sub_sup_class(M,someValuesFrom(R,C),someValuesFrom(R,D),Ax):-
 find_sub_sup_class(M,someValuesFrom(R,C),someValuesFrom(S,C),subPropertyOf(R,S)):-
   M:subPropertyOf(R,S).
 
+%property domain for concept regarding roles TODO to test
+%find_sub_sup_class_roles(M,C,D,Expl):-
+%  M:propertyDomain(R,D),
+%  find_sub_sup_class_dir_roles(M,C,R,AxS),
+%  initial_expl(M,Expl0),
+%  and_f_ax(M,AxS,Expl0,Expl1),
+%  and_f_ax(M,propertyDomain(R,D),Expl1,Expl).
+
+:- multifile find_sub_sup_class_dir_roles/4.
+
+find_sub_sup_class_dir_roles(M,C,R,Ax):-
+  find_sub_sup_class_dir(M,C,someValuesFrom(R,_),Ax).
+
+find_sub_sup_class_dir_roles(M,C,R,Ax):-
+  find_sub_sup_class_dir(M,C,allValuesFrom(R,_),Ax).
 
 /*******************
  managing the concept (C subclassOf Thing)
