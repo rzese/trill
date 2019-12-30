@@ -1,16 +1,12 @@
 /* trillp predicates
-
 This module performs reasoning over probabilistic description logic knowledge bases.
 It reads probabilistic knowledge bases in RDF format or in Prolog format, a functional-like
 sintax based on definitions of Thea library, and answers queries by finding the set 
 of explanations or computing the probability.
-
 [1] http://vangelisv.github.io/thea/
-
 See https://github.com/rzese/trill/blob/master/doc/manual.pdf or
 http://ds.ing.unife.it/~rzese/software/trill/manual.html for
 details.
-
 @author Riccardo Zese
 @license Artistic License 2.0
 @copyright Riccardo Zese
@@ -98,15 +94,19 @@ find_expls(_M,[],_,[]):-!.
 
 % checks if an explanations was already found (instance_of version)
 find_expls(M,[ABox|T],[C,I],E):-
-  clash(M,ABox,E0),!,
+  findall(E0,clash(M,ABox,E0),Expls0),!,
+  dif(Expls0,[]),
+  or_all_f(M,Expls0,Expls1),
   find_expls(M,T,[C,I],E1),
-  or_f(M,E0,E1,E).
+  and_f(M,Expls1,E1,E),!.
 
 % checks if an explanations was already found (property_value version)
 find_expls(M,[(ABox,_)|T],[PropEx,Ind1Ex,Ind2Ex],E):-
-  find((propertyAssertion(PropEx,Ind1Ex,Ind2Ex),E0),ABox),!,
+  findall(E0,find((propertyAssertion(PropEx,Ind1Ex,Ind2Ex),E0),ABox),Expls0),!,
+  dif(Expls0,[]),
+  or_all_f(M,Expls0,Expls1),
   find_expls(M,T,[PropEx,Ind1Ex,Ind2Ex],E1),
-  or_f(M,E0,E1,E).
+  and_f(M,Expls1,E1,E),!.
   
 
 find_expls(M,[_ABox|T],Query,Expl):-
@@ -123,13 +123,7 @@ find_expls(M,[_ABox|T],Query,Expl):-
 findClassAssertion4OWLNothing(M,ABox,Expl):-
   findall(Expl1,findClassAssertion('http://www.w3.org/2002/07/owl#Nothing',_Ind,Expl1,ABox),Expls),
   dif(Expls,[]),
-  or_all(M,Expls,Expl).
-
-or_all(_M,[],[]).
-
-or_all(M,[H|T],Expl):-
-  or_all(M,T,Expl1),
-  or_f(M,H,Expl1,Expl).
+  or_all_f(M,Expls,Expl).
 
 /* ************* */
 
@@ -175,12 +169,28 @@ modify_ABox(_,ABox0,P,Ind1,Ind2,L0,[(propertyAssertion(P,Ind1,Ind2),L0)|ABox0]).
   ===============
 */
 
-build_abox(M,(ABox,Tabs)):-
+build_abox(M,(ABox,Tabs), InitialIndividual):-
   retractall(M:final_abox(_)),
-  findall((classAssertion(Class,Individual),*([classAssertion(Class,Individual)])),M:classAssertion(Class,Individual),LCA),
-  findall((propertyAssertion(Property,Subject, Object),*([propertyAssertion(Property,Subject, Object)])),M:propertyAssertion(Property,Subject, Object),LPA),
+  findIndirect(InitialIndividual,List),
+  findall((classAssertion(Class,Individual),*([classAssertion(Class,Individual)])),(M:classAssertion(Class,Individual),
+	(((InitialIndividual \== ''), namedIndividual(Individual)) ->
+		member(Individual, List)
+		;
+		true
+	)),LCA),
+  findall((propertyAssertion(Property,Subject, Object),*([propertyAssertion(Property,Subject, Object)])),(M:propertyAssertion(Property,Subject, Object),
+	(((InitialIndividual \== ''), namedIndividual(Subject)) ->
+		member(Subject, List)
+		;
+		true
+	)),LPA),
   % findall((propertyAssertion(Property,Subject,Object),*([subPropertyOf(SubProperty,Property),propertyAssertion(SubProperty,Subject,Object)])),subProp(M,SubProperty,Property,Subject,Object),LSPA),
-  findall(nominal(NominalIndividual),M:classAssertion(oneOf(_),NominalIndividual),LNA),
+  findall(nominal(NominalIndividual),(M:classAssertion(oneOf(_),NominalIndividual),
+	(((InitialIndividual \== ''), namedIndividual(NominalIndividual)) ->
+		member(NominalIndividual, List)
+		;
+		true
+	)),LNA),
   new_abox(ABox0),
   new_tabs(Tabs0),
   create_tabs(LCA,Tabs0,Tabs1),
@@ -188,20 +198,28 @@ build_abox(M,(ABox,Tabs)):-
   add_all(LPA,ABox1,ABox2),
   add_all(LSPA,ABox2,ABox3),
   add_all(LNA,ABox3,ABox4),
-  findall((differentIndividuals(Ld),*([differentIndividuals(Ld)])),M:differentIndividuals(Ld),LDIA),
+  findall((differentIndividuals(Ld),*([differentIndividuals(Ld)])),(M:differentIndividuals(Ld),
+	(namedIndividual(InitialIndividual) ->
+		intersect(Ld, List)
+		;
+		true
+	)),LDIA),
   add_all(LDIA,ABox4,ABox5),
   create_tabs(LDIA,Tabs1,Tabs2),
   create_tabs(LPA,Tabs2,Tabs3),
   create_tabs(LSPA,Tabs3,Tabs4),
-  findall((sameIndividual(L),*([sameIndividual(L)])),M:sameIndividual(L),LSIA),
+  findall((sameIndividual(L),*([sameIndividual(L)])),(M:sameIndividual(L),
+	(namedIndividual(InitialIndividual) ->
+		intersect(L, List)
+		;
+		true
+	)),LSIA),
   merge_all(M,LSIA,ABox5,Tabs4,ABox6,Tabs),
-  add_nominal_list(ABox6,Tabs,ABox),
+  add_nominal_list(M,ABox6,Tabs,ABox),
   !.
 
 /**********************
-
 Explanation Management
-
 ***********************/
 
 initial_expl(_M,[]):-!.
@@ -209,7 +227,7 @@ initial_expl(_M,[]):-!.
 empty_expl(_M,[]):-!.
 
 and_f_ax(M,Axiom,F0,F):-
-  and_f(M,*([Axiom]),F0,F).
+  and_f(M,*([Axiom]),F0,F),!.
 
 % and between two formulae
 and_f(_,[],[],[]):-!.
@@ -255,14 +273,14 @@ and_f(_M,*(A1),*(A2),*(A)):-!,
 and_f(_M,*(A1),+(O1),*(A1)):-
   member(X,A1),
   member(X,O1),!.
-and_f(_M,*(A1),+(O1),*(A)):-
+and_f(_M,*(A1),+(O1),*(A)):-!,
   append(A1,[+(O1)],A).
 
 % absorption x * (x + y) = x
 and_f(_M,+(O1),*(A1),*(A1)):-
   member(X,A1),
   member(X,O1),!.
-and_f(_M,+(O1),*(A1),*(A)):-
+and_f(_M,+(O1),*(A1),*(A)):-!,
   append([+(O1)],A1,A).
 
 and_f(_M,+(O1),+(O2),*([+(O1),+(O2)])).
@@ -302,11 +320,8 @@ and_f(M,[El1],[El2],*(L)):-gtrace,
 /*
 % or between two formulae
 or_f(M,[],[],[]):-!.
-
 or_f(M,[],F,F):-!.
-
 or_f(M,F,[],F):-!.
-
 % absorption for subformula (a + (b * (c + d))) + (c + d + e) = a + c + d + e
 or_f(M,+(A1),+(A2),+(A)):-
   member(*(O1),A1),
@@ -339,21 +354,18 @@ or_f(M,+(A1),+(A2),+(A)):-
 or_f(M,+(A1),+(A2),+(A)):-!,
   append(A1,A2,A0),
   sort(A0,A).
-
 % absorption x + (x * y) = x
 or_f(M,*(A1),+(O1),*(A1)):-
   member(X,A1),
   member(X,O1),!.
 or_f(M,*(A1),+(O1),*(A)):-
   append(A1,[+(O1)],A).
-
 % absorption x + (x * y) = x
 or_f(M,+(O1),*(A1),*(A1)):-
   member(X,A1),
   member(X,O1),!.
 or_f(M,+(O1),*(A1),*(A)):-
   append([+(O1)],A1,A).
-
 or_f(M,*(O1),*(O2),+([*(O1),*(O2)])).
 */
 
@@ -467,11 +479,15 @@ formule_decomp([El1],[El2],[El1],[El2],[],[El1],[El2]):- !.
 %computes a compact formula strarting from 2 formulae 
 /*
 or_f(M,[],[],[]):-!.
-
 or_f(M,[],F,F):-!.
-
 or_f(M,F,[],F):-!.
 */
+
+or_all_f(_M,[H],H):-!.
+
+or_all_f(M,[H|T],Expl):-
+  or_all_f(M,T,Expl1),
+  or_f(M,H,Expl1,Expl),!.
 
 or_f(_M,F1,F2,F):-
   or_f_int([F1],[F2],[F]).
@@ -479,7 +495,7 @@ or_f(_M,F1,F2,F):-
 or_f_int([*(FC1)],[FC2],OrF):- !,
   findall( +(X), (member(+(X),FC1)), Or), length(Or,Length), 
   ( (Length > 1) ->
-     (OrF = +([*(FC1),FC2]))
+     (OrF = [+([*(FC1),FC2])])
    ;
      (formule_gen([*(FC1)],F1), or_scan(F1,[FC2],OrF))
   ).
@@ -574,15 +590,12 @@ find_compatible_or(F1,OrF2,OrF2C,OrF2NC):-
 remove_duplicates(A,C):-sort(A,C).
 
 /**********************
-
 TRILLP SAT TEST
-
 ***********************/
 /*
 L1 is the \psi
 L2 is the old label of the assertion, e.g. lab(n : D) in the unfold rule
 I check if L1*(~L2) is satisfiable with sat/2. If it is satifiable it means that L1 does not model L2, i.e. \psi \not\models L2
-
 */
 test(_M,L1,L2):-
   %build_f(L1,L2,F),
@@ -628,10 +641,19 @@ bool_op(+(_)):-!.
 bool_op(*(_)):-!.
 bool_op(~(_)):-!.
 
+
 /**********************
+Choice Points Management
+***********************/
 
+get_choice_point_id(_,0).
+
+create_choice_point(_,_,_,_,_,0).
+
+add_choice_point(_,_,Expl,Expl):- !.
+
+/**********************
  TRILLP Probability Computation
-
 ***********************/
 
 get_bdd_environment(_M,Env):-
@@ -726,4 +748,3 @@ bdd_or(M,Env,[_H|T],BDDAnd):- !,
   zero(Env,BDDH),
   bdd_or(M,Env,T,BDDT),
   or(Env,BDDH,BDDT,BDDAnd).
-
