@@ -324,14 +324,14 @@ add_q(M,io,Tableau0,[ClassEx,IndEx],Tableau):- !,
   neg_class(ClassEx,NClassEx),
   add_q(M,Tableau0,classAssertion(NClassEx,IndEx),Tableau1),
   add_clash_to_tableau(M,Tableau1,NClassEx-IndEx,Tableau2),
-  update_expansion_queue_in_tableau(M,NClassEx,IndEx,Tableau2,Tableau).
+  update_expansion_queue_in_tableau(M,NClassEx,IndEx,Tableau2,Tableau),!.
 
 % property_value
 add_q(M,pv,Tableau0,[PropEx,Ind1Ex,Ind2Ex],Tableau):-!,
   neg_class(PropEx,NPropEx), %use of neg_class to negate property
   add_q(M,Tableau0,propertyAssertion(NPropEx,Ind1Ex,Ind2Ex),Tableau1),
   add_clash_to_tableau(M,Tableau1,NPropEx-Ind1Ex-Ind2Ex,Tableau2),
-  update_expansion_queue_in_tableau(M,PropEx,Ind1Ex,Ind2Ex,Tableau2,Tableau).
+  update_expansion_queue_in_tableau(M,PropEx,Ind1Ex,Ind2Ex,Tableau2,Tableau),!.
 
 
 % sub_class
@@ -342,7 +342,7 @@ add_q(M,sc,Tableau0,[SubClassEx,SupClassEx],Tableau):- !,
   utility_translation:add_kb_atoms(M,class,[intersectionOf([SubClassEx,NSupClassEx])]), % This is necessary to correctly prune expansion rules
   add_owlThing_ind(M,Tableau1,QInd,Tableau2),
   add_clash_to_tableau(M,Tableau2,intersectionOf([SubClassEx,NSupClassEx])-QInd,Tableau3),
-  update_expansion_queue_in_tableau(M,intersectionOf([SubClassEx,NSupClassEx]),QInd,Tableau3,Tableau).
+  update_expansion_queue_in_tableau(M,intersectionOf([SubClassEx,NSupClassEx]),QInd,Tableau3,Tableau),!.
 
 % unsat
 add_q(M,un,Tableau0,['unsat',ClassEx],Tableau):- !,
@@ -350,7 +350,7 @@ add_q(M,un,Tableau0,['unsat',ClassEx],Tableau):- !,
   add_q(M,Tableau0,classAssertion(ClassEx,QInd),Tableau1),
   add_owlThing_ind(M,Tableau1,QInd,Tableau2),
   add_clash_to_tableau(M,Tableau2,ClassEx-QInd,Tableau3),
-  update_expansion_queue_in_tableau(M,ClassEx,QInd,Tableau3,Tableau).
+  update_expansion_queue_in_tableau(M,ClassEx,QInd,Tableau3,Tableau),!.
 
 % inconsistent_theory
 add_q(_,it,Tableau,['inconsistent','kb'],Tableau):- !. % Do nothing
