@@ -109,7 +109,7 @@ find_expls(M,[],Q,expl{query:Q, expl:[],incons:E}):-
   %M:exp_found(['inconsistent','kb'],_),!,
   %print_message(warning,inconsistent),!,false.
   findall(Exp,M:exp_found(['inconsistent','kb'],Exp),Expl0),
-  remove_supersets(Expl0,Expl),!,
+  remove_supersets(Expl0,Expl),
   member(E,Expl).
 
 find_expls(M,[],Q,expl{query:Q, expl:E,incons:[]}):-
@@ -609,18 +609,30 @@ absent0(Expl0,Expl1,Expl):-
 absent1(Expl,[],Expl,0).
 
 absent1(Expl0,[H-CP|T],[H-CP|Expl],1):-
-  absent2(Expl0,H),!,
+  absent2(Expl0,H-CP),!,
   absent1(Expl0,T,Expl,_).
 
 absent1(Expl0,[_|T],Expl,Added):-
   absent1(Expl0,T,Expl,Added).
 
-absent2([H-_],Expl):- !,
-  \+ subset(H,Expl).
+% if the query placeholder is present in both or absent in both, I must check the subset condition. Otherwise, I must keep both.  
+absent2([H-CPH],Expl-CP):- 
+  (check_query_placeholder(CPH,CP) ->  \+ subset(H,Expl) ; true),!.
 
-absent2([H-_|T],Expl):-
+absent2([H-CPH|T],Expl-CP):-
+  check_query_placeholder(CPH,CP),!,
   \+ subset(H,Expl),!,
-  absent2(T,Expl).
+  absent2(T,Expl-CP).
+
+absent2([_|T],Expl-CP):-
+  absent2(T,Expl-CP).
+
+
+check_query_placeholder(CP0,CP1):-
+  (memberchk(qp,CP0),memberchk(qp,CP1)),!.
+
+check_query_placeholder(CP0,CP1):-
+  (\+ memberchk(qp,CP0), \+ memberchk(qp,CP1)),!.
 
 /* **************** */
 
