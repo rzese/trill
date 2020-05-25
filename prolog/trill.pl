@@ -2676,6 +2676,7 @@ compute_prob_ax1([Prob1 | T],Prob):-
 
 %rule_n(0).
 
+% for query with no inconsistency
 compute_prob(M,Expl,Prob):-
   retractall(v(_,_,_)),
   retractall(na(_,_)),
@@ -2686,6 +2687,42 @@ compute_prob(M,Expl,Prob):-
   build_bdd(M,Env,Expl,BDD),
   ret_prob(Env,BDD,Prob),
   clean_environment(M,Env), !.
+
+% for query with inconsistency P1(Q) = P(Q|cons) = P(Q,cons)/P(cons) (Fabrizio's proposal)
+/**/
+compute_prob_inc(M,expl{expl:Expl,incons:Inc},Prob):-
+  retractall(v(_,_,_)),
+  retractall(na(_,_)),
+  retractall(rule_n(_)),
+  assert(rule_n(0)),
+  %findall(1,M:annotationAssertion('http://ml.unife.it/disponte#probability',_,_),NAnnAss),length(NAnnAss,NV),
+  get_bdd_environment(M,Env),
+  build_bdd_inc(M,Env,Expl,Inc,BDDQC,BDDC),
+  ret_prob(Env,BDDQC,ProbQC),
+  ret_prob(Env,BDDC,ProbC),
+  Prob is ProbQC/ProbC,
+  clean_environment(M,Env), !.
+/**/
+
+% for query with inconsistency P2(Q) = P(Q)(1-P(incons)) (Riccardo's proposal)
+/*
+compute_prob_inc(M,expl{expl:Expl,incons:Inc},Prob):-
+  retractall(v(_,_,_)),
+  retractall(na(_,_)),
+  retractall(rule_n(_)),
+  assert(rule_n(0)),
+  %findall(1,M:annotationAssertion('http://ml.unife.it/disponte#probability',_,_),NAnnAss),length(NAnnAss,NV),
+  get_bdd_environment(M,Env),
+  build_bdd(M,Env,Expl,BDDQ),
+  build_bdd(M,Env,Inc,BDDI),
+  ret_prob(Env,BDDQ,ProbQ),
+  ret_prob(Env,BDDI,ProbI),
+  Prob is ProbQ*(1-ProbI),
+  %bdd_not(Env,BDDI,BDDC),
+  %ret_prob(Env,BDDC,ProbC),
+  %Prob is ProbQ*ProbC,
+  clean_environment(M,Env), !.
+*/
 
 get_var_n(Env,R,S,Probs,V):-
   (

@@ -43,7 +43,8 @@ clean_up(M):-
 % findall
 find_n_explanations(M,QueryType,QueryArgs,Expls,all,Opt):-
   !, % CUT so that no other calls to find_explanation can be ran (to avoid running that with variable N)
-  findall(Expl,find_single_explanation(M,QueryType,QueryArgs,Expl,Opt),Expls).
+  findall(Expl,find_single_explanation(M,QueryType,QueryArgs,Expl,Opt),Expls0),
+  merge_explanations_from_dicts_list(Expls0,Expls).
 
 % find one in backtracking
 find_n_explanations(M,QueryType,QueryArgs,Expl,bt,Opt):-
@@ -58,8 +59,21 @@ find_n_explanations(M,QueryType,QueryArgs,Expls,N,Opt):-
     (print_message(warning,wrong_number_max_expl),!,false)
   ).
 
+% takes a list of dicts expl{query,expl,incons} and create a single disct of the same shape with all values from expls and incons merged
+merge_explanations_from_dicts_list(ExplsList,expl{expl:Ec,incons:Inc}):-
+  merge_explanations_from_dicts_list(ExplsList,Ec,Inc).
 
-% to find all axplanations for probabilistic queries
+merge_explanations_from_dicts_list([],[],[]).
+
+merge_explanations_from_dicts_list([expl{query:_,expl:[],incons:Inc0}|T],Ec,[Inc0|Inc]):-
+  merge_explanations_from_dicts_list(T,Ec,Inc).
+
+merge_explanations_from_dicts_list([expl{query:_,expl:Ec0,incons:[]}|T],[Ec0|Ec],Inc):-
+  merge_explanations_from_dicts_list(T,Ec,Inc).
+
+
+
+% to find all explanations for probabilistic queries
 all_sub_class_int(M:ClassEx,SupClassEx,Exps):-
   all_unsat_int(M:intersectionOf([ClassEx,complementOf(SupClassEx)]),Exps).
 
@@ -77,8 +91,12 @@ all_inconsistent_theory_int(M:Exps):-
   findall(Expl,inconsistent_theory(M:Expl),Exps).
 
 
-compute_prob_and_close(M,Exps,Prob):-
+% if there is not inconsistency, perform classical probability computation
+compute_prob_and_close(M,expl{expl:Exps,incons:[]},Prob):- !,
   compute_prob(M,Exps,Prob),!.
+
+compute_prob_and_close(M,Exps,Prob):-
+  compute_prob_inc(M,Exps,Prob),!.
 
 % checks the explanation
 check_and_close(_,Expl0,Expl):-
@@ -856,6 +874,12 @@ get_bdd_environment(_M,Env):-
 clean_environment(_M,Env):-
   end(Env).
 
+
+build_bdd_inc(M,Env,Expl,Inc,BDDQC,BDDC):- !,
+  build_bdd(M,Env,Expl,BDDQ), % BDD query's explanations
+  build_bdd(M,Env,Inc,BDDInc), % BDD inconsistency's explanations
+  bdd_not(Env,BDDInc,BDDC), % BDD consistency's explanations
+  and(Env,BDDQ,BDDC,BDDQC). % BDD query and consistency's explanations
 
 build_bdd(M,Env,[X],BDD):- !,
   bdd_and(M,Env,X,BDD).
