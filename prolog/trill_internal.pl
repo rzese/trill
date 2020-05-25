@@ -82,8 +82,16 @@ compute_prob_and_close(M,Exps,Prob):-
 
 % checks the explanation
 check_and_close(_,Expl0,Expl):-
-  dif(Expl0,[]),
-  sort(Expl0,Expl).
+  QExpl0=Expl0.expl,
+  dif(QExpl0,[]),!,
+  sort(QExpl0,QExpl),
+  Expl=Expl0.put(expl,QExpl).
+
+check_and_close(_,Expl0,Expl):-
+  QExpl0=Expl0.incons,
+  dif(QExpl0,[]),
+  sort(QExpl0,QExpl),
+  Expl=Expl0.put(incons,QExpl).
 
 
 % checks if an explanations was already found
@@ -92,16 +100,19 @@ find_expls(M,[],Q,E):-
   %dif(Expl,[]),
   find_expls_from_choice_point_list(M,Q,E).
 
-find_expls(M,[],['inconsistent','kb'],E):-!,
+find_expls(M,[],['inconsistent','kb'],expl{query:['inconsistent','kb'], expl:E,incons:[]}):-!,
   findall(Exp,M:exp_found(['inconsistent','kb'],Exp),Expl0),
   remove_supersets(Expl0,Expl),!,
   member(E,Expl).
 
-find_expls(M,[],_Q,_):-
-  M:exp_found(['inconsistent','kb'],_),!,
-  print_message(warning,inconsistent),!,false.
+find_expls(M,[],Q,expl{query:Q, expl:[],incons:E}):-
+  %M:exp_found(['inconsistent','kb'],_),!,
+  %print_message(warning,inconsistent),!,false.
+  findall(Exp,M:exp_found(['inconsistent','kb'],Exp),Expl0),
+  remove_supersets(Expl0,Expl),!,
+  member(E,Expl).
 
-find_expls(M,[],Q,E):-
+find_expls(M,[],Q,expl{query:Q, expl:E,incons:[]}):-
   findall(Exp,M:exp_found(Q,Exp),Expl0),
   remove_supersets(Expl0,Expl),!,
   member(E,Expl).
