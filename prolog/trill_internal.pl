@@ -92,11 +92,11 @@ all_inconsistent_theory_int(M:Exps):-
 
 
 % if there is not inconsistency, perform classical probability computation
-compute_prob_and_close(M,expl{expl:Exps,incons:[]},Prob):- !,
+compute_prob_and_close(M,expl{expl:Exps,incons:[],query:_},Prob,false):- !,
   compute_prob(M,Exps,Prob),!.
 
-compute_prob_and_close(M,Exps,Prob):-
-  compute_prob_inc(M,Exps,Prob),!.
+compute_prob_and_close(M,Exps,Prob,Inc):-
+  compute_prob_inc(M,Exps,Prob,Inc),!.
 
 % checks the explanation
 check_and_close(_,Expl0,Expl):-

@@ -214,7 +214,13 @@ prolog:message(iri_not_exists(IRIs)) -->
   [ 'IRIs not existent: ~w' -[IRIs] ].
 
 prolog:message(inconsistent) -->
-  [ 'Inconsistent ABox' ].
+  [ 'The KB is locally inconsitent' ].
+
+prolog:message(locally_inconsistent) -->
+  [ 'The KB is probably locally inconsitent, i.e., inconsistency is not certain.' ].
+
+prolog:message(completely_inconsistent) -->
+  [ 'The KB is certainly locally inconsistent, I cannot prove the truth of any explanation.' ].
 
 prolog:message(consistent) -->
   [ 'Consistent ABox' ].
@@ -227,6 +233,16 @@ prolog:message(timeout_reached) -->
 
 /*****************************
   QUERY OPTIONS
+
+  List of query options:
+  - return_prob - Prob:Variable
+  - return_final_prob - only|also|false used when trill returns one explanation at a time. If only returns only the probability of all the explanations,
+                                        if also returns both probability of single explanation and the probability of all the explanations
+                                        if false or not set returns only the probability of the single explanations
+  - return_incons_expl - ListOfExpl:Variable
+  - assert_abox - Boolean
+  - max_expl - Integer|all|bt finds N or all the explanations or one single explanation at a time if bt or not set
+  - time_limit - Integer (seconds)
 ******************************/
 query_option(OptList,Option,Value):-
   Opt=..[Option,Value],
@@ -241,12 +257,19 @@ execute_query(M,QueryType,QueryArgsNC,Expl,QueryOptions):-
   ( dif(QueryArgsNotPresent,[]) ->
     (print_message(warning,iri_not_exists(QueryArgsNotPresent)),!,false) ; true
   ),
-  find_explanations(M,QueryType,QueryArgs,Expl,QueryOptions),
+  find_explanations(M,QueryType,QueryArgs,ExplInc,QueryOptions),
+  Expl=ExplInc.expl,
   ( query_option(QueryOptions,return_prob,Prob) ->
     (
-      compute_prob_and_close(M,Expl,Prob),
-      (query_option(QueryOptions,return_single_prob,false) -> true ; !)
-    ) ; true
+      compute_prob_and_close(M,ExplInc,Prob,Inc),
+      (dif(Inc,false) -> true ; print_message(warning,completely_inconsistent))
+    )
+    ;
+    (
+      Inc=ExplInc.incons,
+      (dif(Inc,[]) -> true ; print_message(warning,inconsistent)),
+      (query_option(QueryOptions,return_incons_expl,Inc) -> true ; true) % does nothing, just unifies with the variable in the option
+    )
   ).
 
 
@@ -2703,6 +2726,59 @@ compute_prob_inc(M,expl{expl:Expl,incons:Inc},Prob):-
   Prob is ProbQC/ProbC,
   clean_environment(M,Env), !.
 /**/
+
+% Using weigths (https://dtai.cs.kuleuven.be/problog/tutorial/advanced/03_aproblog.html)
+/*
+compute_prob_inc(M,expl{expl:Expl,incons:Inc},Prob):-
+  retractall(v(_,_,_)),
+  retractall(na(_,_)),
+  retractall(rule_n(_)),
+  assert(rule_n(0)),
+  %findall(1,M:annotationAssertion('http://ml.unife.it/disponte#probability',_,_),NAnnAss),length(NAnnAss,NV),
+  get_bdd_environment(M,Env),gtrace,
+  build_bdd(M,Env,Expl,BDDQC),
+  build_bdd(M,Env,Inc,BDDI),
+  build_formula(M,Env,BDDI,FI),
+  write(FI),
+  build_formula(M,Env,BDDQC,FQC),
+  write(FQC),
+  ret_prob(Env,BDDQC,ProbQC),
+  ret_prob(Env,BDDI,ProbI),
+  PQCM is min(ProbQC,0.999999999999999999),
+  WQC is -log(1-PQCM),
+  PIM is min(ProbI,0.999999999999999999),
+  WI is -log(1-PIM),
+  WQ is WQC/exp(-WI),
+  Prob is 1-exp(-WQ),
+  clean_environment(M,Env), !.
+
+
+build_formula(M,Env,BDDI,F):-
+  findall(VH,v(_,_,VH),LV),
+  build_formula_int(M,Env,BDDI,LV,F).
+
+build_formula_int(M,Env,BDDI,_,1):-
+  one(Env,BDDI).
+
+build_formula_int(M,Env,BDDI,_,0):-
+  zero(Env,BDDI).
+
+build_formula_int(M,Env,BDDI,LV,Var*(FT)*(1-FV)):-
+  get_var_bdd(M,Env,BDDI,LV,Var),
+  get_child_t(Env,Var,0,BDDT),
+  get_child_f(Env,Var,0,BDDF),
+  build_formula_int(M,Env,BDDT,LV,FT),
+  build_formula_int(M,Env,BDDF,LV,FV).
+
+
+get_var_bdd(M,Env,BDDI,LV,Var):-
+  equality(Env,Var,0,BDDI),!.
+
+get_var_bdd(M,Env,BDDI,LV,Var):-
+  member(Var,LV),
+  equality(Env,Var,1,BDDI).
+
+*/
 
 % for query with inconsistency P2(Q) = P(Q)(1-P(incons)) (Riccardo's proposal)
 /*
