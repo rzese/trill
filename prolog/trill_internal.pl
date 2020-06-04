@@ -61,14 +61,14 @@ find_n_explanations(M,QueryType,QueryArgs,Expls,N,Opt):-
 
 % takes a list of dicts expl{query,expl,incons} and create a single disct of the same shape with all values from expls and incons merged
 merge_explanations_from_dicts_list(ExplsList,expl{expl:Ec,incons:Inc}):-
-  merge_explanations_from_dicts_list(ExplsList,Ec,Inc).
+  merge_explanations_from_dicts_list(ExplsList,Ec,Inc),!.
 
 merge_explanations_from_dicts_list([],[],[]).
 
-merge_explanations_from_dicts_list([expl{query:_,expl:[],incons:Inc0}|T],Ec,[Inc0|Inc]):-
+merge_explanations_from_dicts_list([expl{expl:[],incons:Inc0}|T],Ec,[Inc0|Inc]):-
   merge_explanations_from_dicts_list(T,Ec,Inc).
 
-merge_explanations_from_dicts_list([expl{query:_,expl:Ec0,incons:[]}|T],[Ec0|Ec],Inc):-
+merge_explanations_from_dicts_list([expl{expl:Ec0,incons:[]}|T],[Ec0|Ec],Inc):-
   merge_explanations_from_dicts_list(T,Ec,Inc).
 
 
@@ -92,7 +92,10 @@ all_inconsistent_theory_int(M:Exps):-
 
 
 % if there is not inconsistency, perform classical probability computation
-compute_prob_and_close(M,expl{expl:Exps,incons:[],query:_},Prob,false):- !,
+compute_prob_and_close(M,expl{expl:Exps,incons:[[]]},Prob,false):- !,
+  compute_prob(M,Exps,Prob),!.
+% if there is not inconsistency, perform classical probability computation
+compute_prob_and_close(M,expl{expl:[[]],incons:Exps},Prob,false):- !,
   compute_prob(M,Exps,Prob),!.
 
 compute_prob_and_close(M,Exps,Prob,Inc):-
@@ -118,19 +121,19 @@ find_expls(M,[],Q,E):-
   %dif(Expl,[]),
   find_expls_from_choice_point_list(M,Q,E).
 
-find_expls(M,[],['inconsistent','kb'],expl{query:['inconsistent','kb'], expl:E,incons:[]}):-!,
+find_expls(M,[],['inconsistent','kb'],expl{expl:E,incons:[]}):-!,
   findall(Exp,M:exp_found(['inconsistent','kb'],Exp),Expl0),
   remove_supersets(Expl0,Expl),!,
   member(E,Expl).
 
-find_expls(M,[],Q,expl{query:Q, expl:[],incons:E}):-
+find_expls(M,[],_,expl{expl:[],incons:E}):-
   %M:exp_found(['inconsistent','kb'],_),!,
   %print_message(warning,inconsistent),!,false.
   findall(Exp,M:exp_found(['inconsistent','kb'],Exp),Expl0),
   remove_supersets(Expl0,Expl),
   member(E,Expl).
 
-find_expls(M,[],Q,expl{query:Q, expl:E,incons:[]}):-
+find_expls(M,[],Q,expl{expl:E,incons:[]}):-
   findall(Exp,M:exp_found(Q,Exp),Expl0),
   remove_supersets(Expl0,Expl),!,
   member(E,Expl).

@@ -222,6 +222,9 @@ prolog:message(locally_inconsistent) -->
 prolog:message(completely_inconsistent) -->
   [ 'The KB is certainly locally inconsistent, I cannot prove the truth of any explanation.' ].
 
+prolog:message(inconsistence_expl) -->
+  [ 'Inconsistence explanation:' ].
+
 prolog:message(consistent) -->
   [ 'Consistent ABox' ].
 
@@ -236,13 +239,16 @@ prolog:message(timeout_reached) -->
 
   List of query options:
   - return_prob - Prob:Variable
-  - return_final_prob - only|also|false used when trill returns one explanation at a time. If only returns only the probability of all the explanations,
-                                        if also returns both probability of single explanation and the probability of all the explanations
-                                        if false or not set returns only the probability of the single explanations
   - return_incons_expl - ListOfExpl:Variable
   - assert_abox - Boolean
   - max_expl - Integer|all|bt finds N or all the explanations or one single explanation at a time if bt or not set
   - time_limit - Integer (seconds)
+
+  TODO
+  - return_final_prob - only|also|false used when trill returns one explanation at a time. If only returns only the probability of all the explanations,
+                                        if also returns both probability of single explanation and the probability of all the explanations
+                                        if false or not set returns only the probability of the single explanations
+  
 ******************************/
 query_option(OptList,Option,Value):-
   Opt=..[Option,Value],
@@ -252,24 +258,25 @@ query_option(OptList,Option,Value):-
   QUERY PREDICATES
 *****************************/
 
-execute_query(M,QueryType,QueryArgsNC,Expl,QueryOptions):-
+execute_query(M,QueryType,QueryArgsNC,ExplOut,QueryOptions):-
   check_query_args(M,QueryArgsNC,QueryArgs,QueryArgsNotPresent),
   ( dif(QueryArgsNotPresent,[]) ->
     (print_message(warning,iri_not_exists(QueryArgsNotPresent)),!,false) ; true
   ),
   find_explanations(M,QueryType,QueryArgs,ExplInc,QueryOptions),
   Expl=ExplInc.expl,
+  Inc=ExplInc.incons,
+  ( dif(Expl,[]) -> ExplOut=Expl 
+    ; 
+    ( dif(Inc,[]) -> (ExplOut=Inc,print_message(warning,inconsistent),print_message(warning,inconsistence_expl)) ; true)
+  ),
+  ( query_option(QueryOptions,max_expl,bt) -> ExplIncP = ExplInc.put(expl,[Expl]).put(incons,[Inc]) ; ExplIncP = ExplInc),
   ( query_option(QueryOptions,return_prob,Prob) ->
     (
-      compute_prob_and_close(M,ExplInc,Prob,Inc),
-      (dif(Inc,false) -> true ; print_message(warning,completely_inconsistent))
-    )
-    ;
-    (
-      Inc=ExplInc.incons,
-      (dif(Inc,[]) -> true ; print_message(warning,inconsistent)),
-      (query_option(QueryOptions,return_incons_expl,Inc) -> true ; true) % does nothing, just unifies with the variable in the option
-    )
+      compute_prob_and_close(M,ExplIncP,Prob,IncCheck),
+      (dif(IncCheck,false) -> print_message(warning,completely_inconsistent) ; true),
+      ( query_option(QueryOptions,return_incons_expl,Inc) -> true ; true) % does nothing, just unifies with the variable in the option
+    ) ; true
   ).
 
 
@@ -2713,7 +2720,7 @@ compute_prob(M,Expl,Prob):-
 
 % for query with inconsistency P1(Q) = P(Q|cons) = P(Q,cons)/P(cons) (Fabrizio's proposal)
 /**/
-compute_prob_inc(M,expl{expl:Expl,incons:Inc},Prob):-
+compute_prob_inc(M,expl{expl:Expl,incons:Inc},Prob,IncCheck):-
   retractall(v(_,_,_)),
   retractall(na(_,_)),
   retractall(rule_n(_)),
@@ -2723,13 +2730,17 @@ compute_prob_inc(M,expl{expl:Expl,incons:Inc},Prob):-
   build_bdd_inc(M,Env,Expl,Inc,BDDQC,BDDC),
   ret_prob(Env,BDDQC,ProbQC),
   ret_prob(Env,BDDC,ProbC),
-  Prob is ProbQC/ProbC,
+  (dif(ProbC,0.0) -> 
+    (Prob is ProbQC/ProbC,IncCheck=false)
+    ;
+    (Prob is 0.0,IncCheck=true)
+  ),
   clean_environment(M,Env), !.
 /**/
 
 % Using weigths (https://dtai.cs.kuleuven.be/problog/tutorial/advanced/03_aproblog.html)
 /*
-compute_prob_inc(M,expl{expl:Expl,incons:Inc},Prob):-
+compute_prob_inc(M,expl{expl:Expl,incons:Inc},Prob,IncCheck):-
   retractall(v(_,_,_)),
   retractall(na(_,_)),
   retractall(rule_n(_)),
@@ -2782,7 +2793,7 @@ get_var_bdd(M,Env,BDDI,LV,Var):-
 
 % for query with inconsistency P2(Q) = P(Q)(1-P(incons)) (Riccardo's proposal)
 /*
-compute_prob_inc(M,expl{expl:Expl,incons:Inc},Prob):-
+compute_prob_inc(M,expl{expl:Expl,incons:Inc},Prob,IncCheck):-
   retractall(v(_,_,_)),
   retractall(na(_,_)),
   retractall(rule_n(_)),
