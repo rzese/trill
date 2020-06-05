@@ -276,7 +276,8 @@ execute_query(M,QueryType,QueryArgsNC,ExplOut,QueryOptions):-
       compute_prob_and_close(M,ExplIncP,Prob,IncCheck),
       (dif(IncCheck,false) -> print_message(warning,completely_inconsistent) ; true),
       ( query_option(QueryOptions,return_incons_expl,Inc) -> true ; true) % does nothing, just unifies with the variable in the option
-    ) ; true
+    )
+    ; true
   ).
 
 

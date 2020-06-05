@@ -25,18 +25,17 @@ setting_trill_default(nondet_rules,[or_rule]).
 
 set_up(M):-
   utility_translation:set_up(M),
-  M:(dynamic exp_found/2, keep_env/0, tornado_bdd_environment/1, inconsistent_theory_flag/0, setting_trill/2).
+  M:(dynamic exp_found/2, keep_env/0, tornado_bdd_environment/1, setting_trill/2).
   %retractall(M:setting_trill(_,_)),
   %prune_tableau_rules(M).
   %foreach(setting_trill_default(DefaultSetting,DefaultVal),assert(M:setting_trill(DefaultSetting,DefaultVal))).
 
 clean_up(M):-
   utility_translation:clean_up(M),
-  M:(dynamic exp_found/2, keep_env/0, tornado_bdd_environment/1, inconsistent_theory_flag/0, setting_trill/2),
+  M:(dynamic exp_found/2, keep_env/0, tornado_bdd_environment/1, setting_trill/2),
   retractall(M:exp_found(_,_)),
   retractall(M:keep_env),
   retractall(M:tornado_bdd_environment(_)),
-  retractall(M:inconsistent_theory_flag),
   retractall(M:setting_trill(_,_)).
 
 /*****************************
@@ -59,15 +58,43 @@ prolog:message(and_in_and) -->
  ***********/
 
 % findall
-find_n_explanations(M,QueryType,QueryArgs,Expls,_,Opt):- % This will not check the arg max_expl as TRILLP returns a pinpointing formula
+/* without consisntecy check*/
+find_n_explanations(M,QueryType,QueryArgs,Expls,_,Opt):-!, % This will not check the arg max_expl as TRILLP returns a pinpointing formula
  assert(M:keep_env),
  find_single_explanation(M,QueryType,QueryArgs,Expls,Opt),!.
+/**/
+
+/* with consistency check  
+find_n_explanations(M,QueryType,QueryArgs,Expls,_,Opt):-!, % This will not check the arg max_expl as TRILLP returns a pinpointing formula
+ assert(M:keep_env),
+ find_single_explanation(M,it,['inconsistent','kb'],expl{expl:EInc, incons:IncInc},Opt),!, % TODO check explanations to zero
+ find_single_explanation(M,QueryType,QueryArgs,Expls,Opt),!.
+*/
+/* 
+find_n_explanations(M,it,['inconsistent','kb'],Expls,_,Opt):-!, % This will not check the arg max_expl as TRILLP returns a pinpointing formula
+ assert(M:keep_env),
+ find_single_explanation(M,it,['inconsistent','kb'],Expls,Opt),!.
+
+find_n_explanations(M,QueryType,QueryArgs,expl{expl:ExplsQ,incons:ExplsInc},_,Opt):- % This will not check the arg max_expl as TRILLP returns a pinpointing formula
+ assert(M:keep_env),
+ find_single_explanation(M,it,['inconsistent','kb'],expl{expl:ExplsInc,incons:_},Opt),!,
+ find_single_explanation(M,QueryType,QueryArgs,expl{expl:ExplsQ,incons:_},Opt),!.
+*/
 
 find_n_explanations(M,_,_,Expls,_,_):-
  empty_expl(M,Expls-_).
 
-compute_prob_and_close(M,Exps,Prob):-
+% if there is not inconsistency, perform classical probability computation
+compute_prob_and_close(M,expl{expl:Exps,incons:[[]]},Prob,false):- !,
   compute_prob(M,Exps,Prob),
+  retractall(M:keep_env),!.
+% if there is not inconsistency, perform classical probability computation
+compute_prob_and_close(M,expl{expl:[[]],incons:Exps},Prob,false):- !,
+  compute_prob(M,Exps,Prob),
+  retractall(M:keep_env),!.
+
+compute_prob_and_close(M,Exps,Prob,Inc):-
+  compute_prob_inc(M,Exps,Prob,Inc),
   retractall(M:keep_env),!.
 
 % checks the explanation
@@ -80,42 +107,39 @@ check_and_close(M,Expl,dot(Dot)):-
   clean_environment(M,Env).
 
 
-find_expls(M,Tabs,Q,E):-
-  find_expls_int(M,Tabs,Q,E-_),!.
-
-find_expls(M,_,_,_):-
-  M:inconsistent_theory_flag,!,
-  print_message(warning,inconsistent),!,false.
+find_expls(M,Tabs,Q,expl{expl:EQ,incons:EInc}):-
+  find_expls_int(M,Tabs,Q,EQ-_,EInc-_),!.
 
 % checks if an explanations was already found
-find_expls_int(M,[],_,BDD):-
+find_expls_int(M,[],_,BDD,BDD):-
   empty_expl(M,BDD),!.
 
 % checks if an explanations was already found (instance_of version)
-find_expls_int(M,[Tab|T],Q,E):-
+find_expls_int(M,[Tab|T],Q,EQ,EInc):-
   get_clashes(Tab,Clashes),
   findall(E0,(member(Clash,Clashes),clash(M,Clash,Tab,E0)),Expls0),!,
   % this predicate checks if there are inconsistencies in the KB, i.e., explanations without query placeholder qp
-  consistency_check(M,Expls0,Q),
-  or_all_f(M,Expls0,Expls1),
-  find_expls_int(M,T,Q,E1),
-  and_f(M,Expls1,E1,E).
+  consistency_check(M,Expls0,Q,ExplsQ0,ExplsInc0),
+  or_all_f(M,ExplsQ0,ExplsQ1),
+  or_all_f(M,ExplsInc0,ExplsInc1),
+  find_expls_int(M,T,Q,EQ1,EInc1),
+  and_f(M,ExplsQ1,EQ1,EQ),
+  and_f(M,ExplsInc1,EInc1,EInc).
 
 find_expls_int(M,[_Tab|T],Query,Expl):-
   \+ length(T,0),
   find_expls_int(M,T,Query,Expl).
 
 % this predicate checks if there are inconsistencies in the KB, i.e., explanations without query placeholder qp
-consistency_check(_,_,['inconsistent','kb']):-!.
+consistency_check(_,E,['inconsistent','kb'],E,[]):-!.
 
-consistency_check(_,[],_):-!.
+consistency_check(_,[],_,[],[]):-!.
 
-consistency_check(M,[_-CPs|T],Q):-
-  dif(CPs,[]),!,
-  consistency_check(M,T,Q).
+consistency_check(M,[E-[]|T],Q,EQ,[E-[]|EInc]):-!,
+  consistency_check(M,T,Q,EQ,EInc).
 
-consistency_check(M,_,_):-
-  assert(M:inconsistent_theory_flag).
+consistency_check(M,[E-CPs|T],Q,[E-CPs|EQ],EInc):-
+  consistency_check(M,T,Q,EQ,EInc).
 
 /****************************/
 
@@ -348,6 +372,11 @@ build_bdd(_,Env,[],BDD):- !,
   zero(Env,BDD).
 
 build_bdd(_,_Env,BDD,BDD).
+
+build_bdd_inc(_,Env,BDDQ,BDDInc,BDDQC,BDDC):-
+  bdd_not(Env,BDDInc,BDDC), % BDD consistency's explanations
+  and(Env,BDDQ,BDDC,BDDQC). % BDD query and consistency's explanations
+
 
 bdd_and(M,Env,[X],BDDX):-
   get_prob_ax(M,X,AxN,Prob),!,

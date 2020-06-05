@@ -27,16 +27,15 @@ setting_trill_default(nondet_rules,[or_rule]).
 
 set_up(M):-
   utility_translation:set_up(M),
-  M:(dynamic exp_found/2, inconsistent_theory_flag/0, setting_trill/2).
+  M:(dynamic exp_found/2, setting_trill/2).
   %retractall(M:setting_trill(_,_)),
   %prune_tableau_rules(M).
   %foreach(setting_trill_default(DefaultSetting,DefaultVal),assert(M:setting_trill(DefaultSetting,DefaultVal))).
 
 clean_up(M):-
   utility_translation:clean_up(M),
-  M:(dynamic exp_found/2, inconsistent_theory_flag/0, setting_trill/2),
+  M:(dynamic exp_found/2, setting_trill/2),
   retractall(M:exp_found(_,_)),
-  retractall(M:inconsistent_theory_flag),
   retractall(M:setting_trill(_,_)).
 
 /*****************************
@@ -66,51 +65,57 @@ find_n_explanations(_,_,_,Expls,_,_):-
   empty_expl(_,Expls-_).
 
 
-compute_prob_and_close(M,Exps,Prob):-
-  compute_prob(M,Exps,Prob).
+% if there is not inconsistency, perform classical probability computation
+compute_prob_and_close(M,expl{expl:Exps,incons:[[]]},Prob,false):- !,
+  compute_prob(M,Exps,Prob),!.
+% if there is not inconsistency, perform classical probability computation
+compute_prob_and_close(M,expl{expl:[[]],incons:Exps},Prob,false):- !,
+  compute_prob(M,Exps,Prob),!.
+
+compute_prob_and_close(M,Exps,Prob,Inc):-
+  compute_prob_inc(M,Exps,Prob,Inc),!.
 
 % checks the explanation
 check_and_close(_,Expl,Expl):-
   dif(Expl,[]).
 
 
-find_expls(M,Tabs,Q,E):-
-  find_expls_int(M,Tabs,Q,E-_),!.
-
-find_expls(M,_,_,_):-
-  M:inconsistent_theory_flag,!,
-  print_message(warning,inconsistent),!,false.
+find_expls(M,Tabs,Q,expl{expl:EQ,incons:EInc}):-
+  find_expls_int(M,Tabs,Q,EQ-_,EInc-_),!.
 
 % checks if an explanations was already found
-find_expls_int(_M,[],_,[]):-!.
+find_expls_int(M,[],_,BDD,BDD):-
+  empty_expl(M,BDD),!.
 
 % checks if an explanations was already found (instance_of version)
-find_expls_int(M,[Tab|T],Q,E):-
+find_expls_int(M,[Tab|T],Q,EQ,EInc):-
   get_clashes(Tab,Clashes),
   findall(E0,(member(Clash,Clashes),clash(M,Clash,Tab,E0)),Expls0),!,
-  dif(Expls0,[]),
+  %dif(Expls0,[]),
   % this predicate checks if there are inconsistencies in the KB, i.e., explanations without query placeholder qp
   % if it is so, it asserts the inconcistency and fails
-  consistency_check(M,Expls0,Q),
-  or_all_f(M,Expls0,Expls1),
-  find_expls_int(M,T,Q,E1),
-  and_f(M,Expls1,E1,E),!.
+  consistency_check(M,Expls0,Q,ExplsQ0,ExplsInc0),
+  or_all_f(M,ExplsQ0,ExplsQ1),
+  or_all_f(M,ExplsInc0,ExplsInc1),
+  find_expls_int(M,T,Q,EQ1,EInc1),
+  and_f(M,ExplsQ1,EQ1,EQ),
+  and_f(M,ExplsInc1,EInc1,EInc),!.
+
 
 find_expls_int(M,[_Tab|T],Query0,Expl):-
   \+ length(T,0),
   find_expls_int(M,T,Query0,Expl).
 
 % this predicate checks if there are inconsistencies in the KB, i.e., explanations without query placeholder qp
-consistency_check(_,_,['inconsistent','kb']):-!.
+consistency_check(_,E,['inconsistent','kb'],E,[]):-!.
 
-consistency_check(_,[],_):-!.
+consistency_check(_,[],_,[],[]):-!.
 
-consistency_check(M,[_-CPs|T],Q):-
-  dif(CPs,[]),!,
-  consistency_check(M,T,Q).
+consistency_check(M,[E-[]|T],Q,EQ,[E-[]|EInc]):-!,
+  consistency_check(M,T,Q,EQ,EInc).
 
-consistency_check(M,_,_):-
-  assert(M:inconsistent_theory_flag).
+consistency_check(M,[E-CPs|T],Q,[E-CPs|EQ],EInc):-
+  consistency_check(M,T,Q,EQ,EInc).
 
 /****************************/
 
@@ -544,6 +549,8 @@ or_f(M,[],F,F):-!.
 or_f(M,F,[],F):-!.
 */
 
+or_all_f(_M,[],[]):-!.
+
 or_all_f(_M,[H],H):-!.
 
 or_all_f(M,[H|T],Expl):-
@@ -754,6 +761,12 @@ get_bdd_environment(_M,Env):-
 
 clean_environment(_M,Env):-
   end(Env).
+
+build_bdd_inc(M,Env,Expl,Inc,BDDQC,BDDC):- !,
+  build_bdd(M,Env,Expl,BDDQ), % BDD query's explanations
+  build_bdd(M,Env,Inc,BDDInc), % BDD inconsistency's explanations
+  bdd_not(Env,BDDInc,BDDC), % BDD consistency's explanations
+  and(Env,BDDQ,BDDC,BDDQC). % BDD query and consistency's explanations
 
 build_bdd(_M,Env,[],BDD):-
   zero(Env,BDD).
