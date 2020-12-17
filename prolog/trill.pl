@@ -2812,6 +2812,27 @@ compute_prob_inc(M,expl{expl:Expl,incons:Inc},Prob,IncCheck):-
   clean_environment(M,Env), !.
 */
 
+% for query with inconsistency P1(Q) = P(Q|cons) = P(Q,cons)/P(cons) with AR check
+/*
+compute_prob_inc(M,expl{expl:Expl,incons:Inc},Prob-ProbNQC,IncCheck):-
+  retractall(v(_,_,_)),
+  retractall(na(_,_)),
+  retractall(rule_n(_)),
+  assert(rule_n(0)),
+  %findall(1,M:annotationAssertion('http://ml.unife.it/disponte#probability',_,_),NAnnAss),length(NAnnAss,NV),
+  get_bdd_environment(M,Env),
+  build_bdd_inc(M,Env,Expl,Inc,BDDQC,BDDNQC,BDDC),
+  ret_prob(Env,BDDQC,ProbQC),
+  ret_prob(Env,BDDC,ProbC),
+  (dif(ProbC,0.0) -> 
+    (Prob is ProbQC/ProbC,IncCheck=false)
+    ;
+    (Prob is 0.0,IncCheck=true)
+  ),
+  ret_prob(Env,BDDNQC,ProbNQC),
+  clean_environment(M,Env), !.
+*/
+
 get_var_n(Env,R,S,Probs,V):-
   (
     v(R,S,V) ->
@@ -2846,9 +2867,24 @@ get_prob_ax(M,Ax,N,Prob):- !,
       assert(rule_n(N1))
   ).
 
+prob_number(ProbAT,ProbA):-
+  atom_number(ProbAT,ProbAC),
+  ProbAC==1,!,
+  Epsilon is 10**(-10),
+  ProbA is ProbAC - Epsilon.
+
+prob_number(ProbAT,ProbA):-
+  atom_number(ProbAT,ProbAC),
+  ProbAC==1.0,!,
+  Epsilon is 10**(-10),
+  ProbA is ProbAC - Epsilon.
+
+prob_number(ProbAT,ProbA):-
+  atom_number(ProbAT,ProbA).
+
 compute_prob_ax(M,Ax,Prob):-
-  findall(ProbA,(M:annotationAssertion('https://sites.google.com/a/unife.it/ml/disponte#probability',Ax,literal(ProbAT)),atom_number(ProbAT,ProbA)),ProbsOld), % Retro-compatibility
-  findall(ProbA,(M:annotationAssertion('http://ml.unife.it/disponte#probability',Ax,literal(ProbAT)),atom_number(ProbAT,ProbA)),ProbsNew),
+  findall(ProbA,(M:annotationAssertion('https://sites.google.com/a/unife.it/ml/disponte#probability',Ax,literal(ProbAT)),prob_number(ProbAT,ProbA)),ProbsOld), % Retro-compatibility
+  findall(ProbA,(M:annotationAssertion('http://ml.unife.it/disponte#probability',Ax,literal(ProbAT)),prob_number(ProbAT,ProbA)),ProbsNew),
   append(ProbsNew, ProbsOld, Probs),
   compute_prob_ax1(Probs,Prob).
 

@@ -377,6 +377,11 @@ build_bdd_inc(_,Env,BDDQ,BDDInc,BDDQC,BDDC):-
   bdd_not(Env,BDDInc,BDDC), % BDD consistency's explanations
   and(Env,BDDQ,BDDC,BDDQC). % BDD query and consistency's explanations
 
+build_bdd_inc(_,Env,BDDQ,BDDInc,BDDQC,BDDNQC,BDDC):-
+  bdd_not(Env,BDDInc,BDDC), % BDD consistency's explanations
+  bdd_not(Env,BDDQ,BDDNQ), % BDD for the query to be false
+  and(Env,BDDQ,BDDC,BDDQC), % BDD query and consistency's explanations
+  and(Env,BDDNQ,BDDC,BDDNQC). % BDD of query not true in consistent worlds
 
 bdd_and(M,Env,[X],BDDX):-
   get_prob_ax(M,X,AxN,Prob),!,
