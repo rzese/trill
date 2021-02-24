@@ -214,7 +214,16 @@ prolog:message(iri_not_exists(IRIs)) -->
   [ 'IRIs not existent: ~w' -[IRIs] ].
 
 prolog:message(inconsistent) -->
-  [ 'Inconsistent ABox' ].
+  [ 'The KB is locally inconsitent' ].
+
+prolog:message(locally_inconsistent) -->
+  [ 'The KB is probably locally inconsitent, i.e., inconsistency is not certain.' ].
+
+prolog:message(completely_inconsistent) -->
+  [ 'The KB is certainly locally inconsistent, I cannot prove the truth of any explanation.' ].
+
+prolog:message(inconsistence_expl) -->
+  [ 'Inconsistence explanation:' ].
 
 prolog:message(consistent) -->
   [ 'Consistent ABox' ].
@@ -227,6 +236,19 @@ prolog:message(timeout_reached) -->
 
 /*****************************
   QUERY OPTIONS
+
+  List of query options:
+  - return_prob - Prob:Variable
+  - return_incons_expl - ListOfExpl:Variable
+  - assert_abox - Boolean
+  - max_expl - Integer|all|bt finds N or all the explanations or one single explanation at a time if bt or not set
+  - time_limit - Integer (seconds)
+
+  TODO
+  - return_final_prob - only|also|false used when trill returns one explanation at a time. If only returns only the probability of all the explanations,
+                                        if also returns both probability of single explanation and the probability of all the explanations
+                                        if false or not set returns only the probability of the single explanations
+  
 ******************************/
 
 /** 
@@ -249,17 +271,26 @@ query_option(OptList,Option,Value):-
   QUERY PREDICATES
 *****************************/
 
-execute_query(M,QueryType,QueryArgsNC,Expl,QueryOptions):-
+execute_query(M,QueryType,QueryArgsNC,ExplOut,QueryOptions):-
   check_query_args(M,QueryArgsNC,QueryArgs,QueryArgsNotPresent),
   ( dif(QueryArgsNotPresent,[]) ->
     (print_message(warning,iri_not_exists(QueryArgsNotPresent)),!,false) ; true
   ),
-  find_explanations(M,QueryType,QueryArgs,Expl,QueryOptions),
+  find_explanations(M,QueryType,QueryArgs,ExplInc,QueryOptions),
+  Expl=ExplInc.expl,
+  Inc=ExplInc.incons,
+  ( dif(Expl,[]) -> ExplOut=Expl 
+    ; 
+    ( dif(Inc,[]) -> (ExplOut=Inc,print_message(warning,inconsistent),print_message(warning,inconsistence_expl)) ; true)
+  ),
+  ( query_option(QueryOptions,max_expl,bt) -> ExplIncP = ExplInc.put(expl,[Expl]).put(incons,[Inc]) ; ExplIncP = ExplInc),
   ( query_option(QueryOptions,return_prob,Prob) ->
     (
-      compute_prob_and_close(M,Expl,Prob),
-      (query_option(QueryOptions,return_single_prob,false) -> true ; !)
-    ) ; true
+      compute_prob_and_close(M,ExplIncP,Prob,IncCheck),
+      (dif(IncCheck,false) -> print_message(warning,completely_inconsistent) ; true),
+      ( query_option(QueryOptions,return_incons_expl,Inc) -> true ; true) % does nothing, just unifies with the variable in the option
+    )
+    ; true
   ).
 
 
@@ -337,14 +368,14 @@ add_q(M,io,Tableau0,[ClassEx,IndEx],Tableau):- !,
   neg_class(ClassEx,NClassEx),
   add_q(M,Tableau0,classAssertion(NClassEx,IndEx),Tableau1),
   add_clash_to_tableau(M,Tableau1,NClassEx-IndEx,Tableau2),
-  update_expansion_queue_in_tableau(M,NClassEx,IndEx,Tableau2,Tableau).
+  update_expansion_queue_in_tableau(M,NClassEx,IndEx,Tableau2,Tableau),!.
 
 % property_value
 add_q(M,pv,Tableau0,[PropEx,Ind1Ex,Ind2Ex],Tableau):-!,
   neg_class(PropEx,NPropEx), %use of neg_class to negate property
   add_q(M,Tableau0,propertyAssertion(NPropEx,Ind1Ex,Ind2Ex),Tableau1),
   add_clash_to_tableau(M,Tableau1,NPropEx-Ind1Ex-Ind2Ex,Tableau2),
-  update_expansion_queue_in_tableau(M,PropEx,Ind1Ex,Ind2Ex,Tableau2,Tableau).
+  update_expansion_queue_in_tableau(M,PropEx,Ind1Ex,Ind2Ex,Tableau2,Tableau),!.
 
 
 % sub_class
@@ -355,7 +386,7 @@ add_q(M,sc,Tableau0,[SubClassEx,SupClassEx],Tableau):- !,
   utility_translation:add_kb_atoms(M,class,[intersectionOf([SubClassEx,NSupClassEx])]), % This is necessary to correctly prune expansion rules
   add_owlThing_ind(M,Tableau1,QInd,Tableau2),
   add_clash_to_tableau(M,Tableau2,intersectionOf([SubClassEx,NSupClassEx])-QInd,Tableau3),
-  update_expansion_queue_in_tableau(M,intersectionOf([SubClassEx,NSupClassEx]),QInd,Tableau3,Tableau).
+  update_expansion_queue_in_tableau(M,intersectionOf([SubClassEx,NSupClassEx]),QInd,Tableau3,Tableau),!.
 
 % unsat
 add_q(M,un,Tableau0,['unsat',ClassEx],Tableau):- !,
@@ -363,7 +394,7 @@ add_q(M,un,Tableau0,['unsat',ClassEx],Tableau):- !,
   add_q(M,Tableau0,classAssertion(ClassEx,QInd),Tableau1),
   add_owlThing_ind(M,Tableau1,QInd,Tableau2),
   add_clash_to_tableau(M,Tableau2,ClassEx-QInd,Tableau3),
-  update_expansion_queue_in_tableau(M,ClassEx,QInd,Tableau3,Tableau).
+  update_expansion_queue_in_tableau(M,ClassEx,QInd,Tableau3,Tableau),!.
 
 % inconsistent_theory
 add_q(_,it,Tableau,['inconsistent','kb'],Tableau):- !. % Do nothing
@@ -2708,6 +2739,7 @@ compute_prob_ax1([Prob1 | T],Prob):-
 
 %rule_n(0).
 
+% for query with no inconsistency
 compute_prob(M,Expl,Prob):-
   retractall(v(_,_,_)),
   retractall(na(_,_)),
@@ -2718,6 +2750,120 @@ compute_prob(M,Expl,Prob):-
   build_bdd(M,Env,Expl,BDD),
   ret_prob(Env,BDD,Prob),
   clean_environment(M,Env), !.
+
+% for query with inconsistency P1(Q) = P(Q|cons) = P(Q,cons)/P(cons) (Fabrizio's proposal)
+/**/
+compute_prob_inc(M,expl{expl:Expl,incons:Inc},Prob,IncCheck):-
+  retractall(v(_,_,_)),
+  retractall(na(_,_)),
+  retractall(rule_n(_)),
+  assert(rule_n(0)),
+  %findall(1,M:annotationAssertion('http://ml.unife.it/disponte#probability',_,_),NAnnAss),length(NAnnAss,NV),
+  get_bdd_environment(M,Env),
+  build_bdd_inc(M,Env,Expl,Inc,BDDQC,BDDC),
+  ret_prob(Env,BDDQC,ProbQC),
+  ret_prob(Env,BDDC,ProbC),
+  (dif(ProbC,0.0) -> 
+    (Prob is ProbQC/ProbC,IncCheck=false)
+    ;
+    (Prob is 0.0,IncCheck=true)
+  ),
+  clean_environment(M,Env), !.
+/**/
+
+% Using weigths (https://dtai.cs.kuleuven.be/problog/tutorial/advanced/03_aproblog.html)
+/*
+compute_prob_inc(M,expl{expl:Expl,incons:Inc},Prob,IncCheck):-
+  retractall(v(_,_,_)),
+  retractall(na(_,_)),
+  retractall(rule_n(_)),
+  assert(rule_n(0)),
+  %findall(1,M:annotationAssertion('http://ml.unife.it/disponte#probability',_,_),NAnnAss),length(NAnnAss,NV),
+  get_bdd_environment(M,Env),gtrace,
+  build_bdd(M,Env,Expl,BDDQC),
+  build_bdd(M,Env,Inc,BDDI),
+  build_formula(M,Env,BDDI,FI),
+  write(FI),
+  build_formula(M,Env,BDDQC,FQC),
+  write(FQC),
+  ret_prob(Env,BDDQC,ProbQC),
+  ret_prob(Env,BDDI,ProbI),
+  PQCM is min(ProbQC,0.999999999999999999),
+  WQC is -log(1-PQCM),
+  PIM is min(ProbI,0.999999999999999999),
+  WI is -log(1-PIM),
+  WQ is WQC/exp(-WI),
+  Prob is 1-exp(-WQ),
+  clean_environment(M,Env), !.
+
+
+build_formula(M,Env,BDDI,F):-
+  findall(VH,v(_,_,VH),LV),
+  build_formula_int(M,Env,BDDI,LV,F).
+
+build_formula_int(M,Env,BDDI,_,1):-
+  one(Env,BDDI).
+
+build_formula_int(M,Env,BDDI,_,0):-
+  zero(Env,BDDI).
+
+build_formula_int(M,Env,BDDI,LV,Var*(FT)*(1-FV)):-
+  get_var_bdd(M,Env,BDDI,LV,Var),
+  get_child_t(Env,Var,0,BDDT),
+  get_child_f(Env,Var,0,BDDF),
+  build_formula_int(M,Env,BDDT,LV,FT),
+  build_formula_int(M,Env,BDDF,LV,FV).
+
+
+get_var_bdd(M,Env,BDDI,LV,Var):-
+  equality(Env,Var,0,BDDI),!.
+
+get_var_bdd(M,Env,BDDI,LV,Var):-
+  member(Var,LV),
+  equality(Env,Var,1,BDDI).
+
+*/
+
+% for query with inconsistency P2(Q) = P(Q)(1-P(incons)) (Riccardo's proposal)
+/*
+compute_prob_inc(M,expl{expl:Expl,incons:Inc},Prob,IncCheck):-
+  retractall(v(_,_,_)),
+  retractall(na(_,_)),
+  retractall(rule_n(_)),
+  assert(rule_n(0)),
+  %findall(1,M:annotationAssertion('http://ml.unife.it/disponte#probability',_,_),NAnnAss),length(NAnnAss,NV),
+  get_bdd_environment(M,Env),
+  build_bdd(M,Env,Expl,BDDQ),
+  build_bdd(M,Env,Inc,BDDI),
+  ret_prob(Env,BDDQ,ProbQ),
+  ret_prob(Env,BDDI,ProbI),
+  Prob is ProbQ*(1-ProbI),
+  %bdd_not(Env,BDDI,BDDC),
+  %ret_prob(Env,BDDC,ProbC),
+  %Prob is ProbQ*ProbC,
+  clean_environment(M,Env), !.
+*/
+
+% for query with inconsistency P1(Q) = P(Q|cons) = P(Q,cons)/P(cons) with AR check
+/*
+compute_prob_inc(M,expl{expl:Expl,incons:Inc},Prob-ProbNQC,IncCheck):-
+  retractall(v(_,_,_)),
+  retractall(na(_,_)),
+  retractall(rule_n(_)),
+  assert(rule_n(0)),
+  %findall(1,M:annotationAssertion('http://ml.unife.it/disponte#probability',_,_),NAnnAss),length(NAnnAss,NV),
+  get_bdd_environment(M,Env),
+  build_bdd_inc(M,Env,Expl,Inc,BDDQC,BDDNQC,BDDC),
+  ret_prob(Env,BDDQC,ProbQC),
+  ret_prob(Env,BDDC,ProbC),
+  (dif(ProbC,0.0) -> 
+    (Prob is ProbQC/ProbC,IncCheck=false)
+    ;
+    (Prob is 0.0,IncCheck=true)
+  ),
+  ret_prob(Env,BDDNQC,ProbNQC),
+  clean_environment(M,Env), !.
+*/
 
 get_var_n(Env,R,S,Probs,V):-
   (
@@ -2753,9 +2899,24 @@ get_prob_ax(M,Ax,N,Prob):- !,
       assert(rule_n(N1))
   ).
 
+prob_number(ProbAT,ProbA):-
+  atom_number(ProbAT,ProbAC),
+  ProbAC==1,!,
+  Epsilon is 10**(-10),
+  ProbA is ProbAC - Epsilon.
+
+prob_number(ProbAT,ProbA):-
+  atom_number(ProbAT,ProbAC),
+  ProbAC==1.0,!,
+  Epsilon is 10**(-10),
+  ProbA is ProbAC - Epsilon.
+
+prob_number(ProbAT,ProbA):-
+  atom_number(ProbAT,ProbA).
+
 compute_prob_ax(M,Ax,Prob):-
-  findall(ProbA,(M:annotationAssertion('https://sites.google.com/a/unife.it/ml/disponte#probability',Ax,literal(ProbAT)),atom_number(ProbAT,ProbA)),ProbsOld), % Retro-compatibility
-  findall(ProbA,(M:annotationAssertion('http://ml.unife.it/disponte#probability',Ax,literal(ProbAT)),atom_number(ProbAT,ProbA)),ProbsNew),
+  findall(ProbA,(M:annotationAssertion('https://sites.google.com/a/unife.it/ml/disponte#probability',Ax,literal(ProbAT)),prob_number(ProbAT,ProbA)),ProbsOld), % Retro-compatibility
+  findall(ProbA,(M:annotationAssertion('http://ml.unife.it/disponte#probability',Ax,literal(ProbAT)),prob_number(ProbAT,ProbA)),ProbsNew),
   append(ProbsNew, ProbsOld, Probs),
   compute_prob_ax1(Probs,Prob).
 

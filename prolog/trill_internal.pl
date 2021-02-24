@@ -43,7 +43,8 @@ clean_up(M):-
 % findall
 find_n_explanations(M,QueryType,QueryArgs,Expls,all,Opt):-
   !, % CUT so that no other calls to find_explanation can be ran (to avoid running that with variable N)
-  findall(Expl,find_single_explanation(M,QueryType,QueryArgs,Expl,Opt),Expls).
+  findall(Expl,find_single_explanation(M,QueryType,QueryArgs,Expl,Opt),Expls0),
+  merge_explanations_from_dicts_list(Expls0,Expls).
 
 % find one in backtracking
 find_n_explanations(M,QueryType,QueryArgs,Expl,bt,Opt):-
@@ -58,8 +59,21 @@ find_n_explanations(M,QueryType,QueryArgs,Expls,N,Opt):-
     (print_message(warning,wrong_number_max_expl),!,false)
   ).
 
+% takes a list of dicts expl{query,expl,incons} and create a single disct of the same shape with all values from expls and incons merged
+merge_explanations_from_dicts_list(ExplsList,expl{expl:Ec,incons:Inc}):-
+  merge_explanations_from_dicts_list(ExplsList,Ec,Inc),!.
 
-% to find all axplanations for probabilistic queries
+merge_explanations_from_dicts_list([],[],[]).
+
+merge_explanations_from_dicts_list([expl{expl:[],incons:Inc0}|T],Ec,[Inc0|Inc]):-
+  merge_explanations_from_dicts_list(T,Ec,Inc).
+
+merge_explanations_from_dicts_list([expl{expl:Ec0,incons:[]}|T],[Ec0|Ec],Inc):-
+  merge_explanations_from_dicts_list(T,Ec,Inc).
+
+
+
+% to find all explanations for probabilistic queries
 all_sub_class_int(M:ClassEx,SupClassEx,Exps):-
   all_unsat_int(M:intersectionOf([ClassEx,complementOf(SupClassEx)]),Exps).
 
@@ -77,13 +91,28 @@ all_inconsistent_theory_int(M:Exps):-
   findall(Expl,inconsistent_theory(M:Expl),Exps).
 
 
-compute_prob_and_close(M,Exps,Prob):-
+% if there is not inconsistency, perform classical probability computation
+compute_prob_and_close(M,expl{expl:Exps,incons:[[]]},Prob,false):- !,
   compute_prob(M,Exps,Prob),!.
+% if there is not inconsistency, perform classical probability computation
+compute_prob_and_close(M,expl{expl:[[]],incons:Exps},Prob,false):- !,
+  compute_prob(M,Exps,Prob),!.
+
+compute_prob_and_close(M,Exps,Prob,Inc):-
+  compute_prob_inc(M,Exps,Prob,Inc),!.
 
 % checks the explanation
 check_and_close(_,Expl0,Expl):-
-  dif(Expl0,[]),
-  sort(Expl0,Expl).
+  QExpl0=Expl0.expl,
+  dif(QExpl0,[]),!,
+  sort(QExpl0,QExpl),
+  Expl=Expl0.put(expl,QExpl).
+
+check_and_close(_,Expl0,Expl):-
+  QExpl0=Expl0.incons,
+  dif(QExpl0,[]),
+  sort(QExpl0,QExpl),
+  Expl=Expl0.put(incons,QExpl).
 
 
 % checks if an explanations was already found
@@ -92,16 +121,19 @@ find_expls(M,[],Q,E):-
   %dif(Expl,[]),
   find_expls_from_choice_point_list(M,Q,E).
 
-find_expls(M,[],['inconsistent','kb'],E):-!,
+find_expls(M,[],['inconsistent','kb'],expl{expl:E,incons:[]}):-!,
   findall(Exp,M:exp_found(['inconsistent','kb'],Exp),Expl0),
   remove_supersets(Expl0,Expl),!,
   member(E,Expl).
 
-find_expls(M,[],_Q,_):-
-  M:exp_found(['inconsistent','kb'],_),!,
-  print_message(warning,inconsistent),!,false.
+find_expls(M,[],_,expl{expl:[],incons:E}):-
+  %M:exp_found(['inconsistent','kb'],_),!,
+  %print_message(warning,inconsistent),!,false.
+  findall(Exp,M:exp_found(['inconsistent','kb'],Exp),Expl0),
+  remove_supersets(Expl0,Expl),
+  member(E,Expl).
 
-find_expls(M,[],Q,E):-
+find_expls(M,[],Q,expl{expl:E,incons:[]}):-
   findall(Exp,M:exp_found(Q,Exp),Expl0),
   remove_supersets(Expl0,Expl),!,
   member(E,Expl).
@@ -598,18 +630,30 @@ absent0(Expl0,Expl1,Expl):-
 absent1(Expl,[],Expl,0).
 
 absent1(Expl0,[H-CP|T],[H-CP|Expl],1):-
-  absent2(Expl0,H),!,
+  absent2(Expl0,H-CP),!,
   absent1(Expl0,T,Expl,_).
 
 absent1(Expl0,[_|T],Expl,Added):-
   absent1(Expl0,T,Expl,Added).
 
-absent2([H-_],Expl):- !,
-  \+ subset(H,Expl).
+% if the query placeholder is present in both or absent in both, I must check the subset condition. Otherwise, I must keep both.  
+absent2([H-CPH],Expl-CP):- 
+  (check_query_placeholder(CPH,CP) ->  \+ subset(H,Expl) ; true),!.
 
-absent2([H-_|T],Expl):-
+absent2([H-CPH|T],Expl-CP):-
+  check_query_placeholder(CPH,CP),!,
   \+ subset(H,Expl),!,
-  absent2(T,Expl).
+  absent2(T,Expl-CP).
+
+absent2([_|T],Expl-CP):-
+  absent2(T,Expl-CP).
+
+
+check_query_placeholder(CP0,CP1):-
+  (memberchk(qp,CP0),memberchk(qp,CP1)),!.
+
+check_query_placeholder(CP0,CP1):-
+  (\+ memberchk(qp,CP0), \+ memberchk(qp,CP1)),!.
 
 /* **************** */
 
@@ -833,6 +877,20 @@ get_bdd_environment(_M,Env):-
 clean_environment(_M,Env):-
   end(Env).
 
+
+build_bdd_inc(M,Env,Expl,Inc,BDDQC,BDDC):- !,
+  build_bdd(M,Env,Expl,BDDQ), % BDD query's explanations
+  build_bdd(M,Env,Inc,BDDInc), % BDD inconsistency's explanations
+  bdd_not(Env,BDDInc,BDDC), % BDD consistency's explanations
+  and(Env,BDDQ,BDDC,BDDQC). % BDD query and consistency's explanations
+
+build_bdd_inc(M,Env,Expl,Inc,BDDQC,BDDNQC,BDDC):- !,
+  build_bdd(M,Env,Expl,BDDQ), % BDD query's explanations
+  build_bdd(M,Env,Inc,BDDInc), % BDD inconsistency's explanations
+  bdd_not(Env,BDDInc,BDDC), % BDD consistency's explanations
+  bdd_not(Env,BDDQ,BDDNQ), % BDD for the query to be false
+  and(Env,BDDQ,BDDC,BDDQC), % BDD query and consistency's explanations
+  and(Env,BDDNQ,BDDC,BDDNQC). % BDD of query not true in consistent worlds
 
 build_bdd(M,Env,[X],BDD):- !,
   bdd_and(M,Env,X,BDD).
