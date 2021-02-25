@@ -1,34 +1,6 @@
-/* trill predicates
 
-This module performs reasoning over probabilistic description logic knowledge bases.
-It reads probabilistic knowledge bases in RDF format or in Prolog format, a functional-like
-sintax based on definitions of Thea library, and answers queries by finding the set 
-of explanations or computing the probability.
 
-[1] http://vangelisv.github.io/thea/
 
-See https://github.com/rzese/trill/blob/master/doc/manual.pdf or
-http://ds.ing.unife.it/~rzese/software/trill/manual.html for
-details.
-
-@author Riccardo Zese
-@license Artistic License 2.0
-@copyright Riccardo Zese
-*/
-
-/********************************
-  SETTINGS
-*********************************/
-:- multifile setting_trill_default/2.
-setting_trill_default(det_rules,[o_rule,and_rule,unfold_rule,add_exists_rule,forall_rule,forall_plus_rule,exists_rule,min_rule]).
-setting_trill_default(nondet_rules,[or_rule,max_rule,ch_rule]).
-
-set_up(M):-
-  utility_translation:set_up(M),
-  init_delta(M),
-  M:(dynamic exp_found/2, setting_trill/2),
-  retractall(M:setting_trill(_,_)).
-  %foreach(setting_trill_default(DefaultSetting,DefaultVal),assert(M:setting_trill(DefaultSetting,DefaultVal))).
 
 clean_up(M):-
   utility_translation:clean_up(M),
@@ -40,24 +12,6 @@ clean_up(M):-
   Utilities for queries
  ***********/
 
-% findall
-find_n_explanations(M,QueryType,QueryArgs,Expls,all,Opt):-
-  !, % CUT so that no other calls to find_explanation can be ran (to avoid running that with variable N)
-  findall(Expl,find_single_explanation(M,QueryType,QueryArgs,Expl,Opt),Expls0),
-  merge_explanations_from_dicts_list(Expls0,Expls).
-
-% find one in backtracking
-find_n_explanations(M,QueryType,QueryArgs,Expl,bt,Opt):-
-  !, % CUT so that no other calls to find_explanation can be ran (to avoid running that with variable N)
-  find_single_explanation(M,QueryType,QueryArgs,Expl,Opt).
-
-% find_n_sol
-find_n_explanations(M,QueryType,QueryArgs,Expls,N,Opt):-
-  (number(N) -> % CUT so that no other calls to find_explanation can be ran
-    (findnsols(N,Expl,find_single_explanation(M,QueryType,QueryArgs,Expl,Opt),Expls),!) % CUT otherwise findnsols would backtracks to look for another N sols
-    ;
-    (print_message(warning,wrong_number_max_expl),!,false)
-  ).
 
 % takes a list of dicts expl{query,expl,incons} and create a single disct of the same shape with all values from expls and incons merged
 merge_explanations_from_dicts_list(ExplsList,expl{expl:Ec,incons:Inc}):-
@@ -353,35 +307,7 @@ clash(M,exactCardinality(N,S)-Ind,Tab,Expl):-
 
 
 
-:- multifile check_clash/3.
 
-check_clash(M,maxCardinality(N,S,C)-Ind,Tab):-
-  get_abox(Tab,ABox),
-  %write('clash 9'),nl,
-  s_neighbours(M,Ind,S,Tab,SN),
-  individual_class_C(SN,C,ABox,SNC),
-  length(SNC,LSS),
-  LSS @> N,!.
-  
-check_clash(M,maxCardinality(N,S)-Ind,Tab):-
-  %write('clash 10'),nl,
-  s_neighbours(M,Ind,S,Tab,SN),
-  length(SN,LSS),
-  LSS @> N,!.
-  
-check_clash(M,exactCardinality(N,S,C)-Ind,Tab):-
-  get_abox(Tab,ABox),
-  %write('clash 9'),nl,
-  s_neighbours(M,Ind,S,Tab,SN),
-  individual_class_C(SN,C,ABox,SNC),
-  length(SNC,LSS),
-  dif(LSS,N),!.
-  
-check_clash(M,exactCardinality(N,S)-Ind,Tab):-
-  %write('clash 10'),nl,
-  s_neighbours(M,Ind,S,Tab,SN),
-  length(SN,LSS),
-  dif(LSS,N),!.
 
 % --------------
 
@@ -657,53 +583,7 @@ check_query_placeholder(CP0,CP1):-
 
 /* **************** */
 
-/*
-  build_abox
-  ===============
-*/
 
-/*build_abox(M,ABox):-
-  findall((classAssertion(Class,Individual),[classAssertion(Class,Individual)]),classAssertion(Class,Individual),LCA),
-  findall((propertyAssertion(Property,Subject, Object),[propertyAssertion(Property,Subject, Object)]),propertyAssertion(Property,Subject, Object),LPA),
-  findall((propertyAssertion(Property,Subject,Object),[subPropertyOf(SubProperty,Property,Subject,Object),propertyAssertion(SubProperty,Subject,Object)]),subPropertyOf(SubProperty,Property),LSPA),
-  new_abox(ABox0),
-  add_all_to_tableau(LCA,ABox0,ABox1),
-  add_all_to_tableau(LPA,ABox1,ABox2),
-  add_all_to_tableau(LSPA,ABox2,ABox).
-*/
-
-
-build_abox(M,Tableau,QueryType,QueryArgs):-
-  retractall(M:final_abox(_)),
-  collect_individuals(M,QueryType,QueryArgs,ConnectedInds),
-  ( dif(ConnectedInds,[]) ->
-    ( findall((classAssertion(Class,Individual),[[classAssertion(Class,Individual)]-[]]),(member(Individual,ConnectedInds),M:classAssertion(Class,Individual)),LCA),
-      findall((propertyAssertion(Property,Subject, Object),[[propertyAssertion(Property,Subject, Object)]-[]]),(member(Subject,ConnectedInds),M:propertyAssertion(Property,Subject, Object),dif('http://www.w3.org/2000/01/rdf-schema#comment',Property)),LPA),
-      % findall((propertyAssertion(Property,Subject,Object),[subPropertyOf(SubProperty,Property),propertyAssertion(SubProperty,Subject,Object)]),subProp(M,SubProperty,Property,Subject,Object),LSPA),
-      findall(nominal(NominalIndividual),(member(NominalIndividual,ConnectedInds),M:classAssertion(oneOf(_),NominalIndividual)),LNA),
-      findall((differentIndividuals(Ld),[[differentIndividuals(Ld)]-[]]),(M:differentIndividuals(Ld),intersect(Ld,ConnectedInds)),LDIA),
-      findall((sameIndividual(L),[[sameIndividual(L)]-[]]),(M:sameIndividual(L),intersect(L,ConnectedInds)),LSIA)
-    )
-    ; % all the individuals
-    ( findall((classAssertion(Class,Individual),[[classAssertion(Class,Individual)]-[]]),M:classAssertion(Class,Individual),LCA),
-      findall((propertyAssertion(Property,Subject, Object),[[propertyAssertion(Property,Subject, Object)]-[]]),(M:propertyAssertion(Property,Subject, Object),dif('http://www.w3.org/2000/01/rdf-schema#comment',Property)),LPA),
-      % findall((propertyAssertion(Property,Subject,Object),[subPropertyOf(SubProperty,Property),propertyAssertion(SubProperty,Subject,Object)]),subProp(M,SubProperty,Property,Subject,Object),LSPA),
-      findall(nominal(NominalIndividual),M:classAssertion(oneOf(_),NominalIndividual),LNA),
-      findall((differentIndividuals(Ld),[[differentIndividuals(Ld)]-[]]),M:differentIndividuals(Ld),LDIA),
-      findall((sameIndividual(L),[[sameIndividual(L)]-[]]),M:sameIndividual(L),LSIA)
-    )
-  ),
-  new_abox(ABox0),
-  new_tabs(Tabs0),
-  init_expansion_queue(LCA,LPA,ExpansionQueue),
-  init_tableau(ABox0,Tabs0,ExpansionQueue,Tableau0),
-  append([LCA,LDIA,LPA],CreateTabsList),
-  create_tabs(CreateTabsList,Tableau0,Tableau1),
-  append([LCA,LPA,LNA,LDIA],AddAllList),
-  add_all_to_tableau(M,AddAllList,Tableau1,Tableau2),
-  merge_all_individuals(M,LSIA,Tableau2,Tableau3),
-  add_owlThing_list(M,Tableau3,Tableau),
-  !.
 
 
 /* ********** */
