@@ -588,60 +588,8 @@ check_query_placeholder(CP0,CP1):-
 
 /* ********** */
 
-/**********************
 
-  Explanation Management
 
-***********************/
-
-and_all_f(M,ExplPartsList,E) :-
-  empty_expl(M,EmptyE),
-  and_all_f(M,ExplPartsList,EmptyE,E).
-
-and_all_f(_,[],E,E) :- !.
-
-and_all_f(M,[H|T],E0,E):-
-  and_f(M,E0,H,E1),
-  and_all_f(M,T,E1,E).
-
-initial_expl(_M,[[]-[]]):-!.
-
-empty_expl(_M,[[]-[]]):-!.
-
-and_f_ax(M,Axiom,F0,F):-
-  and_f(M,[[Axiom]-[]],F0,F).
-
-and_f(_M,[],[],[]):- !.
-
-and_f(_M,[],L,L):- !.
-
-and_f(_M,L,[],L):- !.
-
-and_f(_M,L1,L2,F):-
-  and_f1(L1,L2,[],F).
-
-and_f1([],_,L,L).
-
-and_f1([H1-CP1|T1],L2,L3,L):-
-  and_f2(H1,CP1,L2,L12),
-  append(L3,L12,L4),
-  and_f1(T1,L2,L4,L).
-
-and_f2(_,_,[],[]):- !.
-
-and_f2(L1,CP1,[H2-CP2|T2],[H-CP|T]):-
-  append(L1,H2,H),
-  append(CP1,CP2,CP),
-  and_f2(L1,CP1,T2,T).
-
-or_f([],E,E).
-
-or_f([E0|T],E1,E):-
-  memberchk(E0,E1),!,
-  or_f(T,E1,E).
-
-or_f([E0|T],E1,[E0|E]):-
-  or_f(T,E1,E).
 
 /**********************
 
@@ -686,22 +634,7 @@ init_expl_per_choice_int(N0,N,ExplPerChoice0,ExplPerChoice):-
   init_expl_per_choice_int(N1,N,ExplPerChoice1,ExplPerChoice).
 
 
-% cpp/2 is the choice point pointer. It contains the CP's ID (from the list of choice points delta/2)
-% and the pointer of the choice maide at the choice point
-add_choice_point(_,_,[],[]). 
 
-add_choice_point(_,CPP,[Expl-CP0|T0],[Expl-CP|T]):- %CPP=cpp(CPID,N)
-  (
-    dif(CP0,[]) ->
-    (
-        append([CPP],CP0,CP)
-    )
-    ;
-    (
-      CP = [CPP]
-    )
-  ),
-  add_choice_point(_,CPP,T0,T).
 
 
 get_choice_point_list(M,CP):-

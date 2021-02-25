@@ -32,3 +32,19 @@ classAssertion('a', '1').
 propertyAssertion('s', '1', '2').
 propertyAssertion('s', '1', '3').
 propertyAssertion('s', '1', '4').
+
+/*
+adding
+sameIndividual(['2','3','4']).
+and removing 
+disjointClasses(['b','e','f']).
+
+There are many errors in tableau expansion. sameIndividual does not work properly
+
+Adding
+sameIndividual(['2','3','4']).
+and NOT removing 
+disjointClasses(['b','e','f']).
+causes TRILL return inconsistent KB also for inconsistent_kb query
+
+*/
