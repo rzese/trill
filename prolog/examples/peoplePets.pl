@@ -1,6 +1,6 @@
 :-use_module(library(trill)).
 
-%:- trill. % or :- trillp. or :- tornado.
+:- init_trill.
 
 /*
 This knowledge base is inpired by the people+pets ontology from

@@ -1,6 +1,6 @@
 :- use_module(library(trill)).
 
-%:- trill.
+:- init_trill.
 
 /*
 % subClassOf('a', maxCardinality(2, 's', 'c')).

@@ -3793,7 +3793,8 @@ user:term_expansion(end_of_file, end_of_file) :-
   dif(M,utility_translation),
   fix_wrongly_classified_atoms(M),
   retractall(M:addKBName),
-  retractall(trill_input_mode(_)).
+  retractall(trill_input_mode(_)),
+  retractall(trill:trill_initialized(M)).
   %statistics(walltime,[_,KBLM]),
   %KBLS is KBLM / 1000,
   %format("Knowledge base loaded in ~f seconds.~n",[KBLS]).

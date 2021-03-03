@@ -1,6 +1,6 @@
 :-use_module(library(trill)).
 
-%:- trill. % or :- trillp. or :- tornado.
+:- init_trill.
 
 /*
 An inconsistent KB representing the classical examples about flying penguins.

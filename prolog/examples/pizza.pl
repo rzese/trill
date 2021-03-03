@@ -1,6 +1,6 @@
 :-use_module(library(trill)).
 
-%:- trillp. % or :- trillp. or :- tornado.
+:- init_trill.
 
 /*
 An extract of the well-known Pizza KB, from

@@ -567,8 +567,10 @@ clean_up(M):-
  */
 init_trill:-
   get_trill_current_module(M),
+  clean_up(M),
   % TODO previously set_up(M)
-  set_up_reasoner(M),
+  set_up(M),
+  %set_up_reasoner(M),
   utility_translation:set_up_kb_loading(M),
   trill:add_kb_prefixes(M:[('disponte'='http://ml.unife.it/disponte#'),('owl'='http://www.w3.org/2002/07/owl#')]).
 
@@ -4471,15 +4473,20 @@ sandbox:safe_meta(trill:remove_kb_prefix(_),[]).
 
 sandbox:safe_meta(trill:set_tableau_expansion_rules(_,_),[]).
 
-
+/*
 set_algorithm(M:trill):-
   clean_up(M),!.
+*/
 
 :- use_module(library(utility_translation)).
 
+/*
 user:term_expansion((:- trill),[]):-
   utility_translation:get_module(M),
   set_algorithm(M:trill),
   set_up(M),
   utility_translation:set_up_kb_loading(M),
   trill:add_kb_prefixes(M:[('disponte'='http://ml.unife.it/disponte#'),('owl'='http://www.w3.org/2002/07/owl#')]).
+
+*/
+
