@@ -3,6 +3,7 @@
 :- use_module(library(plunit)).
 
 test_trill:-
+    init_trill,
     run_tests([trill_biopax,
     %trill_biopax_rdf,
     trill_dbpedia,

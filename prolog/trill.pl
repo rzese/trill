@@ -518,20 +518,19 @@ REASONER MANAGEMENT
 
 % Initializes the reasoner by removing explanations found and setting the counter for anonymous individuals
 set_up_reasoner(M):-
-  clean_up(M),
+  %clean_up(M),
   set_up(M),
   assert(M:trillan_idx(1)).
 
 % General setting up
 % TODO merge tornado
-/*
 set_up(M):-
   utility_translation:set_up(M),
   init_delta(M),
-  M:(dynamic exp_found/2, setting_trill/2),
+  M:(dynamic exp_found/2, exp_found/3, setting_trill/2),
   retractall(M:setting_trill(_,_)).
   %foreach(setting_trill_default(DefaultSetting,DefaultVal),assert(M:setting_trill(DefaultSetting,DefaultVal))).
-*/
+
 
 set_up_tableau(M):-
   % TODO move to KB loading
@@ -539,16 +538,16 @@ set_up_tableau(M):-
   %setting_trill_default(nondet_rules,NondetRules),
   %set_tableau_expansion_rules(M:DetRules,NondetRules). 
   prune_tableau_rules(M).
-/*
+
 clean_up(M):-
   utility_translation:clean_up(M),
   M:(dynamic exp_found/2, exp_found/3, setting_trill/2),
-  retractall(M:trillan_idx(_)),
+  %retractall(M:trillan_idx(_)),
   retractall(M:exp_found(_,_)),
   retractall(M:exp_found(_,_,_)),
   retractall(M:setting_trill(_,_)).
-*/
 
+/*
 set_up(M):-
   utility_translation:set_up(M),
   init_delta(M),
@@ -560,7 +559,7 @@ clean_up(M):-
   utility_translation:clean_up(M),
   M:(dynamic exp_found/2, setting_trill/2),
   retractall(M:exp_found(_,_)),
-  retractall(M:setting_trill(_,_)).
+  retractall(M:setting_trill(_,_)).*/
 /**
  * init_trill
  * 
