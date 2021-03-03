@@ -1,6 +1,6 @@
 :-use_module(library(trill)).
 
-:- trill. % or :- trillp. or :- tornado.
+%:- trill. % or :- trillp. or :- tornado.
 
 /*
 An inconsistent KB representing the famous example from the literature on non-monotonic reasoning Nixon Example.

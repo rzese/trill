@@ -1,6 +1,6 @@
 :-use_module(library(trill)).
 
-:- trill. % or :- trillp. or :- tornado.
+%:- trill. % or :- trillp. or :- tornado.
 
 /*
 An toy KB to test local consistency.

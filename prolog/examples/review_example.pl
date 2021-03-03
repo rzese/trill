@@ -1,6 +1,6 @@
 :- use_module(library(trill)).
 
-:- trill.
+%:- trill.
 
 subClassOf(a,f).
 subClassOf(f,b).

@@ -23,9 +23,10 @@ http://ml.unife.it/trill-framework/ for details.
                   unsat/3, unsat/2, unsat/1, all_unsat/2,
                   inconsistent_theory/2, inconsistent_theory/1, inconsistent_theory/0, all_inconsistent_theory/1,
                   prob_instanceOf/3, prob_property_value/4, prob_sub_class/3, prob_unsat/2, prob_inconsistent_theory/1,
-                axiom/1, kb_prefixes/1, add_kb_prefix/2, add_kb_prefixes/1, add_axiom/1, add_axioms/1, remove_kb_prefix/2, remove_kb_prefix/1, remove_axiom/1, remove_axioms/1,
-                load_kb/1, load_owl_kb/1, load_owl_kb_from_string/1, init_trill/1,
-                set_tableau_expansion_rules/2] ).
+                  load_kb/1, load_owl_kb/1, load_owl_kb_from_string/1, init_trill/0,
+                  axiom/1, add_axiom/1, add_axioms/1, remove_axiom/1, remove_axioms/1,
+                  kb_prefixes/1, add_kb_prefix/2, add_kb_prefixes/1, remove_kb_prefix/2, remove_kb_prefix/1,
+                  set_tableau_expansion_rules/2] ).
 
 :- meta_predicate instanceOf(:,+,-,+).
 :- meta_predicate instanceOf(:,+,-).
@@ -58,21 +59,21 @@ http://ml.unife.it/trill-framework/ for details.
 :- meta_predicate prob_unsat(:,-).
 :- meta_predicate prob_inconsistent_theory(:).
 
-:- meta_predicate axiom(:).
-:- meta_predicate kb_prefixes(:).
-:- meta_predicate add_kb_prefix(:,+).
-:- meta_predicate add_kb_prefixes(:).
-:- meta_predicate add_axiom(:).
-:- meta_predicate add_axioms(:).
-:- meta_predicate remove_kb_prefix(:,+).
-:- meta_predicate remove_kb_prefix(:).
-:- meta_predicate remove_axiom(:).
-:- meta_predicate remove_axioms(:).
 :- meta_predicate load_kb(+).
 :- meta_predicate load_owl_kb(+).
 :- meta_predicate load_owl_kb_from_string(+).
-:- meta_predicate set_algorithm(:).
-:- meta_predicate init_trill(+).
+
+:- meta_predicate axiom(:).
+:- meta_predicate add_axiom(:).
+:- meta_predicate add_axioms(:).
+:- meta_predicate remove_axiom(:).
+:- meta_predicate remove_axioms(:).
+:- meta_predicate kb_prefixes(:).
+:- meta_predicate add_kb_prefix(:,+).
+:- meta_predicate add_kb_prefixes(:).
+:- meta_predicate remove_kb_prefix(:,+).
+:- meta_predicate remove_kb_prefix(:).
+
 :- meta_predicate set_tableau_expansion_rules(:,+).
 
 :- use_module(library(lists)).
@@ -476,22 +477,22 @@ find_n_explanations_time_limit(M,QueryType,QueryArgs,Expl,MonitorNExpl,MonitorTi
 % TODO merge tornado
 % findall
 find_n_explanations(M,QueryType,QueryArgs,Expls,all,Opt):-
-!, % CUT so that no other calls to find_explanation can be ran (to avoid running that with variable N)
-findall(Expl,find_single_explanation(M,QueryType,QueryArgs,Expl,Opt),Expls0),
-merge_explanations_from_dicts_list(Expls0,Expls).
+  !, % CUT so that no other calls to find_explanation can be ran (to avoid running that with variable N)
+  findall(Expl,find_single_explanation(M,QueryType,QueryArgs,Expl,Opt),Expls0),
+  merge_explanations_from_dicts_list(Expls0,Expls).
 
 % find one in backtracking
 find_n_explanations(M,QueryType,QueryArgs,Expl,bt,Opt):-
-!, % CUT so that no other calls to find_explanation can be ran (to avoid running that with variable N)
-find_single_explanation(M,QueryType,QueryArgs,Expl,Opt).
+  !, % CUT so that no other calls to find_explanation can be ran (to avoid running that with variable N)
+  find_single_explanation(M,QueryType,QueryArgs,Expl,Opt).
 
 % find_n_sol
 find_n_explanations(M,QueryType,QueryArgs,Expls,N,Opt):-
-(number(N) -> % CUT so that no other calls to find_explanation can be ran
-  (findnsols(N,Expl,find_single_explanation(M,QueryType,QueryArgs,Expl,Opt),Expls),!) % CUT otherwise findnsols would backtracks to look for another N sols
-  ;
-  (print_message(warning,wrong_number_max_expl),!,false)
-).
+  (number(N) -> % CUT so that no other calls to find_explanation can be ran
+    (findnsols(N,Expl,find_single_explanation(M,QueryType,QueryArgs,Expl,Opt),Expls),!) % CUT otherwise findnsols would backtracks to look for another N sols
+    ;
+    (print_message(warning,wrong_number_max_expl),!,false)
+  ).
 
 % collect explanations one at a time. This is where the inference starts.
 find_single_explanation(M,QueryType,QueryArgs,Expl,Opt):-
@@ -517,20 +518,20 @@ REASONER MANAGEMENT
 
 % Initializes the reasoner by removing explanations found and setting the counter for anonymous individuals
 set_up_reasoner(M):-
+  clean_up(M),
   set_up(M),
-  retractall(M:exp_found(_,_)),
-  retractall(M:exp_found(_,_,_)),
-  retractall(M:trillan_idx(_)),
   assert(M:trillan_idx(1)).
 
 % General setting up
 % TODO merge tornado
+/*
 set_up(M):-
   utility_translation:set_up(M),
   init_delta(M),
   M:(dynamic exp_found/2, setting_trill/2),
   retractall(M:setting_trill(_,_)).
   %foreach(setting_trill_default(DefaultSetting,DefaultVal),assert(M:setting_trill(DefaultSetting,DefaultVal))).
+*/
 
 set_up_tableau(M):-
   % TODO move to KB loading
@@ -538,7 +539,39 @@ set_up_tableau(M):-
   %setting_trill_default(nondet_rules,NondetRules),
   %set_tableau_expansion_rules(M:DetRules,NondetRules). 
   prune_tableau_rules(M).
+/*
+clean_up(M):-
+  utility_translation:clean_up(M),
+  M:(dynamic exp_found/2, exp_found/3, setting_trill/2),
+  retractall(M:trillan_idx(_)),
+  retractall(M:exp_found(_,_)),
+  retractall(M:exp_found(_,_,_)),
+  retractall(M:setting_trill(_,_)).
+*/
 
+set_up(M):-
+  utility_translation:set_up(M),
+  init_delta(M),
+  M:(dynamic exp_found/2, setting_trill/2),
+  retractall(M:setting_trill(_,_)).
+  %foreach(setting_trill_default(DefaultSetting,DefaultVal),assert(M:setting_trill(DefaultSetting,DefaultVal))).
+
+clean_up(M):-
+  utility_translation:clean_up(M),
+  M:(dynamic exp_found/2, setting_trill/2),
+  retractall(M:exp_found(_,_)),
+  retractall(M:setting_trill(_,_)).
+/**
+ * init_trill
+ * 
+ * Initializes the reasoner.
+ */
+init_trill:-
+  get_trill_current_module(M),
+  % TODO previously set_up(M)
+  set_up_reasoner(M),
+  utility_translation:set_up_kb_loading(M),
+  trill:add_kb_prefixes(M:[('disponte'='http://ml.unife.it/disponte#'),('owl'='http://www.w3.org/2002/07/owl#')]).
 
 %  creation of the query anon individual
 query_ind(trillan(0)).
@@ -564,7 +597,7 @@ check_time_monitor(M):-
   Timeout<Now. % I must stop
 
 % TODO merge with tornado
-% checks the explanation, if it is for the query of the inconsisntency
+% checks the explanation, if it is for the query of the inconsistency
 check_and_close(_,Expl0,Expl):-
   QExpl0=Expl0.expl,
   dif(QExpl0,[]),!,
@@ -1165,7 +1198,7 @@ min_rule(M,Tab0,[exactCardinality(N,S,C),Ind1],Tab):-
 
 % differentIndividuals with exactCardinality(N,S)
 % TODO to test
-min_rule(M,Tab0,([(differentIndividuals(NI),Expl)|ABox1],Tab)):-
+min_rule(M,Tab0,[differentIndividuals(NI)],Tab):-
   get_abox(Tab0,ABox),
   findClassAssertion(exactCardinality(N,S),Ind1,Expl,ABox),
   \+ blocked(Ind1,Tab0),
@@ -1178,7 +1211,7 @@ min_rule(M,Tab0,([(differentIndividuals(NI),Expl)|ABox1],Tab)):-
 
 % differentIndividuals with exactCardinality(N,S,C)
 % TODO to test
-min_rule(M,Tab0,([(differentIndividuals(NI),Expl)|ABox1],Tab)):-
+min_rule(M,Tab0,[differentIndividuals(NI)],Tab):-
   get_abox(Tab0,ABox),
   findClassAssertion(exactCardinality(N,S,C),Ind1,Expl,ABox),
   \+ blocked(Ind1,Tab0),
@@ -1214,9 +1247,253 @@ min_rule_neigh_C(M,N,S,C,Ind1,Expl,[Ind2|NI],Tab0,Tab):-
   update_abox(M,Tab2,S,Ind1,Ind2,Expl,Tab3),
   update_abox(M,Tab3,C,Ind2,[propertyAssertion(S,Ind1,Ind2)|Expl],Tab4),
   %check_block(Ind2,Tab4),
-  min_rule_neigh_C(M,NoI,S,C,Ind1,Expl,NI,Tab4,Tab). %here
-
+  min_rule_neigh_C(M,NoI,S,C,Ind1,Expl,NI,Tab4,Tab).
 /* **************** */
+
+/*
+  max_rule
+  ================
+*/
+% maxCardinality(N,S)
+max_rule(M,Tab0,[maxCardinality(N,S),Ind],L):-
+  get_abox(Tab0,ABox),
+  findClassAssertion(maxCardinality(N,S),Ind,Expl0,ABox),
+  \+ indirectly_blocked(Ind,Tab0),
+  s_neighbours(M,Ind,S,Tab0,SN),
+  length(SN,LSS),
+  LSS @> N,
+  get_choice_point_id(M,ID),
+  scan_max_list(M,maxCardinality(N,S),S,'http://www.w3.org/2002/07/owl#Thing',SN,ID,Ind,Expl0,Tab0,L),!. 
+
+% maxCardinality(N,S,C)
+max_rule(M,Tab0,[maxCardinality(N,S,C),Ind],L):-
+  get_abox(Tab0,ABox),
+  findClassAssertion(maxCardinality(N,S,C),Ind,Expl0,ABox),
+  \+ indirectly_blocked(Ind,Tab0),
+  s_neighbours(M,Ind,S,Tab0,SN),
+  individuals_of_class_C(SN,C,ABox,SNC),
+  length(SNC,LSS),
+  LSS @> N,
+  get_choice_point_id(M,ID),%gtrace,
+  scan_max_list(M,maxCardinality(N,S,C),S,C,SNC,ID,Ind,Expl0,Tab0,L),!. % last variable whould be equals to ID
+
+%---------------------
+
+% exactCardinality(N,S)
+max_rule(M,Tab0,[exactCardinality(N,S),Ind],L):-
+  get_abox(Tab0,ABox),
+  findClassAssertion(exactCardinality(N,S),Ind,Expl0,ABox),
+  \+ indirectly_blocked(Ind,Tab0),
+  s_neighbours(M,Ind,S,Tab0,SN),
+  length(SN,LSS),
+  LSS @> N,
+  get_choice_point_id(M,ID),
+  scan_max_list(M,exactCardinality(N,S),S,'http://www.w3.org/2002/07/owl#Thing',SN,ID,Ind,Expl0,Tab0,L),!. 
+
+% exactCardinality(N,S,C)
+max_rule(M,Tab0,[exactCardinality(N,S,C),Ind],L):-
+  get_abox(Tab0,ABox),
+  findClassAssertion(exactCardinality(N,S,C),Ind,Expl0,ABox),
+  \+ indirectly_blocked(Ind,Tab0),
+  s_neighbours(M,Ind,S,Tab0,SN),
+  individuals_of_class_C(SN,C,ABox,SNC),
+  length(SNC,LSS),
+  LSS @> N,
+  get_choice_point_id(M,ID),%gtrace,
+  scan_max_list(M,exactCardinality(N,S,C),S,C,SNC,ID,Ind,Expl0,Tab0,L),!. % last variable whould be equals to ID
+
+% propertyAssertion(S,Ind,anon) with exactCardinality(N,S)
+max_rule(M,Tab0,[S,Ind,_],L):-
+  get_abox(Tab0,ABox),
+  findClassAssertion(exactCardinality(N,S),Ind,Expl0,ABox),
+  \+ indirectly_blocked(Ind,Tab0),
+  s_neighbours(M,Ind,S,Tab0,SN),
+  length(SN,LSS),
+  LSS @> N,
+  get_choice_point_id(M,ID),
+  scan_max_list(M,exactCardinality(N,S),S,'http://www.w3.org/2002/07/owl#Thing',SN,ID,Ind,Expl0,Tab0,L),!. 
+
+% propertyAssertion(S,Ind,anon) with exactCardinality(N,S,C)
+max_rule(M,Tab0,[S,Ind,_],L):-
+  get_abox(Tab0,ABox),
+  findClassAssertion(exactCardinality(N,S,C),Ind,Expl0,ABox),
+  \+ indirectly_blocked(Ind,Tab0),
+  s_neighbours(M,Ind,S,Tab0,SN),
+  individuals_of_class_C(SN,C,ABox,SNC),
+  length(SNC,LSS),
+  LSS @> N,
+  get_choice_point_id(M,ID),
+  scan_max_list(M,exactCardinality(N,S,C),S,C,SNC,ID,Ind,Expl0,Tab0,L),!. % last variable whould be equals to ID
+
+%---------------------
+
+scan_max_list(M,MaxCardClass,S,C,SN,CP,Ind,Expl,Tab0,Tab_list):- %here
+  create_couples_for_merge(SN,[],Ind_couples), % TODO MAYBE check_individuals_not_equal(M,YI,YJ,ABox), instead of dif
+  length(Ind_couples,NChoices),
+  (
+    NChoices @> 1 -> (FirstChoice = -1) ; (FirstChoice = 0)
+  ),
+  create_list_for_max_rule(M,Ind_couples,FirstChoice,CP,Ind,S,C,Expl,Tab0,Tab_list),
+  dif(Tab_list,[]),
+  create_choice_point(M,Ind,mr,MaxCardClass,Ind_couples,_). % last variable whould be equals to ID
+
+% Creates the couple of individuals to merge for max_rule
+create_couples_for_merge([],Ind_couples,Ind_couples).
+
+create_couples_for_merge([H|T],Ind_couples0,Ind_couples):-
+  create_couples_for_merge_int(H,T,Ind_couples0,Ind_couples1),
+  create_couples_for_merge(T,Ind_couples1,Ind_couples).
+
+create_couples_for_merge_int(_,[],Ind_couples,Ind_couples).
+
+create_couples_for_merge_int(I,[H|T],Ind_couples0,Ind_couples):-
+  create_couples_for_merge_int(I,T,[I-H|Ind_couples0],Ind_couples).
+
+% Creates the new tableau by mergin individuals from couples list.
+create_list_for_max_rule(_,[],_,_,_,_,_,_,_,[]).
+
+create_list_for_max_rule(M,[YI-YJ|Ind_couples],N0,CP,Ind,S,C,Expl0,Tab0,[Tab|Tab_list]):-
+  get_abox(Tab0,ABox),
+  findPropertyAssertion(S,Ind,YI,ExplYI,ABox),
+  findPropertyAssertion(S,Ind,YJ,ExplYJ,ABox),
+  findClassAssertion(C,YI,ExplCYI,ABox),
+  findClassAssertion(C,YJ,ExplCYJ,ABox),
+  and_f(M,ExplYI,ExplYJ,ExplS0),
+  and_f(M,ExplS0,ExplCYI,ExplS1),
+  and_f(M,ExplS1,ExplCYJ,ExplC0),
+  and_f(M,ExplC0,Expl0,ExplT0),
+  (
+    dif(N0,-1) ->
+    (
+      add_choice_point(M,cpp(CP,N0),ExplT0,ExplT),
+      N is N0 + 1
+    ) ;
+    (
+      ExplT = ExplT0,
+      N = N0
+    )
+  ),
+  flatten([YI,YJ],LI),
+  merge_all_individuals(M,[(sameIndividual(LI),ExplT)],Tab0,Tab),
+  create_list_for_max_rule(M,Ind_couples,N,CP,Ind,S,C,Expl0,Tab0,Tab_list).
+
+/*
+scan_max_list(M,S,SN,CP,Ind,Expl,ABox0,Tabs0,YI-YJ,ABox,Tabs):-
+  member(YI,SN),
+  member(YJ,SN),
+  % generate cp
+  check_individuals_not_equal(M,YI,YJ,ABox0),
+  findPropertyAssertion(S,Ind,YI,ExplYI,ABox0),
+  findPropertyAssertion(S,Ind,YJ,ExplYJ,ABox0),
+  and_f(M,ExplYI,ExplYJ,Expl0),
+  and_f(M,Expl0,Expl,ExplT0),
+  add_choice_point(M,cpp(CP,N0),ExplT0,ExplT),
+  merge_all_individuals(M,[(sameIndividual([YI,YJ]),ExplT)],ABox0,Tabs0,ABox,Tabs).
+*/
+
+
+/* *************** */
+
+/*
+  ch_rule
+  ================
+*/
+% maxCardinality(N,S,C)
+ch_rule(M,Tab0,[maxCardinality(N,S,C),Ind1],L):-
+  get_abox(Tab0,ABox),
+  findPropertyAssertion(S,Ind1,Ind2,Expl2,ABox),
+  \+ indirectly_blocked(Ind1,Tab0),
+  findClassAssertion(maxCardinality(N,S,C),Ind1,Expl1,ABox),
+  absent_c_not_c(Ind2,C,ABox),
+  and_f(M,Expl1,Expl2,Expl),
+  get_choice_point_id(M,ID),%gtrace,
+  neg_class(C,NC),
+  scan_or_list(M,[C,NC],0,ID,Ind2,Expl,Tab0,L),
+  dif(L,[]),
+  create_choice_point(M,Ind2,ch,maxCardinality(N,S,C),[C,NC],_),!. % last variable whould be equals to ID
+
+% exactCardinality(N,S,C)
+ch_rule(M,Tab0,[exactCardinality(N,S,C),Ind1],L):-
+  get_abox(Tab0,ABox),
+  findPropertyAssertion(S,Ind1,Ind2,Expl2,ABox),
+  \+ indirectly_blocked(Ind1,Tab0),
+  findClassAssertion(exactCardinality(N,S,C),Ind1,Expl1,ABox),
+  absent_c_not_c(Ind2,C,ABox),
+  and_f(M,Expl1,Expl2,Expl),
+  get_choice_point_id(M,ID),%gtrace,
+  neg_class(C,NC),
+  scan_or_list(M,[C,NC],0,ID,Ind2,Expl,Tab0,L),
+  dif(L,[]),
+  create_choice_point(M,Ind2,ch,exactCardinality(N,S,C),[C,NC],_),!. % last variable whould be equals to ID
+
+% propertyAssertion(S,Ind1,Ind2) with maxCardinality(N,S,C)
+ch_rule(M,Tab0,[S,Ind1,Ind2],L):-
+  get_abox(Tab0,ABox),
+  findClassAssertion(maxCardinality(N,S,C),Ind1,Expl1,ABox),
+  \+ indirectly_blocked(Ind1,Tab0),
+  findPropertyAssertion(S,Ind1,Ind2,Expl2,ABox),
+  absent_c_not_c(Ind2,C,ABox),
+  and_f(M,Expl1,Expl2,Expl),
+  get_choice_point_id(M,ID),%gtrace,
+  neg_class(C,NC),
+  scan_or_list(M,[C,NC],0,ID,Ind2,Expl,Tab0,L),
+  dif(L,[]),
+  create_choice_point(M,Ind2,ch,maxCardinality(N,S,C),[C,NC],_),!. % last variable whould be equals to ID
+
+% propertyAssertion(S,Ind1,Ind2) with exactCardinality(N,S,C)
+ch_rule(M,Tab0,[S,Ind1,Ind2],L):-
+  get_abox(Tab0,ABox),
+  findClassAssertion(exactCardinality(N,S,C),Ind1,Expl1,ABox),
+  \+ indirectly_blocked(Ind1,Tab0),
+  findPropertyAssertion(S,Ind1,Ind2,Expl2,ABox),
+  absent_c_not_c(Ind2,C,ABox),
+  and_f(M,Expl1,Expl2,Expl),
+  get_choice_point_id(M,ID),%gtrace,
+  neg_class(C,NC),
+  scan_or_list(M,[C,NC],0,ID,Ind2,Expl,Tab0,L),
+  dif(L,[]),
+  create_choice_point(M,Ind2,ch,exactCardinality(N,S,C),[C,NC],_),!. % last variable whould be equals to ID
+
+%---------------------
+
+% checks whether the individual Ind belongs to C or complementOf(C)
+absent_c_not_c(Ind,C,ABox) :-
+  \+ is_there_c_not_c(Ind,C,ABox).
+
+is_there_c_not_c(Ind,C,ABox) :-
+ findClassAssertion(C,Ind,_,ABox),!.
+
+is_there_c_not_c(Ind,C,ABox) :-
+  neg_class(C,NC),
+  findClassAssertion(NC,Ind,_,ABox),!.
+
+/* *************** */
+
+/*
+ o_rule
+ ============
+*/
+
+o_rule(M,Tab0,[oneOf(C),X],Tab):-
+  get_abox(Tab0,ABox),
+  findClassAssertion(oneOf(C),X,ExplX,ABox),
+  findClassAssertion(oneOf(D),Y,ExplY,ABox),
+  containsCommon(C,D),
+  dif(X,Y),
+  notDifferentIndividuals(M,X,Y,ABox),
+  nominal(C,Tab),
+  ind_as_list(M,X,LX),
+  ind_as_list(M,Y,LY),
+  and_f(M,ExplX,ExplY,ExplC),
+  merge(M,X,Y,ExplC,Tab0,Tab),
+  flatten([LX,LY],LI0),
+  sort(LI0,LI),
+  absent(sameIndividual(LI),ExplC,ABox).
+
+containsCommon(L1,L2):-
+  member(X,L1),
+  member(X,L2),!.
+% -------------------
 
 % ===================================
 % TABLEAU INIT AND MANAGEMENT
@@ -1232,6 +1509,17 @@ min_rule_neigh_C(M,N,S,C,Ind1,Expl,[Ind2|NI],Tab0,Tab):-
 % ===================================
 
 /**
+ * init_tableau(-EmptyTableaus:dict)
+ * 
+ * Initialize an empty tableau.
+ */
+%TODO previously new_tableau/1
+init_tableau(tableau{abox:ABox, tabs:Tabs, clashes:[], expq:ExpansionQueue}):-
+  new_abox(ABox),
+  new_tabs(Tabs),
+  empty_expansion_queue(ExpansionQueue).
+
+/**
  * init_tabelau(+ABox:abox, +Tabs:tableau, -InitializedTableaus:dict)
  * 
  * Initialize a tableau with the elements given in input.
@@ -1245,6 +1533,7 @@ init_tableau(ABox,Tabs,tableau{abox:ABox, tabs:Tabs, clashes:[], expq:ExpansionQ
  * Initialize a tableau with the lements given in input.
  */
 init_tableau(ABox,Tabs,ExpansionQueue,tableau{abox:ABox, tabs:Tabs, clashes:[], expq:ExpansionQueue}).
+
 
 /* getters and setters for Tableau */
 get_abox(Tab,ABox):-
@@ -1332,6 +1621,18 @@ add_all_to_tableau(M,L,Tableau0,Tableau):-
   add_all_to_abox_and_clashes(M,L,Tableau0,ABox0,ABox,Clashes0,Clashes),
   set_abox(Tableau0,ABox,Tableau1),
   set_clashes(Tableau1,Clashes,Tableau).
+
+/**
+ * add_all_to_abox(+L:list,+ABox0:abox,--ABox:abox)
+ * 
+ * Adds to ABox0 the assertions given in L.
+ * NOTE: does not update the tableau. Use add_to_tableau to update the tableau.
+ */ 
+add_all_to_abox([],A,A).
+
+add_all_to_abox([H|T],A0,A):-
+  add_to_abox(A0,H,A1),
+  add_all_to_abox(T,A1,A).
 
 /**
  * add_all_to_abox_and_clashes(+M:module,+L:list,+Tableau:tableau,+ABox0:abox,--ABox:abox,+Clashes0:list,--Clashes:list)
@@ -1455,6 +1756,39 @@ s_neighbours2(M,[_H|T],T1,ABox):-
   %same_ind(M,T1,H,ABox).
 
 
+/**
+ * s_predecessors(+M:module,+Ind:string,+S:string,+Tab:tableau,--SN:list)
+ * 
+ * Finds all S predecessors (S is a role) of the individual Ind adding them into list SN
+ */
+s_predecessors(M,Ind1,S,Tab,SN):-
+  get_tabs(Tab,(_,_,RBR)),
+  rb_lookup(S,VN,RBR),
+  s_predecessors1(Ind1,VN,SN1),
+  get_abox(Tab,ABox),
+  s_predecessors2(M,SN1,SN,ABox).
+
+s_predecessors(_M,_Ind1,S,(_ABox,(_,_,RBR)),[]):-
+  \+ rb_lookup(S,_VN,RBR).
+
+s_predecessors1(_,[],[]).
+
+s_predecessors1(Ind1,[(Y,Ind1)|T],[Y|T1]):-
+  s_predecessors1(Ind1,T,T1).
+
+s_predecessors1(Ind1,[(_X,Y)|T],T1):-
+  dif(Y,Ind1),
+  s_predecessors1(Ind1,T,T1).
+
+s_predecessors2(_M,[],[],_).
+
+s_predecessors2(M,[H|T],[H|T1],ABox):-
+  s_predecessors2(M,T,T1,ABox),
+  \+ same_ind(M,T1,H,ABox).
+
+s_predecessors2(M,[H|T],T1,ABox):-
+  s_predecessors2(M,T,T1,ABox),
+  same_ind(M,T1,H,ABox).
 
 /**
  * merge_all_individuals(+M:module,+LSI:list,+Tab0:tableau,--Tab:tableau)
@@ -3467,6 +3801,29 @@ combine_expls_from_nondet_rules(M,Q0,cp(_,_,_,_,_,Expl),E):-
     )
   ).
 
+/*
+check_presence_of_other_choices([],[],[]).
+
+check_presence_of_other_choices([E-[]|ExplanationsList],[E|Explanations],Choices):- !,
+  check_presence_of_other_choices(ExplanationsList,Explanations,Choices).
+
+check_presence_of_other_choices([E-CP|ExplanationsList],[E|Explanations],[CP|Choices]):-
+  check_presence_of_other_choices(ExplanationsList,Explanations,Choices).
+
+not_already_found(_M,[],_Q,_E):-!.
+
+not_already_found(_M,[H|_T],_Q,E):-
+  subset(H,E),!,
+  fail.
+
+not_already_found(M,[H|_T],Q,E):-
+  subset(E,H),!,
+  retract(M:exp_found(Q,H)).
+
+not_already_found(M,[_H|T],Q,E):-
+  not_already_found(M,T,Q,E).
+*/
+
 % ===================================
 % OWL AXIOM RELATED PREDICATES
 % ===================================
@@ -3556,6 +3913,80 @@ list_as_sameIndividual_int([sameIndividual(L0)|T0],L):-
 
 list_as_sameIndividual_int([H|T0],[H|T]):-
   list_as_sameIndividual_int(T0,T).
+
+
+% -------------------
+% Checks whether X and Y are not different individuals
+notDifferentIndividuals(M,X,Y,ABox):-
+  \+ inAssertDifferentIndividuals(M,X,Y),
+  \+ inABoxDifferentIndividuals(X,Y,ABox).
+
+% --------------
+
+inAssertDifferentIndividuals(M,differentIndividuals(X),differentIndividuals(Y)):-
+  !,
+  M:differentIndividuals(LI),
+  member(X0,X),
+  member(X0,LI),
+  member(Y0,Y),
+  member(Y0,LI).
+
+inAssertDifferentIndividuals(M,X,sameIndividual(Y)):-
+  !,
+  M:differentIndividuals(LI),
+  member(X,LI),
+  member(Y0,Y),
+  member(Y0,LI).
+
+inAssertDifferentIndividuals(M,sameIndividual(X),Y):-
+  !,
+  M:differentIndividuals(LI),
+  member(X0,X),
+  member(X0,LI),
+  member(Y,LI).
+
+inAssertDifferentIndividuals(M,X,Y):-
+  M:differentIndividuals(LI),
+  member(X,LI),
+  member(Y,LI).
+
+% ------------------
+
+inABoxDifferentIndividuals(sameIndividual(X),sameIndividual(Y),ABox):-
+  !,
+  find_in_abox((differentIndividuals(LI),_),ABox),
+  member(X0,X),
+  member(X0,LI),
+  member(Y0,Y),
+  member(Y0,LI).
+
+inABoxDifferentIndividuals(X,sameIndividual(Y),ABox):-
+  !,
+  find_in_abox((differentIndividuals(LI),_),ABox),
+  member(X,LI),
+  member(Y0,Y),
+  member(Y0,LI).
+
+inABoxDifferentIndividuals(sameIndividual(X),Y,ABox):-
+  !,
+  find_in_abox((differentIndividuals(LI),_),ABox),
+  member(X0,X),
+  member(X0,LI),
+  member(Y,LI).
+
+inABoxDifferentIndividuals(X,Y,ABox):-
+  find_in_abox((differentIndividuals(LI),_),ABox),
+  member(X,LI),
+  member(Y,LI).
+
+% --------------------
+
+% Transform an individual in a list if the individual is atomic or extract the list of individuals from sameIndividual/1
+ind_as_list(M,sameIndividual(L),L):-
+  retract_sameIndividual(M,L),!.
+
+ind_as_list(_,X,[X]):-
+  atomic(X).
 
 /**
  * retract_sameIndividual(+M:module,+L)
@@ -3666,6 +4097,50 @@ find_sub_sup_class(M,minCardinality(N,R,C),minCardinality(N,S,C),subPropertyOf(R
   find_sub_sup_property(M,R,S,_).
   % TODO previously
   % M:subPropertyOf(R,S).
+
+
+/*******************
+ managing the concept (C subclassOf Thing)
+ this implementation doesn't work well in a little set of cases
+ TO IMPROVE!
+ *******************/
+/*
+find_sub_sup_class(M,C,'http://www.w3.org/2002/07/owl#Thing',subClassOf(C,'http://www.w3.org/2002/07/owl#Thing')):-
+  M:subClassOf(A,B),
+  member(C,[A,B]),!.
+
+find_sub_sup_class(M,C,'http://www.w3.org/2002/07/owl#Thing',subClassOf(C,'http://www.w3.org/2002/07/owl#Thing')):-
+  M:classAssertion(C,_),!.
+
+find_sub_sup_class(M,C,'http://www.w3.org/2002/07/owl#Thing',subClassOf(C,'http://www.w3.org/2002/07/owl#Thing')):-
+  M:equivalentClasses(L),
+  member(C,L),!.
+
+find_sub_sup_class(M,C,'http://www.w3.org/2002/07/owl#Thing',subClassOf(C,'http://www.w3.org/2002/07/owl#Thing')):-
+  M:unionOf(L),
+  member(C,L),!.
+
+find_sub_sup_class(M,C,'http://www.w3.org/2002/07/owl#Thing',subClassOf(C,'http://www.w3.org/2002/07/owl#Thing')):-
+  M:equivalentClasses(L),
+  member(someValuesFrom(_,C),L),!.
+
+find_sub_sup_class(M,C,'http://www.w3.org/2002/07/owl#Thing',subClassOf(C,'http://www.w3.org/2002/07/owl#Thing')):-
+  M:equivalentClasses(L),
+  member(allValuesFrom(_,C),L),!.
+
+find_sub_sup_class(M,C,'http://www.w3.org/2002/07/owl#Thing',subClassOf(C,'http://www.w3.org/2002/07/owl#Thing')):-
+  M:equivalentClasses(L),
+  member(minCardinality(_,_,C),L),!.
+
+find_sub_sup_class(M,C,'http://www.w3.org/2002/07/owl#Thing',subClassOf(C,'http://www.w3.org/2002/07/owl#Thing')):-
+  M:equivalentClasses(L),
+  member(maxCardinality(_,_,C),L),!.
+
+find_sub_sup_class(M,C,'http://www.w3.org/2002/07/owl#Thing',subClassOf(C,'http://www.w3.org/2002/07/owl#Thing')):-
+  M:equivalentClasses(L),
+  member(exactCardinality(_,_,C),L),!.
+
+*/
 
 % ----------------
 % unionOf, intersectionOf, subClassOf, negation, allValuesFrom, someValuesFrom, exactCardinality(min and max), maxCardinality, minCardinality
@@ -3830,15 +4305,182 @@ listIntersection([HX|TX],LCY,[HX|TI]):-
   listIntersection(TX,LCY,TI).
 
 
+/********************************
+  LOAD KNOWLEDGE BASE
+*********************************/
+/**
+ * load_kb(++FileName:kb_file_name) is det
+ *
+ * The predicate loads the knowledge base contained in the given file. 
+ * The knowledge base must be defined in TRILL format, to use also OWL/RDF format
+ * use the predicate owl_rdf/1.
+ */
+load_kb(FileName):-
+  user:consult(FileName).
+
+/**
+ * load_owl_kb(++FileName:kb_file_name) is det
+ *
+ * The predicate loads the knowledge base contained in the given file. 
+ * The knowledge base must be defined in pure OWL/RDF format.
+ */
+load_owl_kb(FileName):-
+  load_owl(FileName).
+
+/**
+ * load_owl_kb_from_string(++KB:string) is det
+ *
+ * The predicate loads the knowledge base contained in the given string. 
+ * The knowledge base must be defined in pure OWL/RDF format.
+ */
+load_owl_kb_from_string(String):-
+  load_owl_from_string(String).
 
 
+/*****************************
+  UTILITY PREDICATES
+******************************/
+%defined in utility_translation
+:- multifile axiom/1.
+/**
+ * axiom(:Axiom:axiom) is det
+ *
+ * This predicate searches in the loaded knowledge base axioms that unify with Axiom.
+ */
 
+:- multifile add_axiom/1.
+/**
+ * add_axiom(:Axiom:axiom) is det
+ *
+ * This predicate adds the given axiom to the knowledge base.
+ * The axiom must be defined following the TRILL syntax.
+ */
 
+:- multifile add_axioms/1.
+/**
+ * add_axioms(:Axioms:list) is det
+ *
+ * This predicate adds the axioms of the list to the knowledge base.
+ * The axioms must be defined following the TRILL syntax.
+ */
 
+:- multifile remove_axiom/1.
+/**
+ * remove_axiom(:Axiom:axiom) is det
+ *
+ * This predicate removes the given axiom from the knowledge base.
+ * The axiom must be defined following the TRILL syntax.
+ */
 
-
-
-
+:- multifile remove_axioms/1.
+/**
+ * remove_axioms(++Axioms:list) is det
+ *
+ * This predicate removes the axioms of the list from the knowledge base.
+ * The axioms must be defined following the TRILL syntax.
+ */
 
 :- multifile kb_prefixes/1.
+/**
+ * kb_prefixes(:Prefs:list) is det
+ *
+ * This predicate returns the list of pairs key-value representing the prefixes considered by the reasoner.
+ */
+
+:- multifile add_kb_prefix/2.
+/**
+ * add_kb_prefix(:ShortPref:string,++LongPref:string) is det
+ *
+ * This predicate registers the alias ShortPref for the prefix defined in LongPref.
+ * The empty string '' can be defined as alias.
+ */
+:- multifile add_kb_prefixes/1.
+/**
+ * add_kb_prefixes(:Prefixes:list) is det
+ *
+ * This predicate registers all the alias prefixes contained in Prefixes.
+ * The input list must contain pairs alias=prefix, i.e., [('foo'='http://example.foo#')].
+ * The empty string '' can be defined as alias.
+ */
+
+:- multifile remove_kb_prefix/2.
+/**
+ * remove_kb_prefix(:ShortPref:string,++LongPref:string) is det
+ *
+ * This predicate removes from the registered aliases the one given in input.
+ */
+
+:- multifile remove_kb_prefix/1.
+/**
+ * remove_kb_prefix(:Name:string) is det
+ *
+ * This predicate takes as input a string that can be an alias or a prefix and 
+ * removes the pair containing the string from the registered aliases.
+ */
+
+
+% ==================================================================================================================
+
+
+:- multifile sandbox:safe_meta/2.
+
+sandbox:safe_meta(trill:instanceOf(_,_,_,_),[]).
+sandbox:safe_meta(trill:instanceOf(_,_,_),[]).
+sandbox:safe_meta(trill:instanceOf(_,_),[]).
+sandbox:safe_meta(trill:all_instanceOf(_,_,_),[]).
+
+sandbox:safe_meta(trill:property_value(_,_,_,_,_),[]).
+sandbox:safe_meta(trill:property_value(_,_,_,_),[]).
+sandbox:safe_meta(trill:property_value(_,_,_),[]).
+sandbox:safe_meta(trill:all_property_value(_,_,_,_),[]).
+
+sandbox:safe_meta(trill:sub_class(_,_,_,_),[]).
+sandbox:safe_meta(trill:sub_class(_,_,_),[]).
+sandbox:safe_meta(trill:sub_class(_,_),[]).
+sandbox:safe_meta(trill:all_sub_class(_,_,_),[]).
+
+sandbox:safe_meta(trill:unsat(_,_,_),[]).
+sandbox:safe_meta(trill:unsat(_,_),[]).
+sandbox:safe_meta(trill:unsat(_),[]).
+sandbox:safe_meta(trill:all_unsat(_,_),[]).
+
+sandbox:safe_meta(trill:inconsistent_theory(_,_),[]).
+sandbox:safe_meta(trill:inconsistent_theory(_),[]).
+sandbox:safe_meta(trill:inconsistent_theory,[]).
+sandbox:safe_meta(trill:all_inconsistent_theory(_),[]).
+
+sandbox:safe_meta(trill:prob_instanceOf(_,_,_),[]).
+sandbox:safe_meta(trill:prob_property_value(_,_,_,_),[]).
+sandbox:safe_meta(trill:prob_sub_class(_,_,_),[]).
+sandbox:safe_meta(trill:prob_unsat(_,_),[]).
+sandbox:safe_meta(trill:prob_inconsistent_theory(_),[]).
+
+sandbox:safe_meta(trill:load_kb(_),[]).
+sandbox:safe_meta(trill:load_owl_kb(_),[]).
+sandbox:safe_meta(trill:load_owl_kb_from_string(_),[]).
+
+sandbox:safe_meta(trill:axiom(_),[]).
+sandbox:safe_meta(trill:add_axiom(_),[]).
+sandbox:safe_meta(trill:add_axioms(_),[]).
+sandbox:safe_meta(trill:remove_axiom(_),[]).
+sandbox:safe_meta(trill:remove_axioms(_),[]).
+sandbox:safe_meta(trill:kb_prefixes(_),[]).
+sandbox:safe_meta(trill:add_kb_prefix(_,_),[]).
+sandbox:safe_meta(trill:add_kb_prefixes(_),[]).
+sandbox:safe_meta(trill:remove_kb_prefix(_,_),[]).
+sandbox:safe_meta(trill:remove_kb_prefix(_),[]).
+
+sandbox:safe_meta(trill:set_tableau_expansion_rules(_,_),[]).
+
+
+set_algorithm(M:trill):-
+  clean_up(M),!.
+
 :- use_module(library(utility_translation)).
+
+user:term_expansion((:- trill),[]):-
+  utility_translation:get_module(M),
+  set_algorithm(M:trill),
+  set_up(M),
+  utility_translation:set_up_kb_loading(M),
+  trill:add_kb_prefixes(M:[('disponte'='http://ml.unife.it/disponte#'),('owl'='http://www.w3.org/2002/07/owl#')]).
