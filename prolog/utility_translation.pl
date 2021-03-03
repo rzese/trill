@@ -3756,6 +3756,22 @@ init_kb_atom(M,AnnProps,Classes,DataProps,Datatypes,Inds,ObjectProps):-
 init_kb_atom(M,KB):-
   assert(M:kb_atom(kbatoms{annotationProperty:KB.annotationProperties,class:KB.classesName,dataProperty:KB.dataProperties,datatype:KB.datatypes,individual:KB.individuals,objectProperty:KB.objectProperties})).
 
+close_parsing:-
+  get_module(M),
+  trill_input_mode(M),
+  dif(M,trill),
+  dif(M,utility_translation),!,
+  fix_wrongly_classified_atoms(M),
+  retractall(M:addKBName),
+  retractall(trill_input_mode(_)),
+  retractall(trill:trill_initialized(M)).
+  %statistics(walltime,[_,KBLM]),
+  %KBLS is KBLM / 1000,
+  %format("Knowledge base loaded in ~f seconds.~n",[KBLS]).
+
+% for modules trill and utility_translation
+close_parsing:-true.
+
 :- multifile sandbox:safe_primitive/1.
 
 sandbox:safe_primitive(utility_translation:load_owl(_)).
@@ -3787,17 +3803,7 @@ user:term_expansion(end_of_file, end_of_file) :-
   retractall(M:ontologyVersionInfo(_,_)),
   retractall(M:rdf(_,_,_)),
   retractall(M:trdf_setting(_,_)),
-  get_module(M),
-  trill_input_mode(M),
-  dif(M,trill),
-  dif(M,utility_translation),
-  fix_wrongly_classified_atoms(M),
-  retractall(M:addKBName),
-  retractall(trill_input_mode(_)),
-  retractall(trill:trill_initialized(M)).
-  %statistics(walltime,[_,KBLM]),
-  %KBLS is KBLM / 1000,
-  %format("Knowledge base loaded in ~f seconds.~n",[KBLS]).
+  close_parsing.
 
 user:term_expansion(TRILLAxiom,[]):-
   get_module(M),
