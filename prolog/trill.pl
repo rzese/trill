@@ -450,6 +450,7 @@ execute_query_int(_M,_QueryType,_QueryArgs,QueryArgsNotPresent,_ExplOut,_QueryOp
 % Execution monitor
 % TODO put here multi-threading
 find_explanations(M,QueryType,QueryArgs,Expl,QueryOptions):-
+  assert(M:keep_env),
   ( query_option(QueryOptions,assert_abox,AssertABox) -> Opt=[assert_abox(AssertABox)] ; Opt=[]),
   ( query_option(QueryOptions,max_expl,N) -> 
     MonitorNExpl = N
@@ -527,7 +528,7 @@ set_up_reasoner(M):-
 set_up(M):-
   utility_translation:set_up(M),
   init_delta(M),
-  M:(dynamic exp_found/2, exp_found/3, setting_trill/2),
+  M:(dynamic exp_found/2, exp_found/3, keep_env/0, tornado_bdd_environment/1, setting_trill/2),
   retractall(M:setting_trill(_,_)).
   %foreach(setting_trill_default(DefaultSetting,DefaultVal),assert(M:setting_trill(DefaultSetting,DefaultVal))).
 
@@ -541,10 +542,12 @@ set_up_tableau(M):-
 
 clean_up(M):-
   utility_translation:clean_up(M),
-  M:(dynamic exp_found/2, exp_found/3, setting_trill/2),
+  M:(dynamic exp_found/2, exp_found/3, keep_env/0, tornado_bdd_environment/1, setting_trill/2),
   %retractall(M:trillan_idx(_)),
   retractall(M:exp_found(_,_)),
   retractall(M:exp_found(_,_,_)),
+  retractall(M:keep_env),
+  retractall(M:tornado_bdd_environment(_)),
   retractall(M:setting_trill(_,_)).
 
 /*
@@ -600,12 +603,14 @@ check_time_monitor(M):-
 % TODO merge with tornado
 % checks the explanation, if it is for the query of the inconsistency
 check_and_close(_,Expl0,Expl):-
+  M:keep_env,
   QExpl0=Expl0.expl,
   dif(QExpl0,[]),!,
   sort(QExpl0,QExpl),
   Expl=Expl0.put(expl,QExpl).
 
 check_and_close(_,Expl0,Expl):-
+  M:keep_env,
   QExpl0=Expl0.incons,
   dif(QExpl0,[]),
   sort(QExpl0,QExpl),
@@ -614,13 +619,16 @@ check_and_close(_,Expl0,Expl):-
 % TODO merge with tornado
 % if there is not inconsistency, perform classical probability computation
 compute_prob_and_close(M,expl{expl:Exps,incons:[[]]},Prob,false):- !,
-  compute_prob(M,Exps,Prob),!.
+  compute_prob(M,Exps,Prob),
+  retractall(M:keep_env),!.
 % if there is not inconsistency, perform classical probability computation
 compute_prob_and_close(M,expl{expl:[[]],incons:Exps},Prob,false):- !,
-  compute_prob(M,Exps,Prob),!.
+  compute_prob(M,Exps,Prob),
+  retractall(M:keep_env),!.
 
 compute_prob_and_close(M,Exps,Prob,Inc):-
-  compute_prob_inc(M,Exps,Prob,Inc),!.
+  compute_prob_inc(M,Exps,Prob,Inc),
+  retractall(M:keep_env),!.
 
 % takes a list of dicts expl{query,expl,incons} and create a single dict of the same shape with all values from expls and incons merged
 merge_explanations_from_dicts_list(ExplsList,expl{expl:Ec,incons:Inc}):-
@@ -1932,7 +1940,10 @@ update_abox(M,Tab0,sameIndividual(LF),Expl1,Tab):-
   	( sort(L,LS),
   	  sort(LF,LFS),
   	  LS = LFS,!,
-  	  absent(Expl0,Expl1,Expl),
+      %------
+      dif(Expl0,Expl1),
+      absent(Expl0,Expl1,Expl),
+      %------
       remove_from_abox(ABox0,[(sameIndividual(L),Expl0)],ABox),
       Tab1=Tab0
   	)
@@ -1951,8 +1962,11 @@ update_abox(M,Tab0,differentIndividuals(LF),Expl1,Tab):-
   	( sort(L,LS),
   	  sort(LF,LFS),
   	  LS = LFS,!,
-  	  absent(Expl0,Expl1,Expl),
-  	  remove_from_abox(ABox0,[(differentIndividuals(L),Expl0)],ABox),
+      %------
+      dif(Expl0,Expl1),
+      absent(Expl0,Expl1,Expl),
+      %------
+      remove_from_abox(ABox0,[(differentIndividuals(L),Expl0)],ABox),
       Tab1=Tab0
   	)
   ;
@@ -1964,7 +1978,10 @@ update_abox(M,Tab0,differentIndividuals(LF),Expl1,Tab):-
 update_abox(M,Tab0,C,Ind,Expl1,Tab):-
   get_abox(Tab0,ABox0),
   ( find_in_abox((classAssertion(C,Ind),Expl0),ABox0) ->
-    ( absent(Expl0,Expl1,Expl),
+    ( %------
+      dif(Expl0,Expl1),
+      absent(Expl0,Expl1,Expl),
+      %------
       remove_from_abox(ABox0,(classAssertion(C,Ind),Expl0),ABox),
       Tab1=Tab0
     )
@@ -1978,7 +1995,10 @@ update_abox(M,Tab0,C,Ind,Expl1,Tab):-
 update_abox(M,Tab0,P,Ind1,Ind2,Expl1,Tab):-
   get_abox(Tab0,ABox0),
   ( find_in_abox((propertyAssertion(P,Ind1,Ind2),Expl0),ABox0) ->
-    ( absent(Expl0,Expl1,Expl),
+    ( %------
+      dif(Expl0,Expl1),
+      absent(Expl0,Expl1,Expl),
+      %------
       remove_from_abox(ABox0,(propertyAssertion(P,Ind1,Ind2),Expl0),ABox),
       Tab1=Tab0
     )
@@ -2118,22 +2138,26 @@ new_abox([]).
 % TODO merge tornado
 build_abox(M,Tableau,QueryType,QueryArgs):-
   retractall(M:final_abox(_)),
+  retractall(v(_,_,_)),
+  retractall(na(_,_)),
+  retractall(rule_n(_)),
+  assert(rule_n(0)),
   collect_individuals(M,QueryType,QueryArgs,ConnectedInds), 
   ( dif(ConnectedInds,[]) ->
-    ( findall((classAssertion(Class,Individual),[[classAssertion(Class,Individual)]-[]]),(member(Individual,ConnectedInds),M:classAssertion(Class,Individual)),LCA),
-      findall((propertyAssertion(Property,Subject, Object),[[propertyAssertion(Property,Subject, Object)]-[]]),(member(Subject,ConnectedInds),M:propertyAssertion(Property,Subject, Object),dif('http://www.w3.org/2000/01/rdf-schema#comment',Property)),LPA),
+    ( findall((classAssertion(Class,Individual),[e{expl:[classAssertion(Class,Individual)],bdd:BDDCA,cp:[]}]),(member(Individual,ConnectedInds),M:classAssertion(Class,Individual),bdd_and(M,Env,[classAssertion(Class,Individual)],BDDCA)),LCA),
+      findall((propertyAssertion(Property,Subject, Object),[e{expl:[propertyAssertion(Property,Subject, Object)],bdd:BDDPA,cp:[]}]),(member(Subject,ConnectedInds),M:propertyAssertion(Property,Subject, Object),dif('http://www.w3.org/2000/01/rdf-schema#comment',Property),bdd_and(M,Env,[propertyAssertion(Property,Subject, Object)],BDDPA)),LPA),
       % findall((propertyAssertion(Property,Subject,Object),[subPropertyOf(SubProperty,Property),propertyAssertion(SubProperty,Subject,Object)]),subProp(M,SubProperty,Property,Subject,Object),LSPA),
       findall(nominal(NominalIndividual),(member(NominalIndividual,ConnectedInds),M:classAssertion(oneOf(_),NominalIndividual)),LNA),
-      findall((differentIndividuals(Ld),[[differentIndividuals(Ld)]-[]]),(M:differentIndividuals(Ld),intersect(Ld,ConnectedInds)),LDIA),
-      findall((sameIndividual(L),[[sameIndividual(L)]-[]]),(M:sameIndividual(L),intersect(L,ConnectedInds)),LSIA)
+      findall((differentIndividuals(Ld),[e{expl:[differentIndividuals(Ld)],bdd:BDDDIA,cp:[]}]),(M:differentIndividuals(Ld),intersect(Ld,ConnectedInds),bdd_and(M,Env,[differentIndividuals(Ld)],BDDDIA)),LDIA),
+      findall((sameIndividual(L),[e{expl:[sameIndividual(L)],bdd:BDDSIA,cp:[]}]),(M:sameIndividual(L),intersect(L,ConnectedInds),bdd_and(M,Env,[sameIndividual(L)],BDDSIA)),LSIA)
     )
     ; % all the individuals
-    ( findall((classAssertion(Class,Individual),[[classAssertion(Class,Individual)]-[]]),M:classAssertion(Class,Individual),LCA),
-      findall((propertyAssertion(Property,Subject, Object),[[propertyAssertion(Property,Subject, Object)]-[]]),(M:propertyAssertion(Property,Subject, Object),dif('http://www.w3.org/2000/01/rdf-schema#comment',Property)),LPA),
+    ( findall((classAssertion(Class,Individual),[e{expl:[classAssertion(Class,Individual)],bdd:BDDCA,cp:[]}]),(M:classAssertion(Class,Individual),bdd_and(M,Env,[classAssertion(Class,Individual)],BDDCA)),LCA),
+      findall((propertyAssertion(Property,Subject, Object),[e{expl:[propertyAssertion(Property,Subject, Object)],bdd:BDDPA,cp:[]}]),(M:propertyAssertion(Property,Subject, Object),dif('http://www.w3.org/2000/01/rdf-schema#comment',Property),bdd_and(M,Env,[propertyAssertion(Property,Subject, Object)],BDDPA)),LPA),
       % findall((propertyAssertion(Property,Subject,Object),[subPropertyOf(SubProperty,Property),propertyAssertion(SubProperty,Subject,Object)]),subProp(M,SubProperty,Property,Subject,Object),LSPA),
       findall(nominal(NominalIndividual),M:classAssertion(oneOf(_),NominalIndividual),LNA),
-      findall((differentIndividuals(Ld),[[differentIndividuals(Ld)]-[]]),M:differentIndividuals(Ld),LDIA),
-      findall((sameIndividual(L),[[sameIndividual(L)]-[]]),M:sameIndividual(L),LSIA)
+      findall((differentIndividuals(Ld),[e{expl:[differentIndividuals(Ld)],bdd:BDDDIA,cp:[]}]),(M:differentIndividuals(Ld),bdd_and(M,Env,[differentIndividuals(Ld)],BDDDIA)),LDIA),
+      findall((sameIndividual(L),[e{expl:[sameIndividual(L)],bdd:BDDSIA,cp:[]}]),(M:sameIndividual(L),bdd_and(M,Env,[sameIndividual(L)],BDDSIA)),LSIA)
     )
   ),
   new_abox(ABox0),
@@ -3139,9 +3163,13 @@ safe_s_neigh_C([H|T],S,C,Tab,ABox,[H|ST]):-
 % -----------------------------------
 % TODO merge tornado
 % TODO change name of empty and initial to a clearer name
-initial_expl(_M,[[]-[]]):-!.
+initial_expl(M,[e{expl:[],bdd:BDD,cp:[]}]):-!,
+  get_bdd_environment(M,Env),
+  zero(Env,BDD).
 
-empty_expl(_M,[[]-[]]):-!.
+empty_expl(M,[e{expl:[],bdd:BDD,cp:[]}]):-!,
+  get_bdd_environment(M,Env),
+  one(Env,BDD).
 
 /*
   and of justifications
@@ -3157,7 +3185,9 @@ and_all_f(M,[H|T],E0,E):-
   and_all_f(M,T,E1,E).
 
 and_f_ax(M,Axiom,F0,F):-
-  and_f(M,[[Axiom]-[]],F0,F).
+  get_bdd_environment(M,Env),
+  bdd_and(M,Env,[Axiom],BDDAxiom),
+  and_f(M,[e{expl:[Axiom],bdd:BDDAxiom,cp:[]}],F0,F).
 
 and_f(_M,[],[],[]):- !.
 
@@ -3282,10 +3312,10 @@ join_expls_for_propAss(M,Ind,S,[H|T],Expl0,ABox,Expl):-
 
 % for query with no inconsistency
 compute_prob(M,Expl,Prob):-
-  retractall(v(_,_,_)),
-  retractall(na(_,_)),
-  retractall(rule_n(_)),
-  assert(rule_n(0)),
+  %retractall(v(_,_,_)),
+  %retractall(na(_,_)),
+  %retractall(rule_n(_)),
+  %assert(rule_n(0)),
   %findall(1,M:annotationAssertion('http://ml.unife.it/disponte#probability',_,_),NAnnAss),length(NAnnAss,NV),
   get_bdd_environment(M,Env),
   build_bdd(M,Env,Expl,BDD),
@@ -3295,10 +3325,10 @@ compute_prob(M,Expl,Prob):-
 % for query with inconsistency P1(Q) = P(Q|cons) = P(Q,cons)/P(cons) (Fabrizio's proposal)
 /**/
 compute_prob_inc(M,expl{expl:Expl,incons:Inc},Prob,IncCheck):-
-  retractall(v(_,_,_)),
-  retractall(na(_,_)),
-  retractall(rule_n(_)),
-  assert(rule_n(0)),
+  %retractall(v(_,_,_)),
+  %retractall(na(_,_)),
+  %retractall(rule_n(_)),
+  %assert(rule_n(0)),
   %findall(1,M:annotationAssertion('http://ml.unife.it/disponte#probability',_,_),NAnnAss),length(NAnnAss,NV),
   get_bdd_environment(M,Env),
   build_bdd_inc(M,Env,Expl,Inc,BDDQC,BDDC),
