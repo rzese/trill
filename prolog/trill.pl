@@ -602,14 +602,14 @@ check_time_monitor(M):-
 
 % TODO merge with tornado
 % checks the explanation, if it is for the query of the inconsistency
-check_and_close(_,Expl0,Expl):-
+check_and_close(M,Expl0,Expl):-
   M:keep_env,
   QExpl0=Expl0.expl,
   dif(QExpl0,[]),!,
   sort(QExpl0,QExpl),
   Expl=Expl0.put(expl,QExpl).
 
-check_and_close(_,Expl0,Expl):-
+check_and_close(M,Expl0,Expl):-
   M:keep_env,
   QExpl0=Expl0.incons,
   dif(QExpl0,[]),
@@ -3200,14 +3200,14 @@ and_f(_M,L1,L2,F):-
 
 and_f1([],_,L,L).
 
-and_f1([H1-CP1|T1],L2,L3,L):-
+and_f1([e{expl:H1,bdd:BDD1,cp:CP1}|T1],L2,L3,L):-
   and_f2(H1,CP1,L2,L12),
   append(L3,L12,L4),
   and_f1(T1,L2,L4,L).
 
 and_f2(_,_,[],[]):- !.
 
-and_f2(L1,CP1,[H2-CP2|T2],[H-CP|T]):-
+and_f2(L1,CP1,[e{expl:H2,bdd:BDD2,cp:CP2}|T2],[e{expl:H,bdd:BDD,cp:CP}|T]):-
   append(L1,H2,H),
   append(CP1,CP2,CP),
   and_f2(L1,CP1,T2,T).
