@@ -2141,7 +2141,8 @@ build_abox(M,Tableau,QueryType,QueryArgs):-
   retractall(v(_,_,_)),
   retractall(na(_,_)),
   retractall(rule_n(_)),
-  assert(rule_n(0)),
+  assert(rule_n(0)),  
+  get_bdd_environment(M,Env),
   collect_individuals(M,QueryType,QueryArgs,ConnectedInds), 
   ( dif(ConnectedInds,[]) ->
     ( findall((classAssertion(Class,Individual),[e{expl:[classAssertion(Class,Individual)],bdd:BDDCA,cp:[]}]),(member(Individual,ConnectedInds),M:classAssertion(Class,Individual),bdd_and(M,Env,[classAssertion(Class,Individual)],BDDCA)),LCA),
@@ -3606,7 +3607,7 @@ init_delta(M):-
 % and the pointer of the choice maide at the choice point
 add_choice_point(_,_,[],[]). 
 
-add_choice_point(_,CPP,[Expl-CP0|T0],[Expl-CP|T]):- %CPP=cpp(CPID,N)
+add_choice_point(_,CPP,[e{expl:Expl,bdd:BDD,cp:CP0}|T0],[e{expl:Expl,bdd:BDD,cp:CP}|T]):- %CPP=cpp(CPID,N)
   (
     dif(CP0,[]) ->
     (
