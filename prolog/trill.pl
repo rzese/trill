@@ -414,6 +414,7 @@ QUERY PREDICATES
  */
 execute_query(M,QueryType,QueryArgsNC,ExplOut,QueryOptions):-
   check_query_args(M,QueryArgsNC,QueryArgs,QueryArgsNotPresent),
+  set_up_reasoner(M),
   execute_query_int(M,QueryType,QueryArgs,QueryArgsNotPresent,ExplOut,QueryOptions).
 
 % IF QueryArgsNotPresent is an empty list, all the arguments are present in the KB.
@@ -497,7 +498,6 @@ find_n_explanations(M,QueryType,QueryArgs,Expls,N,Opt):-
 
 % collect explanations one at a time. This is where the inference starts.
 find_single_explanation(M,QueryType,QueryArgs,Expl,Opt):-
-  set_up_reasoner(M),
   build_abox(M,Tableau,QueryType,QueryArgs), % will expand the KB without the query
   (absence_of_clashes(Tableau) ->  % TODO if QueryType is inconsistent no check
     (
@@ -799,6 +799,10 @@ apply_all_rules(M,Tab0,EA,Tab):-
   Tab=Tab1;
   apply_all_rules(M,Tab1,EA,Tab)).
 
+
+apply_det_rules(M,_,Tab,_,Tab):-
+  check_time_monitor(M),!.
+
 apply_det_rules(M,[],Tab0,EA,Tab):-
   M:setting_trill(nondet_rules,Rules),
   apply_nondet_rules(M,Rules,Tab0,EA,Tab).
@@ -810,6 +814,9 @@ apply_det_rules(M,[H|_],Tab0,EA,Tab):-
 apply_det_rules(M,[_|T],Tab0,EA,Tab):-
   apply_det_rules(M,T,Tab0,EA,Tab).
 
+
+apply_nondet_rules(M,_,Tab,_,Tab):-
+  check_time_monitor(M),!.
 
 apply_nondet_rules(_,[],Tab,_EA,Tab).
 
