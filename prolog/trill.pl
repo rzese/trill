@@ -420,22 +420,22 @@ execute_query(M,QueryType,QueryArgsNC,ExplOut,QueryOptions):-
 % IF QueryArgsNotPresent is an empty list, all the arguments are present in the KB.
 % The inference can proceed.
 execute_query_int(M,QueryType,QueryArgs,[],ExplOut,QueryOptions):- !,
-find_explanations(M,QueryType,QueryArgs,ExplInc,QueryOptions),
-Expl=ExplInc.expl,
-Inc=ExplInc.incons, %TODO remove this if to return always both expls
-( dif(Expl,[]) -> ExplOut=Expl 
-  ; 
-  ( dif(Inc,[]) -> (ExplOut=Inc,print_message(warning,inconsistent),print_message(warning,inconsistence_expl)) ; true)
-),
-( query_option(QueryOptions,max_expl,bt) -> ExplIncP = ExplInc.put(expl,[Expl]).put(incons,[Inc]) ; ExplIncP = ExplInc),
-( query_option(QueryOptions,return_prob,Prob) ->
-  (
-    compute_prob_and_close(M,ExplIncP,Prob,IncCheck),
-    (dif(IncCheck,false) -> print_message(warning,completely_inconsistent) ; true),
-    ( query_option(QueryOptions,return_incons_expl,Inc) -> true ; true) % does nothing, just unifies with the variable in the option
-  )
-  ; true
-).
+  find_explanations(M,QueryType,QueryArgs,ExplInc,QueryOptions),
+  Expl=ExplInc.expl,
+  Inc=ExplInc.incons, %TODO remove this if to return always both expls
+  ( dif(Expl,[]) -> ExplOut=Expl 
+    ; 
+    ( dif(Inc,[]) -> (ExplOut=Inc,print_message(warning,inconsistent),print_message(warning,inconsistence_expl)) ; true)
+  ),
+  ( query_option(QueryOptions,max_expl,bt) -> ExplIncP = ExplInc.put(expl,[Expl]).put(incons,[Inc]) ; ExplIncP = ExplInc),
+  ( query_option(QueryOptions,return_prob,Prob) ->
+    (
+      compute_prob_and_close(M,ExplIncP,Prob,IncCheck),
+      (dif(IncCheck,false) -> print_message(warning,completely_inconsistent) ; true),
+      ( query_option(QueryOptions,return_incons_expl,Inc) -> true ; true) % does nothing, just unifies with the variable in the option
+    )
+    ; true
+  ).
 
 % IF QueryArgsNotPresent is not empty, the inference must be stopped.
 execute_query_int(_M,_QueryType,_QueryArgs,QueryArgsNotPresent,_ExplOut,_QueryOptions):- !,
@@ -3206,7 +3206,7 @@ and_f(_M,L,[],L):- !.
 and_f(M,L1,L2,F):-
   and_f1(M,L1,L2,[],F).
 
-and_f1(_M,[],_,L,L).
+and_f1(_M,[],_,L,L):- !.
 
 and_f1(M,[H1|T1],L2,L3,L):-
   and_f2(M,H1,L2,L12),
@@ -3230,7 +3230,7 @@ or_all_f(M,ExplPartsList,E):-
   initial_expl(M,InitE),
   or_all_f(M,ExplPartsList,InitE,E).
 
-or_all_f(M,[],E,E) :- !.
+or_all_f(_M,[],E,E) :- !.
 
 or_all_f(M,[H|T],E0,E):-
   or_f(M,E0,H,E1),
@@ -3465,7 +3465,7 @@ compute_prob_inc(M,expl{expl:Expl,incons:Inc},Prob-ProbNQC,IncCheck):-
 get_bdd_environment(M,Env):- 
   M:tornado_bdd_environment(Env),!.
 
-get_bdd_environment(_M,Env):-
+get_bdd_environment(M,Env):-
   init(Env),
   M:assert(tornado_bdd_environment(Env)).
 
@@ -3798,7 +3798,7 @@ find_expls(M,[Tab|_T],Q0,E):- %gtrace,  % QueryArgs
   get_clashes(Tab,Clashes),
   member(Clash,Clashes),
   clash(M,Clash,Tab,EL0),
-  member(E0-CPs0,EL0),
+  member(e{expl:E0,bdd:BDD0, cp:CPs0},EL0),
   sort(CPs0,CPs1),
   sort(E0,E),
   % this predicate checks if there are inconsistencies in the KB, i.e., explanations without query placeholder qp
