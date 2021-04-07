@@ -3225,6 +3225,17 @@ and_f2(M,e{expl:L1,bdd:BDD1,cp:CP1},[e{expl:H2,bdd:BDD2,cp:CP2}|T2],[e{expl:H,bd
 /*
   or of justifications
 */
+% or between two formulae
+or_all_f(M,ExplPartsList,E):-
+  initial_expl(M,InitE),
+  or_all_f(M,ExplPartsList,InitE,E).
+
+or_all_f(M,[],E,E) :- !.
+
+or_all_f(M,[H|T],E0,E):-
+  or_f(M,E0,H,E1),
+  or_all_f(M,T,E1,E).
+
 or_f(_M,[],E,E):- !.
 
 or_f(_M,E,[],E):- !.
@@ -3451,19 +3462,25 @@ compute_prob_inc(M,expl{expl:Expl,incons:Inc},Prob-ProbNQC,IncCheck):-
 /*
   BDD Management
 */
-%TODO merge with tornado
-get_bdd_environment(_M,Env):-
-  init(Env).
+get_bdd_environment(M,Env):- 
+  M:tornado_bdd_environment(Env),!.
 
-%TODO merge with tornado
-clean_environment(_M,Env):-
-  end(Env).
+get_bdd_environment(_M,Env):-
+  init(Env),
+  M:assert(tornado_bdd_environment(Env)).
+
+clean_environment(M,Env):-
+  end(Env),
+  retractall(M:tornado_bdd_environment(_)).
 
 /**
  * build_bdd(+M:module,+Env:atom,+Expls:list,--BDD:atom)
  * 
  * Takes as input the BDD environment Env and a list of justifications Expls and returns the corresponding BDD.
  */
+build_bdd(_M,Env,[],BDD):- !,
+  zero(Env,BDD).
+
 build_bdd(M,Env,[X],BDD):- !,
   bdd_and(M,Env,X,BDD).
 
@@ -3472,8 +3489,6 @@ build_bdd(M,Env, [H|T],BDD):-
   bdd_and(M,Env,H,BDDH),
   or(Env,BDDH,BDDT,BDD).
 
-build_bdd(_M,Env,[],BDD):- !,
-  zero(Env,BDD).
 
 
 bdd_and(M,Env,[X],BDDX):-
@@ -3498,6 +3513,7 @@ bdd_and(M,Env,[_H|T],BDDAnd):- !,
   bdd_and(M,Env,T,BDDT),
   and(Env,BDDH,BDDT,BDDAnd).
 
+% TODO merge with tornado
 /**
  * build_bdd_inc(+M:module,+Env:atom,+Expls:list,+Inc:list,--BDDQC:atom,--BDDC:atom)
  * 
