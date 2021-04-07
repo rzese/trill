@@ -3203,34 +3203,38 @@ and_f(_M,[],L,L):- !.
 
 and_f(_M,L,[],L):- !.
 
-and_f(_M,L1,L2,F):-
-  and_f1(L1,L2,[],F).
+and_f(M,L1,L2,F):-
+  and_f1(M,L1,L2,[],F).
 
-and_f1([],_,L,L).
+and_f1(_M,[],_,L,L).
 
-and_f1([e{expl:H1,bdd:BDD1,cp:CP1}|T1],L2,L3,L):-
-  and_f2(H1,CP1,L2,L12),
+and_f1(M,[H1|T1],L2,L3,L):-
+  and_f2(M,H1,L2,L12),
   append(L3,L12,L4),
-  and_f1(T1,L2,L4,L).
+  and_f1(M,T1,L2,L4,L).
 
-and_f2(_,_,[],[]):- !.
+and_f2(_M,_,[],[]):- !.
 
-and_f2(L1,CP1,[e{expl:H2,bdd:BDD2,cp:CP2}|T2],[e{expl:H,bdd:BDD,cp:CP}|T]):-
+and_f2(M,e{expl:L1,bdd:BDD1,cp:CP1},[e{expl:H2,bdd:BDD2,cp:CP2}|T2],[e{expl:H,bdd:BDD,cp:CP}|T]):-
   append(L1,H2,H),
   append(CP1,CP2,CP),
-  and_f2(L1,CP1,T2,T).
+  get_bdd_environment(M,Env),
+  and(Env,BDD1,BDD2,BDD),
+  and_f2(M,e{expl:L1,bdd:BDD1,cp:CP1},T2,T).
 
 /*
   or of justifications
 */
-or_f([],E,E).
+or_f(_M,[],E,E):- !.
 
-or_f([E0|T],E1,E):-
+or_f(_M,E,[],E):- !.
+
+or_f(M,[E0|T],E1,E):-
   memberchk(E0,E1),!,
-  or_f(T,E1,E).
+  or_f(M,T,E1,E).
 
-or_f([E0|T],E1,[E0|E]):-
-  or_f(T,E1,E).
+or_f(M,[E0|T],E1,[E0|E]):-
+  or_f(M,T,E1,E).
 
 % Takes a list of explanations and return a list of justifications, i.e., a list of explanations that are minimal
 remove_supersets([H|T],ExplanationsList):-
@@ -3703,7 +3707,7 @@ update_choice_point_list(M,ID,Choice,E,CPs):-
     % already present explanations -> absent(ExplToUpdate,[E-CPs],ExplUpdated)
     dif(ExplToUpdate,[]) ->
     (
-      or_f(ExplToUpdate,[E-CPs],ExplUpdated)
+      or_f(M,ExplToUpdate,[E-CPs],ExplUpdated)
     ) ;
     (
       ExplUpdated=[E-CPs]
