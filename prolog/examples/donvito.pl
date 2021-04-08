@@ -10,6 +10,8 @@
 
 classAssertion(cat, tom).
 propertyAssertion(hasPet, donVito, tom).
+classAssertion(cat, tom2).
+propertyAssertion(hasPet, donVito, tom2).
 subClassOf(cat, pet).
 subClassOf(someValuesFrom(hasAnimal, pet), natureLover).
 subClassOf(natureLover,goodPerson).
