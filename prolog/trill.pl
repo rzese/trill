@@ -1983,7 +1983,7 @@ update_abox(M,Tab0,differentIndividuals(LF),Expl1,Tab):-
   set_abox(Tab1,[(differentIndividuals(L),Expl)|ABox],Tab).
 
 update_abox(M,Tab0,C,Ind,Expl1,Tab):-
-  get_abox(Tab0,ABox0),
+  get_abox(Tab0,ABox0),%gtrace,
   ( find_in_abox((classAssertion(C,Ind),Expl0),ABox0) ->
     ( %------
       dif(Expl0,Expl1),
@@ -3286,24 +3286,24 @@ absent0(Expl0,Expl1,Expl):-
 
 absent1(Expl,[],Expl,0).
 
-absent1(Expl0,[H-CP|T],[H-CP|Expl],1):-
-  absent2(Expl0,H-CP),!,
+absent1(Expl0,[H|T],[H|Expl],1):-
+  absent2(Expl0,H),!,
   absent1(Expl0,T,Expl,_).
 
 absent1(Expl0,[_|T],Expl,Added):-
   absent1(Expl0,T,Expl,Added).
 
 % if the query placeholder is present in both or absent in both, I must check the subset condition. Otherwise, I must keep both.  
-absent2([H-CPH],Expl-CP):- 
+absent2([e{expl:H,bdd:_,cp:CPH}],e{expl:Expl,bdd:_,cp:CP}):- 
   (check_query_placeholder(CPH,CP) ->  \+ subset(H,Expl) ; true),!.
 
-absent2([H-CPH|T],Expl-CP):-
+absent2([e{expl:H,bdd:_,cp:CPH}|T],e{expl:Expl,bdd:BDD,cp:CP}):-
   check_query_placeholder(CPH,CP),!,
   \+ subset(H,Expl),!,
-  absent2(T,Expl-CP).
+  absent2(T,e{expl:Expl,bdd:BDD,cp:CP}).
 
-absent2([_|T],Expl-CP):-
-  absent2(T,Expl-CP).
+absent2([_|T],Expl):-
+  absent2(T,Expl).
 
 
 check_query_placeholder(CP0,CP1):-
@@ -3714,19 +3714,19 @@ get_latest_choice_of_cp([_|T],ID,C1,C):-
 
 
 % Updates the choice point list saved as delta/2
-update_choice_point_list(M,ID,Choice,E,CPs):-
+update_choice_point_list(M,ID,Choice,e{expl:E,bdd:BDD, cp:CPs}):-
   M:delta(CPList0,ID0),
   memberchk(cp(ID,Ind,Rule,Class,Choices,ExplPerChoice0),CPList0),
   ExplToUpdate = ExplPerChoice0.get(Choice), 
-  ( % if the set of explanations for the choice is empty it simply adds the new explanation -> union i.e., append([E-CPs],ExplToUpdate,ExplUpdated)
+  ( % if the set of explanations for the choice is empty it simply adds the new explanation -> union i.e., append([e{expl:E,bdd:BDD, cp:CPs}],ExplToUpdate,ExplUpdated)
     % otherwise it adds only new explanations dropping those that are already present or those that are supersets of 
-    % already present explanations -> absent(ExplToUpdate,[E-CPs],ExplUpdated)
+    % already present explanations -> absent(ExplToUpdate,[e{expl:E,bdd:BDD, cp:CPs}],ExplUpdated)
     dif(ExplToUpdate,[]) ->
     (
-      or_f(M,ExplToUpdate,[E-CPs],ExplUpdated)
+      or_f(M,ExplToUpdate,[e{expl:E,bdd:BDD, cp:CPs}],ExplUpdated)
     ) ;
     (
-      ExplUpdated=[E-CPs]
+      ExplUpdated=[e{expl:E,bdd:BDD, cp:CPs}]
     )
   ),
   ExplPerChoice = ExplPerChoice0.put(Choice,ExplUpdated),
@@ -3808,7 +3808,7 @@ find_expls(M,[Tab|_T],Q0,E):- %gtrace,  % QueryArgs
     (
     get_latest_choice(CPs2,ID,Choice),
     subtract(CPs1,[cpp(ID,Choice)],CPs), %remove cpp from CPs1 so the qp remains inside choice points list
-    update_choice_point_list(M,ID,Choice,E,CPs),
+    update_choice_point_list(M,ID,Choice,e{expl:E,bdd:BDD0, cp:CPs}),
     fail
     )
     ;
@@ -3837,7 +3837,7 @@ combine_expls_from_nondet_rules(M,Q0,cp(_,_,_,_,_,Expl),E):-
   check_non_empty_choice(Expl,ExplList),
   and_all_f(M,ExplList,ExplanationsList),
   %check_presence_of_other_choices(ExplanationsList,Explanations,Choices),
-  member(E0-Choices0,ExplanationsList),
+  member(e{expl:E0,bdd:BDD0,cp:Choices0},ExplanationsList),
   sort(E0,E),
   sort(Choices0,Choices1),
   % this predicate checks if there are inconsistencies in the KB, i.e., explanations without query placeholder qp
@@ -3849,7 +3849,7 @@ combine_expls_from_nondet_rules(M,Q0,cp(_,_,_,_,_,Expl),E):-
       %TODO gestione altri cp
       get_latest_choice(Choices,ID,Choice),
       subtract(Choices0,[cpp(ID,Choice)],CPs), %remove cpp from Choices1 so the qp remains inside choice points list
-      update_choice_point_list(M,ID,Choice,E,CPs),
+      update_choice_point_list(M,ID,Choice,e{expl:E,bdd:BDD0,cp:CPs}),
       fail % to force recursion
     ) ;
     (

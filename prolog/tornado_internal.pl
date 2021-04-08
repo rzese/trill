@@ -117,16 +117,8 @@ add_choice_point(_,_,Expl,Expl):- !.
 
 ***********************/
 
-get_bdd_environment(M,Env):- 
-  M:tornado_bdd_environment(Env),!.
 
-get_bdd_environment(M,Env):-
-  init(Env),
-  M:assert(tornado_bdd_environment(Env)).
 
-clean_environment(M,Env):-
-  end(Env),
-  retractall(M:tornado_bdd_environment(_)).
 
 build_bdd(_,Env,[],BDD):- !,
   zero(Env,BDD).
