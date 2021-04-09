@@ -521,14 +521,15 @@ REASONER MANAGEMENT
 set_up_reasoner(M):-
   %clean_up(M),
   set_up(M),
-  assert(M:trillan_idx(1)).
+  assert(M:trillan_idx(1)),
+  dispose_bdd_environment(M).
 
 % General setting up
 % TODO merge tornado
 set_up(M):-
   utility_translation:set_up(M),
   init_delta(M),
-  M:(dynamic exp_found/2, exp_found/3, keep_env/0, tornado_bdd_environment/1, setting_trill/2),
+  M:(dynamic exp_found/3, keep_env/0, tornado_bdd_environment/1, setting_trill/2),
   retractall(M:setting_trill(_,_)).
   %foreach(setting_trill_default(DefaultSetting,DefaultVal),assert(M:setting_trill(DefaultSetting,DefaultVal))).
 
@@ -542,9 +543,9 @@ set_up_tableau(M):-
 
 clean_up(M):-
   utility_translation:clean_up(M),
-  M:(dynamic exp_found/2, exp_found/3, keep_env/0, tornado_bdd_environment/1, setting_trill/2),
+  M:(dynamic exp_found/3, keep_env/0, tornado_bdd_environment/1, setting_trill/2),
   %retractall(M:trillan_idx(_)),
-  retractall(M:exp_found(_,_)),
+  %retractall(M:exp_found(_,_)),
   retractall(M:exp_found(_,_,_)),
   retractall(M:keep_env),
   retractall(M:tornado_bdd_environment(_)),
@@ -604,28 +605,33 @@ check_time_monitor(M):-
 % checks the explanation, if it is for the query of the inconsistency
 check_and_close(M,Expl0,Expl):-
   M:keep_env,
-  QExpl0=Expl0.expl,
+  QExpl0-BDD0=Expl0.expl,
   dif(QExpl0,[]),!,
   sort(QExpl0,QExpl),
-  Expl=Expl0.put(expl,QExpl).
+  get_bdd_environment(M,Env),
+  ret_prob(Env,BDD0,Prob),
+  Expl=Expl0.put(expl,QExpl-(Prob,BDD0)).
 
 check_and_close(M,Expl0,Expl):-
   M:keep_env,
-  QExpl0=Expl0.incons,
+  QExpl0-BDD0=Expl0.incons,
   dif(QExpl0,[]),
   sort(QExpl0,QExpl),
-  Expl=Expl0.put(incons,QExpl).
+  get_bdd_environment(M,Env),
+  ret_prob(Env,BDD0,Prob),
+  Expl=Expl0.put(incons,QExpl-(Prob,BDD0)).
 
 % TODO merge with tornado
 % if there is not inconsistency, perform classical probability computation
-compute_prob_and_close(M,expl{expl:Exps,incons:[[]]},Prob,false):- !,
+compute_prob_and_close(M,expl{expl:Exps,incons:[]},Prob,false):- !,
   compute_prob(M,Exps,Prob),
   retractall(M:keep_env),!.
-% if there is not inconsistency, perform classical probability computation
-compute_prob_and_close(M,expl{expl:[[]],incons:Exps},Prob,false):- !,
+% if there is no explanation for the query, return the probability for the inconsistency
+compute_prob_and_close(M,expl{expl:[],incons:Exps},Prob,false):- !,
   compute_prob(M,Exps,Prob),
   retractall(M:keep_env),!.
 
+% if there is are explanations for the query and for inconsistency, return the probability for the query w.r.t. the inconsistent KB
 compute_prob_and_close(M,Exps,Prob,Inc):-
   compute_prob_inc(M,Exps,Prob,Inc),
   retractall(M:keep_env),!.
@@ -3260,14 +3266,14 @@ remove_supersets(E0,[H|T],ExplanationsList):-
 remove_supersets_int(E0,H,E0):-
   memberchk(H,E0),!.
 
-remove_supersets_int(E0,H,E0):-
-  member(H1,E0),
+remove_supersets_int(E0,H-_,E0):-
+  member(H1-_,E0),
   subset(H1,H),!.
 
-remove_supersets_int(E0,H,E):-
-  member(H1,E0),
+remove_supersets_int(E0,H-_,E):-
+  member(H1-BDDH1,E0),
   subset(H,H1),!,
-  nth0(_,E0,H1,E1),
+  nth0(_,E0,H1-BDDH1,E1),
   remove_supersets_int(E1,H,E).
 
 remove_supersets_int(E,H,[H|E]).
@@ -3334,6 +3340,7 @@ join_expls_for_propAss(M,Ind,S,[H|T],Expl0,ABox,Expl):-
 
 
 % for query with no inconsistency
+% TODO change build_bdd
 compute_prob(M,Expl,Prob):-
   %retractall(v(_,_,_)),
   %retractall(na(_,_)),
@@ -3341,12 +3348,14 @@ compute_prob(M,Expl,Prob):-
   %assert(rule_n(0)),
   %findall(1,M:annotationAssertion('http://ml.unife.it/disponte#probability',_,_),NAnnAss),length(NAnnAss,NV),
   get_bdd_environment(M,Env),
-  build_bdd(M,Env,Expl,BDD),
+  %build_bdd(M,Env,Expl,BDD),
+  build_bdd_new(M,Env,Expl,BDD),
   ret_prob(Env,BDD,Prob),
   clean_environment(M,Env), !.
 
 % for query with inconsistency P1(Q) = P(Q|cons) = P(Q,cons)/P(cons) (Fabrizio's proposal)
 /**/
+% TODO change build_bdd_inc
 compute_prob_inc(M,expl{expl:Expl,incons:Inc},Prob,IncCheck):-
   %retractall(v(_,_,_)),
   %retractall(na(_,_)),
@@ -3354,7 +3363,8 @@ compute_prob_inc(M,expl{expl:Expl,incons:Inc},Prob,IncCheck):-
   %assert(rule_n(0)),
   %findall(1,M:annotationAssertion('http://ml.unife.it/disponte#probability',_,_),NAnnAss),length(NAnnAss,NV),
   get_bdd_environment(M,Env),
-  build_bdd_inc(M,Env,Expl,Inc,BDDQC,BDDC),
+  %build_bdd_inc(M,Env,Expl,Inc,BDDQC,BDDC),
+  build_bdd_inc_new(M,Env,Expl,Inc,BDDQC,BDDC),
   ret_prob(Env,BDDQC,ProbQC),
   ret_prob(Env,BDDC,ProbC),
   (dif(ProbC,0.0) -> 
@@ -3469,9 +3479,24 @@ get_bdd_environment(M,Env):-
   init(Env),
   M:assert(tornado_bdd_environment(Env)).
 
+dispose_bdd_environment(M):-
+  ( M:tornado_bdd_environment(Env) -> clean_environment(M,Env) ; true),!.
+
 clean_environment(M,Env):-
   end(Env),
   retractall(M:tornado_bdd_environment(_)).
+
+/**
+ * build_bdd_new(+M:module,+Env:atom,+Expls:list,--BDD:atom)
+ * 
+ * Takes as input the BDD environment Env and a list of justifications Expls with their BDDs and returns the corresponding BDD.
+ */
+build_bdd_new(_M,Env,[],BDD):- !,
+  zero(Env,BDD).
+
+build_bdd_new(M,Env, [_-(_,BDDH)|T],BDD):-
+  build_bdd_new(M,Env,T,BDDT),
+  or(Env,BDDH,BDDT,BDD).
 
 /**
  * build_bdd(+M:module,+Env:atom,+Expls:list,--BDD:atom)
@@ -3512,6 +3537,19 @@ bdd_and(M,Env,[_H|T],BDDAnd):- !,
   one(Env,BDDH),
   bdd_and(M,Env,T,BDDT),
   and(Env,BDDH,BDDT,BDDAnd).
+
+
+/**
+ * build_bdd_inc_new(+M:module,+Env:atom,+Expls:list,+Inc:list,--BDDQC:atom,--BDDC:atom)
+ * 
+ * Takes as input the BDD environment Env, a list of justifications Expls for the query, and a list of explanations
+ * for the inconsistency Inc and returns the BDD for the query and the consistency in BDDQC and the BDD for the consistency in BDDC.
+ */
+build_bdd_inc_new(M,Env,Expl,Inc,BDDQC,BDDC):- !,
+  build_bdd_new(M,Env,Expl,BDDQ), % BDD query's explanations
+  build_bdd_new(M,Env,Inc,BDDInc), % BDD inconsistency's explanations
+  bdd_not(Env,BDDInc,BDDC), % BDD consistency's explanations
+  and(Env,BDDQ,BDDC,BDDQC). % BDD query and consistency's explanations
 
 % TODO merge with tornado
 /**
@@ -3767,7 +3805,7 @@ consistency_check(CPs0,CPs,Q0,Q):-
  * find_expls(+M:module,+Tabs:list,+Q:list,--E:explanation)
  * 
  * Takes a list of tableaus Tabs, the current query Q and returns an explanation for Q.
- * At the moment it reads the list of choice points (asserted with delta/2) and asserts all the found justification (exp_found/2),
+ * At the moment it reads the list of choice points (asserted with delta/2) and asserts all the found justification with their BDD (exp_found/3),
  * then it backtracks to collect all the exp_found and returnsthe minimal justifications
  */
 % checks if an explanations was already found
@@ -3777,19 +3815,19 @@ find_expls(M,[],Q,E):-
   find_expls_from_choice_point_list(M,Q,E).
 
 find_expls(M,[],['inconsistent','kb'],expl{expl:E,incons:[]}):-!,
-  findall(Exp,M:exp_found(['inconsistent','kb'],Exp),Expl0),
+  findall(Exp-BDD,M:exp_found(['inconsistent','kb'],Exp,BDD),Expl0),
   remove_supersets(Expl0,Expl),!,
   member(E,Expl).
 
 find_expls(M,[],_,expl{expl:[],incons:E}):-
   %M:exp_found(['inconsistent','kb'],_),!,
   %print_message(warning,inconsistent),!,false.
-  findall(Exp,M:exp_found(['inconsistent','kb'],Exp),Expl0),
+  findall(Exp-BDD,M:exp_found(['inconsistent','kb'],Exp,BDD),Expl0),
   remove_supersets(Expl0,Expl),
   member(E,Expl).
 
 find_expls(M,[],Q,expl{expl:E,incons:[]}):-
-  findall(Exp,M:exp_found(Q,Exp),Expl0),
+  findall(Exp-BDD,M:exp_found(Q,Exp,BDD),Expl0),
   remove_supersets(Expl0,Expl),!,
   member(E,Expl).
 
@@ -3814,7 +3852,7 @@ find_expls(M,[Tab|_T],Q0,E):- %gtrace,  % QueryArgs
     ;
     (%findall(Exp,M:exp_found([C,I],Exp),Expl),
     %not_already_found(M,Expl,[C,I],E),
-    assert(M:exp_found(Q,E)), % QueryArgs
+    assert(M:exp_found(Q,E,BDD0)), % QueryArgs
     fail
     )
   ).
@@ -3855,7 +3893,7 @@ combine_expls_from_nondet_rules(M,Q0,cp(_,_,_,_,_,Expl),E):-
     (
       %findall(Exp,M:exp_found([C,I],Exp),ExplFound),
       %not_already_found(M,ExplFound,[C,I],E),
-      assert(M:exp_found(Q,E)),
+      assert(M:exp_found(Q,E,BDD0)),
       fail
     )
   ).

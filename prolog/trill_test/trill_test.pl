@@ -37,13 +37,13 @@ same_expl(Expl, CorrExpl):-
 
 same_expl_int([],_CorrExpls).
 
-same_expl_int([Expl|Expls],CorrExpls):-
+same_expl_int([Expl-_|Expls],CorrExpls):-
   sort(Expl,ExplSort),
   member(X,CorrExpls),
   sort(X,ExplSort),!,
   same_expl_int(Expls,CorrExpls).
 
-one_of(Expl,CorrExpls):-
+one_of(Expl-_,CorrExpls):-
   sort(Expl,ExplSort),
   member(X,CorrExpls),
   sort(X,ExplSort),!.
