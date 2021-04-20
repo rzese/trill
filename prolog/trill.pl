@@ -2158,20 +2158,20 @@ build_abox(M,Tableau,QueryType,QueryArgs):-
   get_bdd_environment(M,Env),
   collect_individuals(M,QueryType,QueryArgs,ConnectedInds), 
   ( dif(ConnectedInds,[]) ->
-    ( findall((classAssertion(Class,Individual),[e{expl:[classAssertion(Class,Individual)],bdd:BDDCA,cp:[]}]),(member(Individual,ConnectedInds),M:classAssertion(Class,Individual),bdd_and(M,Env,[classAssertion(Class,Individual)],BDDCA)),LCA),
-      findall((propertyAssertion(Property,Subject, Object),[e{expl:[propertyAssertion(Property,Subject, Object)],bdd:BDDPA,cp:[]}]),(member(Subject,ConnectedInds),M:propertyAssertion(Property,Subject, Object),dif('http://www.w3.org/2000/01/rdf-schema#comment',Property),bdd_and(M,Env,[propertyAssertion(Property,Subject, Object)],BDDPA)),LPA),
+    ( findall(LabelC,(member(Individual,ConnectedInds),M:classAssertion(Class,Individual),initial_label_w_env(M,Env,classAssertion(Class,Individual),LabelC)),LCA),
+      findall(LabelP,(member(Subject,ConnectedInds),M:propertyAssertion(Property,Subject,Object),dif('http://www.w3.org/2000/01/rdf-schema#comment',Property),initial_label_w_env(M,Env,propertyAssertion(Property,Subject, Object),LabelP)),LPA),
       % findall((propertyAssertion(Property,Subject,Object),[subPropertyOf(SubProperty,Property),propertyAssertion(SubProperty,Subject,Object)]),subProp(M,SubProperty,Property,Subject,Object),LSPA),
       findall(nominal(NominalIndividual),(member(NominalIndividual,ConnectedInds),M:classAssertion(oneOf(_),NominalIndividual)),LNA),
-      findall((differentIndividuals(Ld),[e{expl:[differentIndividuals(Ld)],bdd:BDDDIA,cp:[]}]),(M:differentIndividuals(Ld),intersect(Ld,ConnectedInds),bdd_and(M,Env,[differentIndividuals(Ld)],BDDDIA)),LDIA),
-      findall((sameIndividual(L),[e{expl:[sameIndividual(L)],bdd:BDDSIA,cp:[]}]),(M:sameIndividual(L),intersect(L,ConnectedInds),bdd_and(M,Env,[sameIndividual(L)],BDDSIA)),LSIA)
+      findall(LabelDI,(M:differentIndividuals(Ld),intersect(Ld,ConnectedInds),initial_label_w_env(M,Env,differentIndividuals(Ld),LabelDI)),LDIA),
+      findall(LabelSI,(M:sameIndividual(L),intersect(L,ConnectedInds),initial_label_w_env(M,Env,sameIndividual(L),LabelSI)),LSIA)
     )
     ; % all the individuals
-    ( findall((classAssertion(Class,Individual),[e{expl:[classAssertion(Class,Individual)],bdd:BDDCA,cp:[]}]),(M:classAssertion(Class,Individual),bdd_and(M,Env,[classAssertion(Class,Individual)],BDDCA)),LCA),
-      findall((propertyAssertion(Property,Subject, Object),[e{expl:[propertyAssertion(Property,Subject, Object)],bdd:BDDPA,cp:[]}]),(M:propertyAssertion(Property,Subject, Object),dif('http://www.w3.org/2000/01/rdf-schema#comment',Property),bdd_and(M,Env,[propertyAssertion(Property,Subject, Object)],BDDPA)),LPA),
+    ( findall(LabelC,(M:classAssertion(Class,Individual),initial_label_w_env(M,Env,classAssertion(Class,Individual),LabelC)),LCA),
+      findall(LabelP,(M:propertyAssertion(Property,Subject, Object),dif('http://www.w3.org/2000/01/rdf-schema#comment',Property),initial_label_w_env(M,Env,propertyAssertion(Property,Subject, Object),LabelP)),LPA),
       % findall((propertyAssertion(Property,Subject,Object),[subPropertyOf(SubProperty,Property),propertyAssertion(SubProperty,Subject,Object)]),subProp(M,SubProperty,Property,Subject,Object),LSPA),
       findall(nominal(NominalIndividual),M:classAssertion(oneOf(_),NominalIndividual),LNA),
-      findall((differentIndividuals(Ld),[e{expl:[differentIndividuals(Ld)],bdd:BDDDIA,cp:[]}]),(M:differentIndividuals(Ld),bdd_and(M,Env,[differentIndividuals(Ld)],BDDDIA)),LDIA),
-      findall((sameIndividual(L),[e{expl:[sameIndividual(L)],bdd:BDDSIA,cp:[]}]),(M:sameIndividual(L),bdd_and(M,Env,[sameIndividual(L)],BDDSIA)),LSIA)
+      findall(LabelDI,(M:differentIndividuals(Ld),initial_label_w_env(M,Env,differentIndividuals(Ld),LabelDI)),LDIA),
+      findall(LabelSI,(M:sameIndividual(L),initial_label_w_env(M,Env,sameIndividual(L),LabelSI)),LSIA)
     )
   ),
   new_abox(ABox0),
@@ -3171,7 +3171,6 @@ safe_s_neigh_C([H|T],S,C,Tab,ABox,[H|ST]):-
 
 /* ***** */
 
-
 % -----------------------------------
 % JUSTIFICATIONS MANAGEMENT
 % -----------------------------------
@@ -3184,6 +3183,36 @@ initial_expl(M,[e{expl:[],bdd:BDD,cp:[]}]):-!,
 empty_expl(M,[e{expl:[],bdd:BDD,cp:[]}]):-!,
   get_bdd_environment(M,Env),
   one(Env,BDD).
+
+/*
+ * initial_label/3
+ * 
+ * Take an assertion and creates the label by also building the BDD
+ */
+initial_label(M,Assertion,(Assertion,[e{expl:[Assertion],bdd:BDD,cp:[]}])):-!,
+%initial_label(M,Assertion,Assertion-tf{expl:[e{expl:[Assertion],bdd:BDD,cp:[]}],bdd:BDD}):-!,
+  get_bdd_environment(M,Env),
+  bdd_and(M,Env,[Assertion],BDD).
+
+initial_label_w_env(M,Env,Assertion,(Assertion,[e{expl:[Assertion],bdd:BDD,cp:[]}])):-!,
+%initial_label_w_env(M,Env,Assertion,Assertion-tf{expl:[e{expl:[Assertion],bdd:BDD,cp:[]}],bdd:BDD}):-!,
+  bdd_and(M,Env,[Assertion],BDD).
+
+/*
+ * initial_label/4
+ * 
+ * Take an assertion, and a list of explanations, and creates the label by also building the BDD
+ */
+%initial_label(M,Assertion,Expl,Assertion-tf{expl:Expl, bdd:BDD}):-
+%  .
+
+/*
+ * initial_label/5
+ * 
+ * Take an assertion, a list of explanations and the overall BDD, and creates the label
+ */
+initial_label(_M,Assertion,Expl,_BDD,(Assertion,Expl)).
+%initial_label(_M,Assertion,Expl,BDD,Assertion-tf{expl:Expl, bdd:BDD}).
 
 /*
   and of justifications
@@ -3328,6 +3357,7 @@ join_expls_for_propAss(M,Ind,S,[H|T],Expl0,ABox,Expl):-
   join_expls_for_propAss(M,Ind,S,T,Expl1,ABox,Expl).
 % --------------
 
+/* ***** */
 
 % -----------------------------------
 % PROBABILITY COMPUTATION
