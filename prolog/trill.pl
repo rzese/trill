@@ -2,7 +2,7 @@
 
 This module performs reasoning over probabilistic description logic knowledge bases.
 It reads probabilistic knowledge bases in RDF format or in Prolog format, a functional-like
-sintax based on definitions of Thea library, and answers queries by finding the set 
+sintax based on definitions of Thea library [1], and answers queries by finding the set 
 of explanations or computing the probability.
 
 [1] http://vangelisv.github.io/thea/
@@ -415,7 +415,8 @@ QUERY PREDICATES
 execute_query(M,QueryType,QueryArgsNC,ExplOut,QueryOptions):-
   check_query_args(M,QueryArgsNC,QueryArgs,QueryArgsNotPresent),
   set_up_reasoner(M),
-  execute_query_int(M,QueryType,QueryArgs,QueryArgsNotPresent,ExplOut,QueryOptions).
+  execute_query_int(M,QueryType,QueryArgs,QueryArgsNotPresent,ExplOut,QueryOptions),
+  dispose_reasoner(M).
 
 % IF QueryArgsNotPresent is an empty list, all the arguments are present in the KB.
 % The inference can proceed.
@@ -521,8 +522,11 @@ REASONER MANAGEMENT
 set_up_reasoner(M):-
   %clean_up(M),
   set_up(M),
-  assert(M:trillan_idx(1)),
+  assert(M:trillan_idx(1)).
+
+dispose_reasoner(M):-
   dispose_bdd_environment(M).
+
 
 % General setting up
 % TODO merge tornado
@@ -608,18 +612,14 @@ check_and_close(M,Expl0,Expl):-
   QExpl0-BDD0=Expl0.expl,
   dif(QExpl0,[]),!,
   sort(QExpl0,QExpl),
-  get_bdd_environment(M,Env),
-  ret_prob(Env,BDD0,Prob),
-  Expl=Expl0.put(expl,QExpl-(Prob,BDD0)).
+  Expl=Expl0.put(expl,QExpl-BDD0).
 
 check_and_close(M,Expl0,Expl):-
   M:keep_env,
   QExpl0-BDD0=Expl0.incons,
   dif(QExpl0,[]),
   sort(QExpl0,QExpl),
-  get_bdd_environment(M,Env),
-  ret_prob(Env,BDD0,Prob),
-  Expl=Expl0.put(incons,QExpl-(Prob,BDD0)).
+  Expl=Expl0.put(incons,QExpl-BDD0).
 
 % TODO merge with tornado
 % if there is not inconsistency, perform classical probability computation
@@ -3339,6 +3339,11 @@ join_expls_for_propAss(M,Ind,S,[H|T],Expl0,ABox,Expl):-
         v/3.
 
 
+/**
+ * compute_prob(+M:module,+Expls:list,--Prob:float)
+ * 
+ * Takes as input the list of justifications Expls and returns the corresponding probability Prob.
+ */
 % for query with no inconsistency
 % TODO change build_bdd
 compute_prob(M,Expl,Prob):-
@@ -3850,10 +3855,13 @@ find_expls(M,[Tab|_T],Q0,E):- %gtrace,  % QueryArgs
     fail
     )
     ;
-    (%findall(Exp,M:exp_found([C,I],Exp),Expl),
-    %not_already_found(M,Expl,[C,I],E),
-    assert(M:exp_found(Q,E,BDD0)), % QueryArgs
-    fail
+    (
+      %findall(Exp,M:exp_found([C,I],Exp),Expl),
+      %not_already_found(M,Expl,[C,I],E),
+      get_bdd_environment(M,Env),
+      ret_prob(Env,BDD0,Prob),
+      assert(M:exp_found(Q,E,(Prob,BDD0))), % QueryArgs
+      fail
     )
   ).
 
@@ -3893,7 +3901,9 @@ combine_expls_from_nondet_rules(M,Q0,cp(_,_,_,_,_,Expl),E):-
     (
       %findall(Exp,M:exp_found([C,I],Exp),ExplFound),
       %not_already_found(M,ExplFound,[C,I],E),
-      assert(M:exp_found(Q,E,BDD0)),
+      get_bdd_environment(M,Env),
+      ret_prob(Env,BDD0,Prob),
+      assert(M:exp_found(Q,E,(Prob,BDD0))),
       fail
     )
   ).
