@@ -255,12 +255,12 @@ execute_query(M,QueryType,QueryArgsNC,Expl,QueryOptions):-
     (print_message(warning,iri_not_exists(QueryArgsNotPresent)),!,false) ; true
   ),
   set_up_reasoner(M),
-  find_explanations(M,QueryType,QueryArgs,Expl,QueryOptions),
+  find_explanations(M,QueryType,QueryArgs,ExplOrBDD,QueryOptions),
   ( query_option(QueryOptions,return_prob,Prob) ->
     (
-      compute_prob_and_close(M,Expl,Prob),
+      compute_prob_and_close(M,ExplOrBDD,Expl,Prob),
       (query_option(QueryOptions,return_single_prob,false) -> true ; !)
-    ) ; true
+    ) ; compute_just_and_close(M,ExplOrBDD,Expl)
   ).
 
 
@@ -323,7 +323,11 @@ set_up_reasoner(M):-
   retractall(M:exp_found(_,_)),
   retractall(M:exp_found(_,_,_)),
   retractall(M:trillan_idx(_)),
-  assert(M:trillan_idx(1)).
+  assert(M:trillan_idx(1)),
+  retractall(v(_,_,_)),
+  retractall(na(_,_)),
+  retractall(rule_n(_)),
+  assert(rule_n(0)).
 
 set_up_tableau(M):-
   % TO CHANGE move to KB loading
@@ -1156,7 +1160,7 @@ apply_det_rules(M,[],Tab0,EA,Tab):-
 
 apply_det_rules(M,[H|_],Tab0,EA,Tab):-
   %C=..[H,Tab,Tab1],
-  call(H,M,Tab0,EA,Tab),!.
+  call(H,M,Tab0,EA,Tab),!. %,writeln(H).
 
 apply_det_rules(M,[_|T],Tab0,EA,Tab):-
   apply_det_rules(M,T,Tab0,EA,Tab).
@@ -1169,7 +1173,7 @@ apply_nondet_rules(_,[],Tab,_EA,Tab).
 
 apply_nondet_rules(M,[H|_],Tab0,EA,Tab):-
   %C=..[H,Tab,L],
-  call(H,M,Tab0,EA,L),!,
+  call(H,M,Tab0,EA,L),!, %,writeln(H),
   member(Tab,L),
   dif(Tab0,Tab).
 
@@ -2715,23 +2719,20 @@ compute_prob_ax1([Prob1 | T],Prob):-
 %rule_n(0).
 
 compute_prob(M,Expl,Prob):-
-  retractall(v(_,_,_)),
-  retractall(na(_,_)),
-  retractall(rule_n(_)),
-  assert(rule_n(0)),
   %findall(1,M:annotationAssertion('http://ml.unife.it/disponte#probability',_,_),NAnnAss),length(NAnnAss,NV),
   get_bdd_environment(M,Env),
   build_bdd(M,Env,Expl,BDD),
   ret_prob(Env,BDD,Prob),
   clean_environment(M,Env), !.
 
-get_var_n(Env,R,S,Probs,V):-
+get_var_n(Env,R,S,Probs0,V):-
+  maplist(is,Probs,Probs0),
   (
     v(R,S,V) ->
       true
     ;
       %length(Probs,L),
-      add_var(Env,Probs,R,V),
+      add_opt_var(Env,Probs,R,V),
       assert(v(R,S,V))
   ).
 
@@ -2763,7 +2764,9 @@ compute_prob_ax(M,Ax,Prob):-
   findall(ProbA,(M:annotationAssertion('https://sites.google.com/a/unife.it/ml/disponte#probability',Ax,literal(ProbAT)),atom_number(ProbAT,ProbA)),ProbsOld), % Retro-compatibility
   findall(ProbA,(M:annotationAssertion('http://ml.unife.it/disponte#probability',Ax,literal(ProbAT)),atom_number(ProbAT,ProbA)),ProbsNew),
   append(ProbsNew, ProbsOld, Probs),
-  compute_prob_ax1(Probs,Prob).
+  compute_prob_ax1(Probs,Prob),!.
+
+compute_prob_ax(_M,_Ax,1.0).
 
 compute_prob_ax1([Prob],Prob):-!.
 

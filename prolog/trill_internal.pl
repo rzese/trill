@@ -77,8 +77,10 @@ all_inconsistent_theory_int(M:Exps):-
   findall(Expl,inconsistent_theory(M:Expl),Exps).
 
 
-compute_prob_and_close(M,Exps,Prob):-
+compute_prob_and_close(M,Exps,Exps,Prob):-
   compute_prob(M,Exps,Prob),!.
+
+compute_just_and_close(_M,Expl,Expl).
 
 % checks the explanation
 check_and_close(_,Expl0,Expl):-

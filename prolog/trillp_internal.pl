@@ -66,8 +66,10 @@ find_n_explanations(_,_,_,Expls,_,_):-
   empty_expl(_,Expls-_).
 
 
-compute_prob_and_close(M,Exps,Prob):-
+compute_prob_and_close(M,Exps,Exps,Prob):-
   compute_prob(M,Exps,Prob).
+
+compute_just_and_close(_M,Expl,Expl).
 
 % checks the explanation
 check_and_close(_,Expl,Expl):-

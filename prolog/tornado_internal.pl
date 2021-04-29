@@ -66,8 +66,21 @@ find_n_explanations(M,QueryType,QueryArgs,Expls,_,Opt):- % This will not check t
 find_n_explanations(M,_,_,Expls,_,_):-
  empty_expl(M,Expls-_).
 
-compute_prob_and_close(M,Exps,Prob):-
+compute_prob_and_close(M,Exps,JustsOrSymbEq,Prob):-
+  findall([I,NS,P],(v(NO,_,I),na(N,NO),compute_prob_ax(M,N,P),term_string(N,NS)),LIndexNameProb),
+  get_bdd_environment(M,Env),
+  % ret_justs_bdd(Env,Exps,LIndexNameProb,1,JustsOrSymbEq), % for the equation (TRILLP)
+  ret_justs_bdd(Env,Exps,LIndexNameProb,JustsOrSymbEq),
+  % writeln(JustsOrSymbEq),
   compute_prob(M,Exps,Prob),
+  retractall(M:keep_env),!.
+
+compute_just_and_close(M,Exps,JustsOrSymbEq):-
+  findall([I,NS,P],(v(NO,_,I),na(N,NO),compute_prob_ax(M,N,P),term_string(N,NS)),LIndexNameProb),
+  get_bdd_environment(M,Env),
+  % ret_justs_bdd(Env,Exps,LIndexNameProb,1,JustsOrSymbEq), % for the equation (TRILLP)
+  ret_justs_bdd(Env,Exps,LIndexNameProb,JustsOrSymbEq),
+  % writeln(JustsOrSymbEq),
   retractall(M:keep_env),!.
 
 % checks the explanation
