@@ -14,7 +14,7 @@ test_trill:-
     trill_vicodi,
     trill_pizza,
     non_det,
-    non_det_max,
+    %non_det_max,
     local_cons]).
 
 :- use_module(library(trill_test/trill_test)).

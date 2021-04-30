@@ -75,13 +75,29 @@ compute_prob_and_close(M,Exps,JustsOrSymbEq,Prob):-
   compute_prob(M,Exps,Prob),
   retractall(M:keep_env),!.
 
-compute_just_and_close(M,Exps,JustsOrSymbEq):-
-  findall([I,NS,P],(v(NO,_,I),na(N,NO),compute_prob_ax(M,N,P),term_string(N,NS)),LIndexNameProb),
+compute_just_and_close(M,Exps,Just):-
+  % TODO, maybe optimize these two loops
+  findall([I,N],(v(NO,_,I),na(N,NO)),LIndexAxiom),
+  findall([I,NS,P],(member([I,N],LIndexAxiom),compute_prob_ax(M,N,P),term_string(N,NS)),LIndexNameProb),
   get_bdd_environment(M,Env),
   % ret_justs_bdd(Env,Exps,LIndexNameProb,1,JustsOrSymbEq), % for the equation (TRILLP)
   ret_justs_bdd(Env,Exps,LIndexNameProb,JustsOrSymbEq),
-  % writeln(JustsOrSymbEq),
+  clean_environment(M,Env),
+  %writeln(JustsOrSymbEq),
+  id_just_to_axiom_just(JustsOrSymbEq,LIndexAxiom,Just),
   retractall(M:keep_env),!.
+
+id_just_to_axiom_just([],_,[]).
+
+id_just_to_axiom_just([H-_P|T],LIndexAxiom,[HJ|TJ]):-
+  id_just_to_axiom_just_int(H,LIndexAxiom,HJ),
+  id_just_to_axiom_just(T,LIndexAxiom,TJ).
+
+id_just_to_axiom_just_int([],_,[]).
+
+id_just_to_axiom_just_int([H|T],LIndexAxiom,[HJ|TJ]):-
+  member([H,HJ],LIndexAxiom),!,
+  id_just_to_axiom_just_int(T,LIndexAxiom,TJ).
 
 % checks the explanation
 check_and_close(M,Expl,Expl):-
