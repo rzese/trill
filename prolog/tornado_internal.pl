@@ -1,16 +1,12 @@
 /* tornado predicates
-
 This module performs reasoning over probabilistic description logic knowledge bases.
 It reads probabilistic knowledge bases in RDF format or in Prolog format, a functional-like
 sintax based on definitions of Thea library, and answers queries by finding the set 
 of explanations or computing the probability.
-
 [1] http://vangelisv.github.io/thea/
-
 See https://github.com/rzese/trill/blob/master/doc/manual.pdf or
 http://ds.ing.unife.it/~rzese/software/trill/manual.html for
 details.
-
 @author Riccardo Zese
 @license Artistic License 2.0
 @copyright Riccardo Zese
@@ -108,24 +104,27 @@ check_and_close(M,Expl,dot(Dot)):-
 % checks if an explanations was already found
 find_expls(M,[],_,BDD):-
   get_bdd_environment(M,Env),
-  zero(Env,BDD),!.
+  one(Env,BDD),!.
 
 % checks if an explanations was already found (instance_of version)
 find_expls(M,[ABox|T],[C,I],E):-
-  clash(M,ABox,E0),!,
+  findall(E0,clash(M,ABox,E0),Expls0),!,
+  or_all_f(M,Expls0,Expls1),
   find_expls(M,T,[C,I],E1),
-  or_f(M,E0,E1,E).
+  and_f(M,Expls1,E1,E).
 
 % checks if an explanations was already found (property_value version)
 find_expls(M,[(ABox,_)|T],[PropEx,Ind1Ex,Ind2Ex],E):-
-  find((propertyAssertion(PropEx,Ind1Ex,Ind2Ex),E0),ABox),!,
+  findall(E0,find((propertyAssertion(PropEx,Ind1Ex,Ind2Ex),E0),ABox),Expls0),!,
+  or_all_f(M,Expls0,Expls1),
   find_expls(M,T,[PropEx,Ind1Ex,Ind2Ex],E1),
-  or_f(M,E0,E1,E).
+  and_f(M,Expls1,E1,E).
   
 
 find_expls(M,[_ABox|T],Query,Expl):-
   \+ length(T,0),
   find_expls(M,T,Query,Expl).
+
 
 /****************************/
 
@@ -137,13 +136,7 @@ find_expls(M,[_ABox|T],Query,Expl):-
 findClassAssertion4OWLNothing(M,ABox,Expl):-
   findall(Expl1,findClassAssertion('http://www.w3.org/2002/07/owl#Nothing',_Ind,Expl1,ABox),Expls),
   dif(Expls,[]),
-  or_all(M,Expls,Expl).
-
-or_all(_M,[],[]).
-
-or_all(M,[H|T],Expl):-
-  or_all(M,T,Expl1),
-  or_f(M,H,Expl1,Expl).
+  or_all_f(M,Expls,Expl).
 
 /* ************* */
 
@@ -177,18 +170,34 @@ modify_ABox(_,ABox0,P,Ind1,Ind2,L0,[(propertyAssertion(P,Ind1,Ind2),L0)|ABox0]).
   ===============
 */
 
-build_abox(M,(ABox,Tabs)):-
+build_abox(M,(ABox,Tabs),InitialIndividual):-
   retractall(M:final_abox(_)),
+  findIndirect(InitialIndividual,List),
   retractall(v(_,_,_)),
   retractall(na(_,_)),
   retractall(rule_n(_)),
   assert(rule_n(0)),
   %findall(1,M:annotationAssertion('https://sites.google.com/a/unife.it/ml/disponte#probability',_,_),NAnnAss),length(NAnnAss,NV),
   get_bdd_environment(M,Env),
-  findall((classAssertion(Class,Individual),BDDCA),(M:classAssertion(Class,Individual),bdd_and(M,Env,[classAssertion(Class,Individual)],BDDCA)),LCA),
-  findall((propertyAssertion(Property,Subject, Object),BDDPA),(M:propertyAssertion(Property,Subject, Object),bdd_and(M,Env,[propertyAssertion(Property,Subject, Object)],BDDPA)),LPA),
+  findall((classAssertion(Class,Individual),BDDCA),(M:classAssertion(Class,Individual),bdd_and(M,Env,[classAssertion(Class,Individual)],BDDCA),
+	(((InitialIndividual \== ''), namedIndividual(Individual)) ->
+		member(Individual, List)
+		;
+		true
+	)),LCA),
+  findall((propertyAssertion(Property,Subject, Object),BDDPA),(M:propertyAssertion(Property,Subject, Object),bdd_and(M,Env,[propertyAssertion(Property,Subject, Object)],BDDPA),
+	(((InitialIndividual \== ''), namedIndividual(Subject)) ->
+		member(Subject, List)
+		;
+		true
+	)),LPA),
   % findall((propertyAssertion(Property,Subject,Object),*([subPropertyOf(SubProperty,Property),propertyAssertion(SubProperty,Subject,Object)])),subProp(M,SubProperty,Property,Subject,Object),LSPA),
-  findall(nominal(NominalIndividual),M:classAssertion(oneOf(_),NominalIndividual),LNA),
+  findall(nominal(NominalIndividual),(M:classAssertion(oneOf(_),NominalIndividual),
+	(((InitialIndividual \== ''), namedIndividual(NominalIndividual)) ->
+		member(NominalIndividual, List)
+		;
+		true
+	)),LNA),
   new_abox(ABox0),
   new_tabs(Tabs0),
   create_tabs(LCA,Tabs0,Tabs1),
@@ -196,29 +205,37 @@ build_abox(M,(ABox,Tabs)):-
   add_all(LPA,ABox1,ABox2),
   add_all(LSPA,ABox2,ABox3),
   add_all(LNA,ABox3,ABox4),
-  findall((differentIndividuals(Ld),BDDDIA),(M:differentIndividuals(Ld),bdd_and(M,Env,[differentIndividuals(Ld)],BDDDIA)),LDIA),
+  findall((differentIndividuals(Ld),BDDDIA),(M:differentIndividuals(Ld),bdd_and(M,Env,[differentIndividuals(Ld)],BDDDIA),
+	(namedIndividual(InitialIndividual) ->
+		intersect(Ld, List)
+		;
+		true
+	)),LDIA),
   add_all(LDIA,ABox4,ABox5),
   create_tabs(LDIA,Tabs1,Tabs2),
   create_tabs(LPA,Tabs2,Tabs3),
   create_tabs(LSPA,Tabs3,Tabs4),
-  findall((sameIndividual(L),BDDSIA),(M:sameIndividual(L),bdd_and(M,Env,[sameIndividual(L)],BDDSIA)),LSIA),
+  findall((sameIndividual(L),BDDSIA),(M:sameIndividual(L),bdd_and(M,Env,[sameIndividual(L)],BDDSIA),
+	(namedIndividual(InitialIndividual) ->
+		intersect(L, List)
+		;
+		true
+	)),LSIA),
   merge_all(M,LSIA,ABox5,Tabs4,ABox6,Tabs),
-  add_nominal_list(ABox6,Tabs,ABox),
+  add_nominal_list(M,ABox6,Tabs,ABox),
   !.
 
 /**********************
-
 Explanation Management
-
 ***********************/
 
 initial_expl(M,BDD):-
   get_bdd_environment(M,Env),
-  one(Env,BDD).
+  zero(Env,BDD).
 
 empty_expl(M,BDD):-
   get_bdd_environment(M,Env),
-  zero(Env,BDD).
+  one(Env,BDD).
 
 and_f_ax(M,Axiom,BDD0,BDD):-
   get_bdd_environment(M,Env),
@@ -236,6 +253,13 @@ and_f(M,BDD0,BDD1,BDD):-
 
 
 % or between two formulae
+or_all_f(M,[],BDD):-
+  initial_expl(M,BDD),!.
+
+or_all_f(M,[H|T],Expl):-
+  or_all_f(M,T,Expl1),
+  or_f(M,H,Expl1,Expl),!.
+
 or_f(_,[],BDD,BDD):- !.
   
 or_f(_,BDD,[],BDD):- !.
@@ -246,9 +270,7 @@ or_f(M,BDD0,BDD1,BDD):-
 
 
 /**********************
-
 TRILLP SAT TEST
-
 ***********************/
 
 test(M,L1,L2,F):-
@@ -259,9 +281,18 @@ test(M,L1,L2,F):-
 
 
 /**********************
+Choice Points Management
+***********************/
 
+get_choice_point_id(_,0).
+
+create_choice_point(_,_,_,_,_,0).
+
+add_choice_point(_,_,Expl,Expl):- !.
+
+
+/**********************
  TORNADO Probability Computation
-
 ***********************/
 
 get_bdd_environment(M,Env):- 
