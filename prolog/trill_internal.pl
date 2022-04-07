@@ -85,6 +85,12 @@ check_and_close(_,Expl0,Expl):-
   dif(Expl0,[]),
   sort(Expl0,Expl).
 
+is_expl(M,Expl):-
+  dif(Expl,[]),
+  dif(Expl,[[]]),
+  initial_expl(M,EExpl),
+  dif(Expl,EExpl).
+
 
 % checks if an explanations was already found
 find_expls(M,[],Q,E):-

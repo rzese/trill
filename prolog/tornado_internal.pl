@@ -64,7 +64,7 @@ find_n_explanations(M,QueryType,QueryArgs,Expls,_,Opt):- % This will not check t
  find_single_explanation(M,QueryType,QueryArgs,Expls,Opt),!.
 
 find_n_explanations(M,_,_,Expls,_,_):-
- empty_expl(M,Expls-_).
+ initial_expl(M,Expls-_).
 
 compute_prob_and_close(M,Exps,Prob):-
   compute_prob(M,Exps,Prob),
@@ -78,6 +78,10 @@ check_and_close(M,Expl,dot(Dot)):-
   get_bdd_environment(M,Env),
   create_dot_string(Env,Expl,Dot),
   clean_environment(M,Env).
+
+is_expl(M,Expl):-
+  initial_expl(M,EExpl-_),
+  dif(Expl,EExpl).
 
 
 find_expls(M,Tabs,Q,E):-

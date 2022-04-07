@@ -73,6 +73,10 @@ compute_prob_and_close(M,Exps,Prob):-
 check_and_close(_,Expl,Expl):-
   dif(Expl,[]).
 
+is_expl(M,Expl):-
+  initial_expl(M,EExpl-_),
+  dif(Expl,EExpl).
+
 
 find_expls(M,Tabs,Q,E):-
   find_expls_int(M,Tabs,Q,E-_),!.

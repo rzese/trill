@@ -1,9 +1,10 @@
 
 
 :-module(trill_test,
-  [close_to/2,close_to/3,run/1]).
+  [close_to/2,close_to/3,run/1,run_fail/1]).
 
 :- meta_predicate run(:).
+:- meta_predicate run_fail(:).
 
 run(M:H):-
 	copy_term(H,NH),
@@ -14,6 +15,13 @@ run(M:H):-
 	time(call(M:G)),!,
 	format("\t~p.~n~n",[G]),
 	call(R).
+
+run_fail(M:H):-
+	copy_term(H,NH),
+	numbervars(NH),
+%	NH=(_Query,close_to('P',_Prob)),
+	format("~p.~n",[NH]),
+	time(call(M:H))->fail;true.
 
 epsilon(0.09).
 

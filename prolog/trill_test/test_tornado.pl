@@ -105,7 +105,7 @@ test(p_p_j):-
 :- consult(library(examples/pizza)).
 
 test(p_inc_kb):-
-  run((prob_inconsistent_theory(Prob),close_to(Prob,0.0))).
+  run_fail((prob_inconsistent_theory(_))).
 test(p_uns_tof):-
   run((prob_unsat('tofu',Prob),close_to(Prob,1.0))).
 

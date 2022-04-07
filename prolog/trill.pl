@@ -211,7 +211,7 @@ set_tableau_expansion_rules(M:DetRules,NondetRules):-
 :- multifile prolog:message/1.
 
 prolog:message(iri_not_exists(IRIs)) -->
-  [ 'IRIs not existent: ~w' -[IRIs] ].
+  [ 'IRIs not existent or wrong argument: ~w' -[IRIs] ].
 
 prolog:message(inconsistent) -->
   [ 'Inconsistent ABox' ].
@@ -250,7 +250,7 @@ query_option(OptList,Option,Value):-
 *****************************/
 
 execute_query(M,QueryType,QueryArgsNC,Expl,QueryOptions):-
-  check_query_args(M,QueryArgsNC,QueryArgs,QueryArgsNotPresent),
+  check_query_args(M,QueryType,QueryArgsNC,QueryArgs,QueryArgsNotPresent),
   ( dif(QueryArgsNotPresent,[]) ->
     (print_message(warning,iri_not_exists(QueryArgsNotPresent)),!,false) ; true
   ),
@@ -507,7 +507,8 @@ prune_tableau_rules(KBA,[_|TR],PTR):-
  * Opt is a list containing settings for the execution of the query. 
   */
 instanceOf(M:Class,Ind,Expl,Opt):-
-  execute_query(M,io,[Class,Ind],Expl,Opt).
+  execute_query(M,io,[Class,Ind],Expl,Opt),
+  is_expl(M,Expl).
   
 
 /**
@@ -520,7 +521,8 @@ instanceOf(M:Class,Ind,Expl,Opt):-
  * The predicate fails if the individual does not belong to the class.
  */
 instanceOf(M:Class,Ind,Expl):-
-  instanceOf(M:Class,Ind,Expl,[]).
+  instanceOf(M:Class,Ind,Expl,[]),
+  is_expl(M,Expl).
 
 /**
  * all_instanceOf(:Class:concept_description,++Ind:individual_name)
@@ -533,8 +535,7 @@ instanceOf(M:Class,Ind,Expl):-
  */
 all_instanceOf(M:Class,Ind,Expl):-
   execute_query(M,io,[Class,Ind],Expl,[max_expl(all)]),
-  empty_expl(M,EExpl),
-  dif(Expl,EExpl).
+  is_expl(M,Expl).
 
 /**
  * instanceOf(:Class:concept_description,++Ind:individual_name) is det
@@ -544,7 +545,8 @@ all_instanceOf(M:Class,Ind,Expl):-
  * returns true if the individual belongs to the class, false otherwise.
  */
 instanceOf(M:Class,Ind):-
-  execute_query(M,io,[Class,Ind],_,[max_expl(1)]),!.
+  execute_query(M,io,[Class,Ind],Expl,[max_expl(1)]),!,
+  is_expl(M,Expl).
 
 /**
  * property_value(:Prop:property_name,++Ind1:individual_name,++Ind2:individual_name,-Expl:list,++Opt:list)
@@ -559,7 +561,8 @@ instanceOf(M:Class,Ind):-
  * - return_prob(Prob) if present the probability of the query is computed and unified with Prob
  */
 property_value(M:Prop, Ind1, Ind2,Expl,Opt):-
-  execute_query(M,pv,[Prop, Ind1, Ind2],Expl,Opt).
+  execute_query(M,pv,[Prop, Ind1, Ind2],Expl,Opt),
+  is_expl(M,Expl).
 
 /**
  * property_value(:Prop:property_name,++Ind1:individual_name,++Ind2:individual_name,-Expl:list)
@@ -570,7 +573,8 @@ property_value(M:Prop, Ind1, Ind2,Expl,Opt):-
  * The predicate fails if the two individual are not Prop-related.
  */
 property_value(M:Prop, Ind1, Ind2,Expl):-
-  property_value(M:Prop, Ind1, Ind2,Expl,[]).
+  property_value(M:Prop, Ind1, Ind2,Expl,[]),
+  is_expl(M,Expl).
 
 /**
  * all_property_value(:Prop:property_name,++Ind1:individual_name,++Ind2:individual_name,-Expl:list)
@@ -582,8 +586,7 @@ property_value(M:Prop, Ind1, Ind2,Expl):-
  */
 all_property_value(M:Prop, Ind1, Ind2,Expl):-
   execute_query(M,pv,[Prop, Ind1, Ind2],Expl,[max_expl(all)]),
-  empty_expl(M,EExpl),
-  dif(Expl,EExpl).
+  is_expl(M,Expl).
 
 /**
  * property_value(:Prop:property_name,++Ind1:individual_name,++Ind2:individual_name) is det
@@ -592,7 +595,8 @@ all_property_value(M:Prop, Ind1, Ind2,Expl):-
  * and returns true if the two individual are Prop-related, false otherwise.
  */
 property_value(M:Prop, Ind1, Ind2):-
-  execute_query(M,pv,[Prop, Ind1, Ind2],_,[max_expl(1)]),!.
+  execute_query(M,pv,[Prop, Ind1, Ind2],Expl,[max_expl(1)]),!,
+  is_expl(M,Expl).
 
 /**
  * sub_class(:Class:concept_description,++SupClass:concept_description,-Expl:list,++Opt:list)
@@ -608,7 +612,8 @@ property_value(M:Prop, Ind1, Ind2):-
  * - return_prob(Prob) if present the probability of the query is computed and unified with Prob
  */
 sub_class(M:Class,SupClass,Expl,Opt):-
-  execute_query(M,sc,[Class,SupClass],Expl,Opt).
+  execute_query(M,sc,[Class,SupClass],Expl,Opt),
+  is_expl(M,Expl).
   
 /**
  * sub_class(:Class:concept_description,++SupClass:concept_description,-Expl:list)
@@ -620,7 +625,8 @@ sub_class(M:Class,SupClass,Expl,Opt):-
  * The predicate fails if there is not a subclass relation between the two classes.
  */
 sub_class(M:Class,SupClass,Expl):-
-  sub_class(M:Class,SupClass,Expl,[]).
+  sub_class(M:Class,SupClass,Expl,[]),
+  is_expl(M,Expl).
 
 /**
  * all_sub_class(:Class:concept_description,++SupClass:concept_description,-Expl:list)
@@ -629,11 +635,11 @@ sub_class(M:Class,SupClass,Expl):-
  * of two a simple concept or the definition of a complex concept as a ground term and returns
  * all the explanations for the subclass relation between Class and SupClass.
  * The returning explanations are in the form if a list (set) of set of axioms.
- * The predicate fails if the individual does not belong to the class.
+ * The predicate fails if Class is not subclass of SupClass.
  */
 all_sub_class(M:Class,SupClass,Expl):-
-  execute_query(M,sc,[Class,SupClass],Expl,[max_expl(all)]).
-
+  execute_query(M,sc,[Class,SupClass],Expl,[max_expl(all)]),
+  is_expl(M,Expl).
 /**
  * sub_class(:Class:concept_description,++SupClass:concept_description) is det
  *
@@ -642,7 +648,8 @@ all_sub_class(M:Class,SupClass,Expl):-
  * true if Class is a subclass of SupClass, and false otherwise.
  */
 sub_class(M:Class,SupClass):-
-  execute_query(M,sc,[Class,SupClass],_,[max_expl(1)]),!.
+  execute_query(M,sc,[Class,SupClass],Expl,[max_expl(1)]),!,
+  is_expl(M,Expl).
 
 /**
  * unsat(:Concept:concept_description,-Expl:list,++Opt:list)
@@ -657,7 +664,8 @@ sub_class(M:Class,SupClass):-
  * - return_prob(Prob) if present the probability of the query is computed and unified with Prob
  */
 unsat(M:Concept,Expl,Opt):-
-  execute_query(M,un,[Concept],Expl,Opt).
+  execute_query(M,un,[Concept],Expl,Opt),
+  is_expl(M,Expl).
 
 /**
  * unsat(:Concept:concept_description,-Expl:list)
@@ -668,7 +676,8 @@ unsat(M:Concept,Expl,Opt):-
  * The predicate fails if the concept is satisfiable.
  */
 unsat(M:Concept,Expl):-
-  unsat(M:Concept,Expl,[]).
+  unsat(M:Concept,Expl,[]),
+  is_expl(M,Expl).
 
 /**
  * all_unsat(:Concept:concept_description,-Expl:list)
@@ -680,8 +689,7 @@ unsat(M:Concept,Expl):-
  */
 all_unsat(M:Concept,Expl):-
   execute_query(M,un,[Concept],Expl,[max_expl(all)]),
-  empty_expl(M,EExpl),
-  dif(Expl,EExpl).
+  is_expl(M,Expl).
 
 /**
  * unsat(:Concept:concept_description) is det
@@ -690,7 +698,8 @@ all_unsat(M:Concept,Expl):-
  * a complex concept as a ground term and returns true if the concept is unsatisfiable, false otherwise.
  */
 unsat(M:Concept):-
-execute_query(M,un,[Concept],_,[max_expl(1)]),!.
+  execute_query(M,un,[Concept],Expl,[max_expl(1)]),!,
+  is_expl(M,Expl).
 
 /**
  * inconsistent_theory(:Expl:list,++Opt:list)
@@ -702,7 +711,8 @@ execute_query(M,un,[Concept],_,[max_expl(1)]),!.
  * - return_prob(Prob) if present the probability of the query is computed and unified with Prob
  */
 inconsistent_theory(M:Expl,Opt):-
-  execute_query(M,it,[],Expl,Opt).
+  execute_query(M,it,[],Expl,Opt),
+  is_expl(M,Expl).
 
 /**
  * inconsistent_theory(:Expl:list)
@@ -710,7 +720,8 @@ inconsistent_theory(M:Expl,Opt):-
  * This predicate returns one explanation for the inconsistency of the loaded knowledge base.
  */
 inconsistent_theory(M:Expl):-
-  inconsistent_theory(M:Expl,[]).
+  inconsistent_theory(M:Expl,[]),
+  is_expl(M,Expl).
 
 /**
  * all_inconsistent_theory(:Expl:list)
@@ -721,8 +732,7 @@ inconsistent_theory(M:Expl):-
  */
 all_inconsistent_theory(M:Expl):-
   execute_query(M,it,[],Expl,[max_expl(all)]),
-  empty_expl(M,EExpl),
-  dif(Expl,EExpl).
+  is_expl(M,Expl).
 
 /**
  * inconsistent_theory
@@ -731,7 +741,8 @@ all_inconsistent_theory(M:Expl):-
  */
 inconsistent_theory:-
   get_trill_current_module(M),
-  execute_query(M,it,[],_,[max_expl(1)]),!.
+  execute_query(M,it,[],Expl,[max_expl(1)]),!,
+  is_expl(M,Expl).
 
 /**
  * prob_instanceOf(:Class:concept_description,++Ind:individual_name,--Prob:double) is det
@@ -799,47 +810,54 @@ query_empty_expl(M,Expl):-%gtrace,
 
 % expands query arguments using prefixes and checks their existence in the kb
 % returns the non-present arguments
-check_query_args(M,QA,QAEx,NotEx):-
-  check_query_args_int(M,QA,QAExT,NotEx),!,
+check_query_args(M,QT,QA,QAEx,NotEx):-
+  from_query_type_to_args_type(QT,AT),
+  check_query_args_int(M,AT,QA,QAExT,NotEx),!,
   ( length(QA,1) -> 
     QAEx = ['unsat'|QAExT]
     ;
     ( length(QA,0) -> QAEx = ['inconsistent','kb'] ; QAEx = QAExT)
   ).
 
-check_query_args_int(_,[],[],[]).
+from_query_type_to_args_type(io,[class,ind]):- !.
+from_query_type_to_args_type(pv,[prop,ind,ind]):- !.
+from_query_type_to_args_type(sc,[class,class]):- !.
+from_query_type_to_args_type(un,[class]):- !.
+from_query_type_to_args_type(it,[]):- !.
 
-check_query_args_int(M,[H|T],[HEx|TEx],NotEx):-
-  check_query_args(M,[H],[HEx]),!,
-  check_query_args_int(M,T,TEx,NotEx).
+check_query_args_int(_,_,[],[],[]).
 
-check_query_args_int(M,[H|T],TEx,[H|NotEx]):-
-  check_query_args_int(M,T,TEx,NotEx).
+check_query_args_int(M,[ATH|ATT],[H|T],[HEx|TEx],NotEx):-
+  check_query_args(M,ATH,[H],[HEx]),!,
+  check_query_args_int(M,ATT,T,TEx,NotEx).
+
+check_query_args_int(M,[_|ATT],[H|T],TEx,[H|NotEx]):-
+  check_query_args_int(M,ATT,T,TEx,NotEx).
 
 % expands query arguments using prefixes and checks their existence in the kb
-check_query_args(M,L,LEx) :-
+check_query_args(M,AT,L,LEx) :-
   M:ns4query(NSList),
   expand_all_ns(M,L,NSList,false,LEx), %from utility_translation module
-  check_query_args_presence(M,LEx).
+  check_query_args_presence(M,AT,LEx).
 
-check_query_args_presence(_M,[]):-!.
+check_query_args_presence(_M,_AT,[]):-!.
 
-check_query_args_presence(M,['http://www.w3.org/2002/07/owl#Thing'|T]) :-
-  check_query_args_presence(M,T).
+check_query_args_presence(M,class,['http://www.w3.org/2002/07/owl#Thing'|T]) :-
+  check_query_args_presence(M,class,T).
 
-check_query_args_presence(M,[H|T]) :-
+check_query_args_presence(M,AT,[H|T]) :-
   nonvar(H),
   atomic(H),!,
-  find_atom_in_axioms(M,H),%!,
-  check_query_args_presence(M,T).
+  find_atom_in_axioms(M,AT,H),%!,
+  check_query_args_presence(M,AT,T).
 
-check_query_args_presence(M,[H|T]) :-
+check_query_args_presence(M,AT,[H|T]) :-
   nonvar(H),
   \+ atomic(H),!,
   H =.. [_|L],
   flatten(L,L1),
-  check_query_args_presence(M,L1),
-  check_query_args_presence(M,T).
+  check_query_args_presence(M,AT,L1),
+  check_query_args_presence(M,AT,T).
 
 /*
 check_query_args_presence(M,[_|T]):-
@@ -847,9 +865,17 @@ check_query_args_presence(M,[_|T]):-
 */
 
 % looks for presence of atoms in kb's axioms
-find_atom_in_axioms(M,H):-
+find_atom_in_axioms(M,class,H):-
   M:kb_atom(L1),
-  ( member(H,L1.class) ; member(H,L1.objectProperty) ; member(H,L1.individual) ; member(H,L1.dataProperty) ; member(H,L1.annotationProperty) ; member(H,L1.datatype) ),!.
+  ( member(H,L1.class) ),!.
+
+find_atom_in_axioms(M,ind,H):-
+  M:kb_atom(L1),
+  ( member(H,L1.individual) ; member(H,L1.datatype) ),!.
+
+find_atom_in_axioms(M,prop,H):-
+  M:kb_atom(L1),
+  ( member(H,L1.objectProperty) ; member(H,L1.dataProperty) ; member(H,L1.annotationProperty) ),!.
 
 /****************************/
 
