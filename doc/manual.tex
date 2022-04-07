@@ -40,7 +40,7 @@ TRILL is a framework born from the original TRILL project whose contained a sing
 After generating the set of explanations  or of the pinpointing formula, 
 TRILL and  TRILL$^P$ represent them as a binary decision diagram. From this diagram, all the reasoners of this framework can computes the probability of the query. The management of the tableau rules' non-determinism is delegated to the Prolog language.
 
-The TRILL framework forms a layer cake, shown in Figure~\ref{fig:trill_arch}, designed to facilitate its extension. The lower layer, called ``Translation Utilities'', contains a library for translating the input KB in case it is given in the RDF/XML format and loading it in the Prolog database, in order to be accessible to the upper layers.
+The TRILL framework forms a layer cake, shown in Figure~\ref{fig:trill_arch}, designed to facilitate its extension. The lower layer, called ``Translation Utilities'', contains a library for translating the input knowledge base in case it is given in the RDF/XML format and loading it in the Prolog database, in order to be accessible to the upper layers.
 \begin{figure}
 	\centering
 	\includegraphics[width=0.5\linewidth]{img/trill-architecture}
