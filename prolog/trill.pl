@@ -878,21 +878,20 @@ find_atom_in_axioms(M,prop,H):-
   M:kb_atom(L1),
   ( member(H,L1.objectProperty) ; member(H,L1.dataProperty) ; member(H,L1.annotationProperty) ),!.
 
-find_atom_in_axioms(M,generic,H):-
-  M:kb_atom(L1),
-  ( member(H,L1.class) ; member(H,L1.individual) ; member(H,L1.datatype) ; member(H,L1.objectProperty) ; member(H,L1.dataProperty) ; member(H,L1.annotationProperty) ),!.
+find_atom_in_axioms(_,num,H):-
+  integer(H),!.
 
 from_expression_to_args_type(complementOf,class,_,[class]) :- !.
 from_expression_to_args_type(someValuesFrom,class,_,[prop,class]) :- !.
 from_expression_to_args_type(allValuesFrom,class,_,[prop,class]) :- !.
 from_expression_to_args_type(hasValue,class,_,[prop,ind]) :- !.
 from_expression_to_args_type(hasSelf,class,_,[prop]) :- !.
-from_expression_to_args_type(minCardinality,class,[_,_,_],[ind,prop,class]) :- !.
-from_expression_to_args_type(minCardinality,class,[_,_],[ind,prop]) :- !.
-from_expression_to_args_type(maxCardinality,class,[_,_,_],[ind,prop,class]) :- !.
-from_expression_to_args_type(maxCardinality,class,[_,_],[ind,prop]) :- !.
-from_expression_to_args_type(exactCardinality,class,[_,_,_],[ind,prop,class]) :- !.
-from_expression_to_args_type(exactCardinality,class,[_,_],[ind,prop]) :- !.
+from_expression_to_args_type(minCardinality,class,[_,_,_],[num,prop,class]) :- !.
+from_expression_to_args_type(minCardinality,class,[_,_],[num,prop]) :- !.
+from_expression_to_args_type(maxCardinality,class,[_,_,_],[num,prop,class]) :- !.
+from_expression_to_args_type(maxCardinality,class,[_,_],[num,prop]) :- !.
+from_expression_to_args_type(exactCardinality,class,[_,_,_],[num,prop,class]) :- !.
+from_expression_to_args_type(exactCardinality,class,[_,_],[num,prop]) :- !.
 from_expression_to_args_type(inverseOf,prop,_,[prop]) :- !.
 from_expression_to_args_type(ExprList,AT,L1,ATs):-
   is_expr_list(ExprList,AT,ListType),!,
