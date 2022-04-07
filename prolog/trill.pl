@@ -828,7 +828,7 @@ from_query_type_to_args_type(it,[]):- !.
 check_query_args_int(_,_,[],[],[]).
 
 check_query_args_int(M,[ATH|ATT],[H|T],[HEx|TEx],NotEx):-
-  check_query_args(M,ATH,[H],[HEx]),!,
+  check_query_args(M,[ATH],[H],[HEx]),!,
   check_query_args_int(M,ATT,T,TEx,NotEx).
 
 check_query_args_int(M,[_|ATT],[H|T],TEx,[H|NotEx]):-
@@ -842,22 +842,23 @@ check_query_args(M,AT,L,LEx) :-
 
 check_query_args_presence(_M,_AT,[]):-!.
 
-check_query_args_presence(M,class,['http://www.w3.org/2002/07/owl#Thing'|T]) :-
-  check_query_args_presence(M,class,T).
+check_query_args_presence(M,[class|ATT],['http://www.w3.org/2002/07/owl#Thing'|T]) :-
+  check_query_args_presence(M,ATT,T).
 
-check_query_args_presence(M,AT,[H|T]) :-
+check_query_args_presence(M,[AT|ATT],[H|T]) :-
   nonvar(H),
   atomic(H),!,
   find_atom_in_axioms(M,AT,H),%!,
-  check_query_args_presence(M,AT,T).
+  check_query_args_presence(M,ATT,T).
 
-check_query_args_presence(M,AT,[H|T]) :-
+check_query_args_presence(M,[AT|ATT],[H|T]) :-
   nonvar(H),
   \+ atomic(H),!,
-  H =.. [_|L],
+  H =.. [CE|L],
   flatten(L,L1),
-  check_query_args_presence(M,AT,L1),
-  check_query_args_presence(M,AT,T).
+  from_expression_to_args_type(CE,AT,L1,ATs),
+  check_query_args_presence(M,ATs,L1),
+  check_query_args_presence(M,ATT,T).
 
 /*
 check_query_args_presence(M,[_|T]):-
@@ -876,6 +877,43 @@ find_atom_in_axioms(M,ind,H):-
 find_atom_in_axioms(M,prop,H):-
   M:kb_atom(L1),
   ( member(H,L1.objectProperty) ; member(H,L1.dataProperty) ; member(H,L1.annotationProperty) ),!.
+
+find_atom_in_axioms(M,generic,H):-
+  M:kb_atom(L1),
+  ( member(H,L1.class) ; member(H,L1.individual) ; member(H,L1.datatype) ; member(H,L1.objectProperty) ; member(H,L1.dataProperty) ; member(H,L1.annotationProperty) ),!.
+
+from_expression_to_args_type(complementOf,class,_,[class]) :- !.
+from_expression_to_args_type(someValuesFrom,class,_,[prop,class]) :- !.
+from_expression_to_args_type(allValuesFrom,class,_,[prop,class]) :- !.
+from_expression_to_args_type(hasValue,class,_,[prop,ind]) :- !.
+from_expression_to_args_type(hasSelf,class,_,[prop]) :- !.
+from_expression_to_args_type(minCardinality,class,[_,_,_],[ind,prop,class]) :- !.
+from_expression_to_args_type(minCardinality,class,[_,_],[ind,prop]) :- !.
+from_expression_to_args_type(maxCardinality,class,[_,_,_],[ind,prop,class]) :- !.
+from_expression_to_args_type(maxCardinality,class,[_,_],[ind,prop]) :- !.
+from_expression_to_args_type(exactCardinality,class,[_,_,_],[ind,prop,class]) :- !.
+from_expression_to_args_type(exactCardinality,class,[_,_],[ind,prop]) :- !.
+from_expression_to_args_type(inverseOf,prop,_,[prop]) :- !.
+from_expression_to_args_type(ExprList,AT,L1,ATs):-
+  is_expr_list(ExprList,AT,ListType),!,
+  create_list(ListType,L1,ATs).
+
+
+is_expr_list(intersectionOf,class,class).
+is_expr_list(unionOf,class,class).
+is_expr_list(oneOf,class,ind).
+is_expr_list(propertyChain,prop,prop).
+
+create_list([],_,[]).
+
+create_list([_|T],AT,[AT|ATT]):-
+  create_list(T,AT,ATT).
+
+
+
+
+
+
 
 /****************************/
 
