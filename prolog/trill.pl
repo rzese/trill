@@ -73,11 +73,14 @@ details.
 :- use_module(library(dif)).
 :- use_module(library(pengines)).
 :- use_module(library(sandbox)).
+:- use_module(library(aggregate)).
 
 :- reexport(library(bddem)).
 
 :- style_check(-discontiguous).
 
+%:- table ancestor1/4.
+:- table blocked/2.
 
 /********************************
   SETTINGS
@@ -344,7 +347,7 @@ add_q(M,pv,Tableau0,[PropEx,Ind1Ex,Ind2Ex],Tableau):-!,
   neg_class(PropEx,NPropEx), %use of neg_class to negate property
   add_q(M,Tableau0,propertyAssertion(NPropEx,Ind1Ex,Ind2Ex),Tableau1),
   add_clash_to_tableau(M,Tableau1,NPropEx-Ind1Ex-Ind2Ex,Tableau2),
-  update_expansion_queue_in_tableau(M,PropEx,Ind1Ex,Ind2Ex,Tableau2,Tableau).
+  update_expansion_queue_in_tableau(M,NPropEx,Ind1Ex,Ind2Ex,Tableau2,Tableau).
 
 
 % sub_class
@@ -2268,7 +2271,7 @@ check_block(Ind,Tab):-
   blockable(Ind,Tab),
   get_tabs(Tab,(T,_,_)),
   transpose_ugraph(T,T1),
-  ancestor(Ind,T,A),
+  ancestor_nt(Ind,T1,A),
   neighbours(Ind,T1,N),
   check_block1(Ind,A,N,Tab),!.
 
@@ -2497,7 +2500,10 @@ all_node_blockable1([H|Tail],Tab):-
 
 /*
   find a path in the graph
+  returns only one of the shortest path (if there are 2 paths that have same length, it returns only one of them)
 */
+/*
+% It may enter in infinite loop when there is a loop in the graph
 graph_min_path(X,Y,T,P):-
   findall(Path, graph_min_path1(X,Y,T,Path), Ps),
   min_length(Ps,P).
@@ -2521,13 +2527,37 @@ min_length([H|T],MP):-
      MP= H
    ;
      MP= P).
+*/
+
+graph_min_path(X,Y,T,P):-
+  edges(T, Es),
+  aggregate_all(min(Length,Path),graph_min_path1(X,Y,Es,Length,Path),min(_L,P)).
+
+
+graph_min_path1(X, Y, Es, N, Path) :- 
+  graph_min_path1_int(X, Y, Es, [], Path),
+  length(Path, N).
+
+graph_min_path1_int(X, Y, Es, Seen, [X]) :-
+  \+ memberchk(X, Seen),
+  member(X-Y, Es).
+graph_min_path1_int(X, Z, Es, Seen, [X|T]) :-
+  \+ memberchk(X, Seen),
+  member(X-Y, Es),
+  graph_min_path1_int(Y, Z, Es, [X|Seen], T),
+  \+ memberchk(X, T).
+
 /*
  find all ancestor of a node
 
 */
 ancestor(Ind,T,AN):-
   transpose_ugraph(T,T1),
-  ancestor1([Ind],T1,[],AN).
+  findall(Y,connection(Ind,T1,Y),AN).
+  %ancestor1([Ind],T1,[],AN).
+
+ancestor_nt(Ind,TT,AN):-
+  findall(Y,connection(Ind,TT,Y),AN).
 
 ancestor1([],_,A,A).
 
@@ -2536,6 +2566,16 @@ ancestor1([Ind|Tail],T,A,AN):-
   add_all_n(AT,Tail,Tail1),
   add_all_n(A,AT,A1),
   ancestor1(Tail1,T,A1,AN).
+
+:- table connection/3.
+connection(X, T, Y) :-
+  neighbours(X,T,AT),
+  member(Y,AT).
+
+connection(X, T, Y) :-
+  connection(X, T, Z),
+  connection(Z, T, Y).
+
 
 %-----------------
 /*
