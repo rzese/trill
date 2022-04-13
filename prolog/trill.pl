@@ -1744,6 +1744,16 @@ unfold_rule(M,Tab0,[C,Ind1,Ind2],Tab):-
   add_nominal(M,D,Ind1,Tab1,Tab2),
   add_nominal(M,D,Ind2,Tab2,Tab).
 
+%transitiveProperties
+unfold_rule(M,Tab0,[C,Ind1,Ind2],Tab):-
+  get_abox(Tab0,ABox),
+  findPropertyAssertion(C,Ind1,Ind2,Expl,ABox),
+  find_transitive_property(M,C,Ax),
+  and_f_ax(M,Ax,Expl,AxL),
+  findPropertyAssertion(C,Ind2,Ind3,ExplSecond,ABox),
+  and_f(M,AxL,ExplSecond,ExplTrans),
+  modify_ABox(M,Tab0,C,Ind1,Ind3,ExplTrans,Tab).
+
 %-----------------
 % subPropertyOf
 find_sub_sup_property(M,C,D,subPropertyOf(C,D)):-
@@ -1768,6 +1778,10 @@ find_inverse_property(M,C,D,inverseProperties(D,C)):-
 find_inverse_property(M,C,C,symmetricProperty(C)):-
   M:symmetricProperty(C).
 
+%-----------------
+%transitiveProperties
+find_transitive_property(M,C,transitiveProperty(C)):-
+  M:transitiveProperty(C).
 /* ************* */
 
 /*
