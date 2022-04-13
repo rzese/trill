@@ -3,8 +3,6 @@
 
 :- trill. % or :- trillp. or :- tornado.
 
-classAssertion( smartphone, sm0815).
-
 propertyAssertion( tp, a, b).
 propertyAssertion( tp, b, c).
 transitiveProperty(tp).
