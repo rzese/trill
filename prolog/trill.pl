@@ -253,11 +253,14 @@ query_option(OptList,Option,Value):-
 *****************************/
 
 execute_query(M,QueryType,QueryArgsNC,Expl,QueryOptions):-
+  writeln('in'),
   check_query_args(M,QueryType,QueryArgsNC,QueryArgs,QueryArgsNotPresent),
+  writeln('check_query_args done'),
   ( dif(QueryArgsNotPresent,[]) ->
     (print_message(warning,iri_not_exists(QueryArgsNotPresent)),!,false) ; true
   ),
   set_up_reasoner(M),
+  writeln('set_up_reasoner done'),
   find_explanations(M,QueryType,QueryArgs,Expl,QueryOptions),
   ( query_option(QueryOptions,return_prob,Prob) ->
     (
@@ -3138,26 +3141,30 @@ add_all_to_tableau(M,L,Tableau0,Tableau):-
 
 add_all_to_abox_and_clashes(_,[],_,A,A,C,C).
 
-add_all_to_abox_and_clashes(M,[(classAssertion(C,I),Expl)|T],Tab,A0,A,C0,C):-
-  check_clash(M,C-I,Tab),!,
-  add_to_abox(A0,(classAssertion(C,I),Expl),A1),
-  add_to_clashes(C0,C-I,C1),
-  add_all_to_abox_and_clashes(M,T,A1,A,C1,C).
+add_all_to_abox_and_clashes(M,[(classAssertion(Class,I),Expl)|T],Tab0,A0,A,C0,C):-
+  check_clash(M,Class-I,Tab0),!,
+  add_to_abox(A0,(classAssertion(Class,I),Expl),A1),
+  add_to_clashes(C0,Class-I,C1),
+  set_abox(Tab0,A1,Tab),
+  add_all_to_abox_and_clashes(M,T,Tab,A1,A,C1,C).
 
-add_all_to_abox_and_clashes(M,[(sameIndividual(LI),Expl)|T],Tab,A0,A,C0,C):-
-  check_clash(M,sameIndividual(LI),Tab),!,
+add_all_to_abox_and_clashes(M,[(sameIndividual(LI),Expl)|T],Tab0,A0,A,C0,C):-
+  check_clash(M,sameIndividual(LI),Tab0),!,
   add_to_abox(A0,(sameIndividual(LI),Expl),A1),
   add_to_clashes(C0,sameIndividual(LI),C1),
-  add_all_to_abox_and_clashes(M,T,A1,A,C1,C).
+  set_abox(Tab0,A1,Tab),
+  add_all_to_abox_and_clashes(M,T,Tab,A1,A,C1,C).
 
-add_all_to_abox_and_clashes(M,[(differentIndividuals(LI),Expl)|T],Tab,A0,A,C0,C):-
-  check_clash(M,differentIndividuals(LI),Tab),!,
+add_all_to_abox_and_clashes(M,[(differentIndividuals(LI),Expl)|T],Tab0,A0,A,C0,C):-
+  check_clash(M,differentIndividuals(LI),Tab0),!,
   add_to_abox(A0,(differentIndividuals(LI),Expl),A1),
   add_to_clashes(C0,differentIndividuals(LI),C1),
-  add_all_to_abox_and_clashes(M,T,A1,A,C1,C).
+  set_abox(Tab0,A1,Tab),
+  add_all_to_abox_and_clashes(M,T,Tab,A1,A,C1,C).
 
-add_all_to_abox_and_clashes(M,[H|T],Tab,A0,A,C0,C):-
+add_all_to_abox_and_clashes(M,[H|T],Tab0,A0,A,C0,C):-
   add_to_abox(A0,H,A1),
+  set_abox(Tab0,A1,Tab),
   add_all_to_abox_and_clashes(M,T,Tab,A1,A,C0,C).
 
 add_all_to_abox([],A,A).
