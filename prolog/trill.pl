@@ -253,14 +253,11 @@ query_option(OptList,Option,Value):-
 *****************************/
 
 execute_query(M,QueryType,QueryArgsNC,Expl,QueryOptions):-
-  writeln('in'),
   check_query_args(M,QueryType,QueryArgsNC,QueryArgs,QueryArgsNotPresent),
-  writeln('check_query_args done'),
   ( dif(QueryArgsNotPresent,[]) ->
     (print_message(warning,iri_not_exists(QueryArgsNotPresent)),!,false) ; true
   ),
   set_up_reasoner(M),
-  writeln('set_up_reasoner done'),
   find_explanations(M,QueryType,QueryArgs,Expl,QueryOptions),
   ( query_option(QueryOptions,return_prob,Prob) ->
     (
