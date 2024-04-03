@@ -1255,12 +1255,13 @@ get_explanation_int(M,Tab0,Expl):-
 apply_all_rules(M,Tab0,EA,Tab,Expl):-
   M:setting_trill(det_rules,Rules),
   apply_det_rules(M,Rules,Tab0,EA,Tab1),
-  continue(M,Rules,Tab0,EA,Tab1,Tab,Expl).
+  pop_clashes(Tab1,Clash,Tab2),
+  continue(M,Rules,Tab0,EA,Tab2,Clash,Tab,Expl).
 
-continue(M,_Rules,_Tab0,_EA,Tab1,Tab,Expl):-
-  find_expls(M,Tab1,Tab,Expl).
+continue(M,_Rules,_Tab0,_EA,Tab,Clash,Tab,Expl):-
+  find_expls(M,Clash,Tab,Expl).
 
-continue(M,_Rules,Tab0,EA,Tab1,Tab,Expl):-
+continue(M,_Rules,Tab0,EA,Tab1,_Clash,Tab,Expl):-
   ( test_end_apply_rule(M,Tab0,Tab1) ->
       ( set_next_from_expansion_queue(Tab0,_EA1,Tab), 
         Expl=[]

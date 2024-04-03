@@ -107,8 +107,7 @@ find_expls(M,[],Q,E):-
   member(E,Expl).
 */
 % checks if an explanations was already found (instance_of version)
-find_expls(M,Tab0,Tab,E):- %gtrace,  % QueryArgs
-  pop_clashes(Tab0,[Clash],Tab),
+find_expls(M,[Clash],Tab,E):- %gtrace,  % QueryArgs
   clash(M,Clash,Tab,EL0),
   member(E0-CPs0,EL0),
   sort(CPs0,CPs1),
@@ -130,7 +129,7 @@ find_expls_from_tab_list(M,[],E):-
   find_expls_from_choice_point_list(M,E).
 
 find_expls_from_tab_list(M,[Tab|_T],E):- %gtrace,  % QueryArgs
-  get_clashes(Tab,Clashes),
+  get_solved_clashes(Tab,Clashes),
   member(Clash,Clashes),
   clash(M,Clash,Tab,EL0),
   member(E0-CPs0,EL0),
@@ -457,13 +456,12 @@ modify_ABox(M,Tab0,sameIndividual(LF),Expl1,Tab):-
   	  sort(LF,LFS),
   	  LS = LFS,!,
   	  absent(Expl0,Expl1,Expl),
-      remove_from_abox(ABox0,[(sameIndividual(L),Expl0)],ABox),
-      Tab1=Tab0
+      remove_from_abox(ABox0,[(sameIndividual(L),Expl0)],ABox)
   	)
   ;
-  	(ABox = ABox0,Expl = Expl1,L = LF,
-     add_clash_to_tableau(M,Tab0,sameIndividual(LF),Tab1))
+  	(ABox = ABox0,Expl = Expl1,L = LF)
   ),
+  add_clash_to_tableau(M,Tab0,sameIndividual(LF),Tab1),
   set_abox(Tab1,[(sameIndividual(L),Expl)|ABox],Tab).
 
 modify_ABox(_,Tab,differentIndividuals(LF),_Expl1,Tab):-
@@ -476,26 +474,24 @@ modify_ABox(M,Tab0,differentIndividuals(LF),Expl1,Tab):-
   	  sort(LF,LFS),
   	  LS = LFS,!,
   	  absent(Expl0,Expl1,Expl),
-  	  remove_from_abox(ABox0,[(differentIndividuals(L),Expl0)],ABox),
-      Tab1=Tab0
+  	  remove_from_abox(ABox0,[(differentIndividuals(L),Expl0)],ABox)
   	)
   ;
-  	(ABox = ABox0,Expl = Expl1,L = LF,
-    add_clash_to_tableau(M,Tab0,differentIndividuals(LF),Tab1))
+  	(ABox = ABox0,Expl = Expl1,L = LF)
   ),
+  add_clash_to_tableau(M,Tab0,differentIndividuals(LF),Tab1),
   set_abox(Tab1,[(differentIndividuals(L),Expl)|ABox],Tab).
 
 modify_ABox(M,Tab0,C,Ind,Expl1,Tab):-
   get_abox(Tab0,ABox0),
   ( find((classAssertion(C,Ind),Expl0),ABox0) ->
     ( absent(Expl0,Expl1,Expl),
-      remove_from_abox(ABox0,(classAssertion(C,Ind),Expl0),ABox),
-      Tab1=Tab0
+      remove_from_abox(ABox0,(classAssertion(C,Ind),Expl0),ABox)
     )
   ;
-    (ABox = ABox0,Expl = Expl1,
-    add_clash_to_tableau(M,Tab0,C-Ind,Tab1))
+    (ABox = ABox0,Expl = Expl1)
   ),
+  add_clash_to_tableau(M,Tab0,C-Ind,Tab1),
   set_abox(Tab1,[(classAssertion(C,Ind),Expl)|ABox],Tab2),
   update_expansion_queue_in_tableau(M,C,Ind,Tab2,Tab).
 
@@ -503,13 +499,12 @@ modify_ABox(M,Tab0,P,Ind1,Ind2,Expl1,Tab):-
   get_abox(Tab0,ABox0),
   ( find((propertyAssertion(P,Ind1,Ind2),Expl0),ABox0) ->
     ( absent(Expl0,Expl1,Expl),
-      remove_from_abox(ABox0,(propertyAssertion(P,Ind1,Ind2),Expl0),ABox),
-      Tab1=Tab0
+      remove_from_abox(ABox0,(propertyAssertion(P,Ind1,Ind2),Expl0),ABox)
     )
   ;
-    (ABox = ABox0,Expl = Expl1,
-    add_clash_to_tableau(M,Tab0,P-Ind1-Ind2,Tab1))
+    (ABox = ABox0,Expl = Expl1)
   ),
+  add_clash_to_tableau(M,Tab0,P-Ind1-Ind2,Tab1),
   set_abox(Tab1,[(propertyAssertion(P,Ind1,Ind2),Expl)|ABox],Tab2),
   update_expansion_queue_in_tableau(M,P,Ind1,Ind2,Tab2,Tab).
 
