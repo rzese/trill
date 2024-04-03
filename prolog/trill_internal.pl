@@ -91,13 +91,7 @@ is_expl(M,Expl):-
   initial_expl(M,EExpl),
   dif(Expl,EExpl).
 
-
-% checks if an explanations was already found
-find_expls(M,[],Q,E):-
-  %findall(Exp-CPs,M:exp_found([C,I,CPs],Exp),Expl),
-  %dif(Expl,[]),
-  find_expls_from_choice_point_list(M,Q,E).
-
+/*
 find_expls(M,[],['inconsistent','kb'],E):-!,
   findall(Exp,M:exp_found(['inconsistent','kb'],Exp),Expl0),
   remove_supersets(Expl0,Expl),!,
@@ -111,39 +105,54 @@ find_expls(M,[],Q,E):-
   findall(Exp,M:exp_found(Q,Exp),Expl0),
   remove_supersets(Expl0,Expl),!,
   member(E,Expl).
-
+*/
 % checks if an explanations was already found (instance_of version)
-find_expls(M,[Tab|_T],Q0,E):- %gtrace,  % QueryArgs
+find_expls(M,Tab0,Tab,E):- %gtrace,  % QueryArgs
+  pop_clashes(Tab0,[Clash],Tab),
+  clash(M,Clash,Tab,EL0),
+  member(E0-CPs0,EL0),
+  sort(CPs0,CPs1),
+  dif(E0,[]),
+  sort(E0,E),
+  % this predicate checks if there are inconsistencies in the KB, i.e., explanations without query placeholder qp
+  % if it is so, the explanation is labelled as inconsistent kb via Q
+  consistency_check(CPs1,[],Q),
+  %findall(Exp,M:exp_found([C,I],Exp),Expl),
+  %not_already_found(M,Expl,[C,I],E),
+  ( dif(Q,['inconsistent','kb']) -> true ; print_message(warning,inconsistent)),
+  \+ M:exp_found(Q,E),
+  assert(M:exp_found(Q,E)). % QueryArgs
+
+% checks if an explanations was already found
+find_expls_from_tab_list(M,[],E):-
+  %findall(Exp-CPs,M:exp_found([C,I,CPs],Exp),Expl),
+  %dif(Expl,[]),
+  find_expls_from_choice_point_list(M,E).
+
+find_expls_from_tab_list(M,[Tab|_T],E):- %gtrace,  % QueryArgs
   get_clashes(Tab,Clashes),
   member(Clash,Clashes),
   clash(M,Clash,Tab,EL0),
   member(E0-CPs0,EL0),
   sort(CPs0,CPs1),
+  dif(E0,[]),
   sort(E0,E),
   % this predicate checks if there are inconsistencies in the KB, i.e., explanations without query placeholder qp
   % if it is so, the explanation is labelled as inconsistent kb via Q
-  consistency_check(CPs1,CPs2,Q0,Q),
-  (dif(CPs2,[]) ->
-    (
-    get_latest_choice(CPs2,ID,Choice),
-    subtract(CPs1,[cpp(ID,Choice)],CPs), %remove cpp from CPs1 so the qp remains inside choice points list
-    update_choice_point_list(M,ID,Choice,E,CPs),
-    fail
-    )
-    ;
-    (%findall(Exp,M:exp_found([C,I],Exp),Expl),
-    %not_already_found(M,Expl,[C,I],E),
-    assert(M:exp_found(Q,E)), % QueryArgs
-    fail
-    )
-  ).
+  consistency_check(CPs1,CPs2,_),
+  dif(CPs2,[]),
+  get_latest_choice(CPs2,ID,Choice),
+  subtract(CPs1,[cpp(ID,Choice)],CPs), %remove cpp from CPs1 so the qp remains inside choice points list
+  update_choice_point_list(M,ID,Choice,E,CPs),
+  fail.
 
-find_expls(M,[_Tab|T],Query,Expl):-
+
+find_expls_from_tab_list(M,[_Tab|T],Expl):-
   %\+ length(T,0),
-  find_expls(M,T,Query,Expl).
+  find_expls_from_tab_list(M,T,Expl).
 
 
-combine_expls_from_nondet_rules(M,Q0,cp(_,_,_,_,_,Expl),E):-%gtrace,
+combine_expls_from_nondet_rules(M,cp(_,_,_,_,_,Expl),E):-%gtrace,
   check_non_empty_choice(Expl,ExplList),
   and_all_f(M,ExplList,ExplanationsList),
   %check_presence_of_other_choices(ExplanationsList,Explanations,Choices),
@@ -152,7 +161,7 @@ combine_expls_from_nondet_rules(M,Q0,cp(_,_,_,_,_,Expl),E):-%gtrace,
   sort(Choices0,Choices1),
   % this predicate checks if there are inconsistencies in the KB, i.e., explanations without query placeholder qp
   % if it is so, the explanation is labelled as inconsistent kb via Q
-  consistency_check(Choices1,Choices,Q0,Q),
+  consistency_check(Choices1,Choices,Q),
   (
     dif(Choices,[]) ->
     (
@@ -163,18 +172,17 @@ combine_expls_from_nondet_rules(M,Q0,cp(_,_,_,_,_,Expl),E):-%gtrace,
       fail % to force recursion
     ) ;
     (
-      %findall(Exp,M:exp_found([C,I],Exp),ExplFound),
-      %not_already_found(M,ExplFound,[C,I],E),
-      assert(M:exp_found(Q,E)),
-      fail
+      ( dif(Q,['inconsistent','kb']) -> true ; print_message(warning,inconsistent)),
+      \+ M:exp_found(Q,E),
+      assert(M:exp_found(Q,E))
     )
   ).
 
-find_expls_from_choice_point_list(M,QI,E):-
+find_expls_from_choice_point_list(M,E):-
   extract_choice_point_list(M,CP),
   (
-    combine_expls_from_nondet_rules(M,QI,CP,E) ;
-    find_expls_from_choice_point_list(M,QI,E)
+    combine_expls_from_nondet_rules(M,CP,E) ;
+    find_expls_from_choice_point_list(M,E)
   ).
 
 
@@ -264,10 +272,10 @@ remove_supersets_int(E,H,[H|E]).
 
 % this predicate checks if there are inconsistencies in the KB, i.e., explanations with query placeholder qp
 % if it is so, the explanation is labelled as inconsistent kb
-consistency_check(CPs,CPs,['inconsistent','kb'],['inconsistent','kb']):- !.
+%consistency_check(CPs,CPs,['inconsistent','kb'],['inconsistent','kb']):- !.
 
-consistency_check(CPs0,CPs,Q0,Q):-
-  (nth0(_,CPs0,qp,CPs) -> (Q=Q0) ; (Q=['inconsistent','kb'],CPs=CPs0)).
+consistency_check(CPs0,CPs,Q):-
+  (nth0(_,CPs0,qp,CPs) -> (Q=qp) ; (Q=['inconsistent','kb'],CPs=CPs0)).
 
 
 /****************************/

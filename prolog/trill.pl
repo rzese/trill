@@ -299,10 +299,12 @@ find_single_explanation(M,QueryType,QueryArgs,Expl,Opt):-
     (
       add_q(M,QueryType,Tableau,QueryArgs,Tableau0),
       set_up_tableau(M),
-      findall(Tableau1,expand_queue(M,Tableau0,Tableau1),L),
-      (query_option(Opt,assert_abox,true) -> (writeln('Asserting ABox...'), M:assert(final_abox(L)), writeln('Done. Asserted in final_abox/1...')) ; true),
-      find_expls(M,L,QueryArgs,Expl1),
-      check_and_close(M,Expl1,Expl)
+      %findall(Expl,expand_queue(M,Tableau0,Tableau1,Expl),L),
+      set_next_from_expansion_queue(Tableau0,_EA,Tableau1),
+      get_explanation(M,Tableau1,Expl),
+      (query_option(Opt,assert_abox,true) -> (writeln('Asserting ABox...'), M:assert(final_abox(L)), writeln('Done. Asserted in final_abox/1...')) ; true)%,
+      %find_expls(M,L,QueryArgs,Expl1),
+      %check_and_close(M,Expl1,Expl)
     )
   ;
     print_message(warning,inconsistent),!,false
@@ -1203,14 +1205,21 @@ check_clash(_,P-Ind1-Ind2,Tab):-
 % -------------
 % rules application
 % -------------
-expand_queue(M,Tab,Tab):-
-  test_end_expand_queue(M,Tab),!.
+expand_queue(_M,Tab,Tab,Expl):-
+  get_clashes(Tab,Clashes),
+  dif(Clashes,[]),
+  dif(Expl,[]).
 
-expand_queue(M,Tab0,Tab):-
+expand_queue(M,Tab,_,_):-
+  test_end_expand_queue(M,Tab),!,%gtrace,
+  assert(M:tab_end(Tab)),
+  fail.
+
+expand_queue(M,Tab0,Tab,Expl):-
   extract_from_expansion_queue(Tab0,EA,Tab1),!,
-  apply_all_rules(M,Tab1,EA,Tab2),
+  apply_all_rules(M,Tab1,EA,Tab2,Expl),
   % update_queue(M,T,NewExpQueue),
-  expand_queue(M,Tab2,Tab).
+  expand_queue(M,Tab2,Tab,Expl).
 
 
 test_end_expand_queue(M,_):-
@@ -1222,12 +1231,45 @@ test_end_expand_queue(_,Tab):-
 %expand_queue(M,ABox0,[_EA|T],ABox):-
 %  expand_queue(M,ABox0,T,ABox).
 
-apply_all_rules(M,Tab0,EA,Tab):-
+get_explanation(M,Tab,Expl):-
+  get_explanation_int(M,Tab,Expl).
+
+get_explanation(M,_,Expl):-
+  findall(Tab,M:tab_end(Tab),L),
+  find_expls_from_tab_list(M,L,Expl).
+
+get_explanation_int(M,Tab,_):-
+  test_end_expand_queue(M,Tab),!,
+  assert(M:tab_end(Tab)),
+  fail.
+
+get_explanation_int(M,Tab0,Expl):-
+  extract_current_from_expansion_queue(Tab0,EA),
+  apply_all_rules(M,Tab0,EA,Tab1,Expl0),
+  ( dif(Expl0,[]) ->
+      Expl = Expl0
+      ;
+      get_explanation_int(M,Tab1,Expl)
+  ).
+
+apply_all_rules(M,Tab0,EA,Tab,Expl):-
   M:setting_trill(det_rules,Rules),
   apply_det_rules(M,Rules,Tab0,EA,Tab1),
-  (test_end_apply_rule(M,Tab0,Tab1) ->
-  Tab=Tab1;
-  apply_all_rules(M,Tab1,EA,Tab)).
+  continue(M,Rules,Tab0,EA,Tab1,Tab,Expl).
+
+continue(M,_Rules,_Tab0,_EA,Tab1,Tab,Expl):-
+  find_expls(M,Tab1,Tab,Expl).
+
+continue(M,_Rules,Tab0,EA,Tab1,Tab,Expl):-
+  ( test_end_apply_rule(M,Tab0,Tab1) ->
+      ( set_next_from_expansion_queue(Tab0,_EA1,Tab), 
+        Expl=[]
+      ) 
+      ;
+      apply_all_rules(M,Tab1,EA,Tab,Expl)
+  ).
+
+
 
 apply_det_rules(M,_,Tab,_,Tab):-
   check_time_monitor(M),!.
@@ -2979,14 +3021,34 @@ set_tabs(Tab0,Tabs,Tab):-
   Tab = Tab0.put(tabs,Tabs).
 
 get_clashes(Tab,Clashes):-
-  Clashes = Tab.clashes.
+  Clashes-_ = Tab.clashes.
+
+get_solved_clashes(Tab,SolvedClashes):-
+  _-SolvedClashes = Tab.clashes.
 
 set_clashes(Tab0,Clashes,Tab):-
-  Tab = Tab0.put(clashes,Clashes).
+  _-SolvedClashes = Tab0.clashes,
+  Tab = Tab0.put(clashes,Clashes-SolvedClashes).
+
+set_clashes(Tab0,Clashes,SolvedClashes,Tab):-
+ Tab = Tab0.put(clashes,Clashes-SolvedClashes).
+
+pop_clashes(Tab0,Clashes,Tab):-
+  Clashes-SolvedClashes0 = Tab0.clashes,
+  empty_partial_clashes(EmptyToSolveClashes),
+  union(Clashes,SolvedClashes0,SolvedClashes),
+  set_clashes(Tab0, EmptyToSolveClashes, SolvedClashes,Tab).
 
 absence_of_clashes(Tab):-
   get_clashes(Tab,Clashes),
   Clashes=[].
+
+% to_solve-solved clashes
+empty_clashes(Clashes-SolvedClashes):-
+  empty_partial_clashes(Clashes),
+  empty_partial_clashes(SolvedClashes).
+
+empty_partial_clashes([]).
 
 get_expansion_queue(Tab,ExpansionQueue):-
   ExpansionQueue = Tab.expq.
@@ -2994,20 +3056,25 @@ get_expansion_queue(Tab,ExpansionQueue):-
 set_expansion_queue(Tab0,ExpansionQueue,Tab):-
   Tab = Tab0.put(expq,ExpansionQueue).
 
-extract_from_expansion_queue(Tab0,EA,Tab):-
+extract_current_from_expansion_queue(Tab,EA):-
+  get_expansion_queue(Tab,[[EA],_,_]),!.
+
+set_next_from_expansion_queue(Tab0,EA,Tab):-
   get_expansion_queue(Tab0,EQ0),
-  extract_from_expansion_queue_int(EQ0,EA,EQ),
+  extract_from_expansion_queue_int(EQ0,EA,EQ),!,
   set_expansion_queue(Tab0,EQ,Tab).
 
-extract_from_expansion_queue_int([[],[EA|T]],EA,[[],T]).
+extract_from_expansion_queue_int([_,[],[EA|T]],EA,[[EA],[],T]).
 
-extract_from_expansion_queue_int([[EA|T],NonDetQ],EA,[T,NonDetQ]).
+extract_from_expansion_queue_int([_,[EA|T],NonDetQ],EA,[[EA],T,NonDetQ]).
+
+extract_from_expansion_queue_int([_,[],[]],[],[[],[],[]]).
 
 expansion_queue_is_empty(Tab):-
   get_expansion_queue(Tab,EQ),
   empty_expansion_queue(EQ).
 
-empty_expansion_queue([[],[]]).
+empty_expansion_queue([[],[],[]]).
 
 same_tableau(Tab1,Tab2):-
   get_abox(Tab1,ABox),
@@ -3022,9 +3089,15 @@ same_tableau(Tab1,Tab2):-
  * 
  * Initialize an empty tableau.
  */
-new_tableau(tableau{abox:ABox, tabs:Tabs, clashes:[], expq:ExpansionQueue}):-
+new_tableau(tableau{
+                abox:ABox, 
+                tabs:Tabs, 
+                clashes:Clashes, 
+                expq:ExpansionQueue
+            }):-
   new_abox(ABox),
   new_tabs(Tabs),
+  empty_clashes(Clashes),
   empty_expansion_queue(ExpansionQueue).
 
 
@@ -3033,7 +3106,8 @@ new_tableau(tableau{abox:ABox, tabs:Tabs, clashes:[], expq:ExpansionQueue}):-
  * 
  * Initialize a tableau with the lements given in input.
  */
-init_tableau(ABox,Tabs,tableau{abox:ABox, tabs:Tabs, clashes:[], expq:ExpansionQueue}):-
+init_tableau(ABox,Tabs,tableau{abox:ABox, tabs:Tabs, clashes:Clashes, expq:ExpansionQueue}):-
+  empty_clashes(Clashes),
   empty_expansion_queue(ExpansionQueue).
 
 /**
@@ -3041,7 +3115,8 @@ init_tableau(ABox,Tabs,tableau{abox:ABox, tabs:Tabs, clashes:[], expq:ExpansionQ
  * 
  * Initialize a tableau with the lements given in input.
  */
-init_tableau(ABox,Tabs,ExpansionQueue,tableau{abox:ABox, tabs:Tabs, clashes:[], expq:ExpansionQueue}).
+init_tableau(ABox,Tabs,ExpansionQueue,tableau{abox:ABox, tabs:Tabs, clashes:Clashes, expq:ExpansionQueue}):-
+  empty_clashes(Clashes).
 
 
 % ======================================================================
@@ -3211,31 +3286,31 @@ update_expansion_queue_in_tableau(M,P,Ind1,Ind2,Tab0,Tab):-
 
 
 
-update_expansion_queue(_,unionOf(L),Ind,[DQ,NDQ0],[DQ,NDQ]):-!,
+update_expansion_queue(_,unionOf(L),Ind,[Curr,DQ,NDQ0],[Curr,DQ,NDQ]):-!,
   delete(NDQ0,[unionOf(L),Ind],NDQ1),
   append(NDQ1,[[unionOf(L),Ind]],NDQ).
 
-update_expansion_queue(_,maxCardinality(N,S,C),Ind,[DQ,NDQ0],[DQ,NDQ]):-!,
+update_expansion_queue(_,maxCardinality(N,S,C),Ind,[Curr,DQ,NDQ0],[Curr,DQ,NDQ]):-!,
   delete(NDQ0,[maxCardinality(N,S,C),Ind],NDQ1),
   append(NDQ1,[[maxCardinality(N,S,C),Ind]],NDQ).
 
-update_expansion_queue(_,maxCardinality(N,S),Ind,[DQ,NDQ0],[DQ,NDQ]):-!,
+update_expansion_queue(_,maxCardinality(N,S),Ind,[Curr,DQ,NDQ0],[Curr,DQ,NDQ]):-!,
   delete(NDQ0,[maxCardinality(N,S),Ind],NDQ1),
   append(NDQ1,[[maxCardinality(N,S),Ind]],NDQ).
 
-update_expansion_queue(_,exactCardinality(N,S,C),Ind,[DQ,NDQ0],[DQ,NDQ]):-!,
+update_expansion_queue(_,exactCardinality(N,S,C),Ind,[Curr,DQ,NDQ0],[Curr,DQ,NDQ]):-!,
   delete(NDQ0,[exactCardinality(N,S,C),Ind],NDQ1),
   append(NDQ1,[[exactCardinality(N,S,C),Ind]],NDQ).
 
-update_expansion_queue(_,exactCardinality(N,S),Ind,[DQ,NDQ0],[DQ,NDQ]):-!,
+update_expansion_queue(_,exactCardinality(N,S),Ind,[Curr,DQ,NDQ0],[Curr,DQ,NDQ]):-!,
   delete(NDQ0,[exactCardinality(N,S),Ind],NDQ1),
   append(NDQ1,[[exactCardinality(N,S),Ind]],NDQ).
 
-update_expansion_queue(_,C,Ind,[DQ0,NDQ],[DQ,NDQ]):-!,
+update_expansion_queue(_,C,Ind,[Curr,DQ0,NDQ],[Curr,DQ,NDQ]):-!,
   delete(DQ0,[C,Ind],DQ1),
   append(DQ1,[[C,Ind]],DQ).
 
-update_expansion_queue(_,P,Ind1,Ind2,[DQ0,NDQ],[DQ,NDQ]):-!,
+update_expansion_queue(_,P,Ind1,Ind2,[Curr,DQ0,NDQ],[Curr,DQ,NDQ]):-!,
   delete(DQ0,[P,Ind1,Ind2],DQ1),
   append(DQ1,[[P,Ind1,Ind2]],DQ).
 

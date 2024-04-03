@@ -4,12 +4,12 @@
 
 
 subClassOf(a,unionOf([b,c])).
-subClassOf(a,complementOf(e)).
+%subClassOf(a,complementOf(e)).
 subClassOf(b,e).
 subClassOf(c,e).
 
 classAssertion(a,x).
-classAssertion(e,x).
+%classAssertion(e,x).
 %classAssertion(complementOf(a),x).
 
 /*
