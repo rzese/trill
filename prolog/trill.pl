@@ -1236,6 +1236,7 @@ get_explanation(M,Tab,Expl):-
 
 get_explanation(M,_,Expl):-
   findall(Tab,M:tab_end(Tab),L),
+  retractall(M:tab_end(_)),
   find_expls_from_tab_list(M,L,Expl).
 
 get_explanation_int(M,Tab,_):-
@@ -1410,10 +1411,10 @@ scan_and_list(M,[_C|T],Ind,Expl,Tab0,Tab,Mod):-
   or_rule
   ===============
 */
-or_rule(M,Tab0,[unionOf(LC),Ind],L):- 
+or_rule(M,Tab0,[unionOf(LC),Ind],L):- %gtrace,
   get_abox(Tab0,ABox),
   findClassAssertion(unionOf(LC),Ind,Expl,ABox),
-  \+ indirectly_blocked(Ind,Tab0),
+  \+ indirectly_blocked(Ind,Tab0), %gtrace,
   %not_ind_intersected_union(Ind,LC,ABox),
   % length(LC,NClasses),
   get_choice_point_id(M,ID),
@@ -1531,6 +1532,7 @@ find_sub_sup_trans_role(M,R,S,Expl):-
 unfold_rule(M,Tab0,[C,Ind],Tab):-
   get_abox(Tab0,ABox),
   findClassAssertion(C,Ind,Expl,ABox),
+  % usare findall(D-AX,find_sub_sup_class(M,C,D,Ax),L) e iniziare ciclo per evitare di ripetere stessi test più volte
   find_sub_sup_class(M,C,D,Ax),
   and_f_ax(M,Ax,Expl,AxL),
   modify_ABox(M,Tab0,D,Ind,AxL,Tab1),
@@ -2027,7 +2029,7 @@ max_rule(M,Tab0,[maxCardinality(N,S),Ind],L):-
   get_choice_point_id(M,ID),
   scan_max_list(M,maxCardinality(N,S),S,'http://www.w3.org/2002/07/owl#Thing',SN,ID,Ind,Expl0,Tab0,ABox,L),!. 
 
-max_rule(M,Tab0,[maxCardinality(N,S,C),Ind],L):-
+max_rule(M,Tab0,[maxCardinality(N,S,C),Ind],L):-%gtrace,
   get_abox(Tab0,ABox),
   findClassAssertion(maxCardinality(N,S,C),Ind,Expl0,ABox),
   \+ indirectly_blocked(Ind,Tab0),
@@ -2061,26 +2063,26 @@ max_rule(M,Tab0,[exactCardinality(N,S,C),Ind],L):-
   get_choice_point_id(M,ID),%gtrace,
   scan_max_list(M,exactCardinality(N,S,C),S,C,SNC,ID,Ind,Expl0,Tab0,ABox,L),!. % last variable whould be equals to ID
 
-  max_rule(M,Tab0,[S,Ind,_],L):-
-    get_abox(Tab0,ABox),
-    findClassAssertion(exactCardinality(N,S),Ind,Expl0,ABox),
-    \+ indirectly_blocked(Ind,Tab0),
-    s_neighbours(M,Ind,S,Tab0,SN),
-    length(SN,LSS),
-    LSS @> N,
-    get_choice_point_id(M,ID),
-    scan_max_list(M,exactCardinality(N,S),S,'http://www.w3.org/2002/07/owl#Thing',SN,ID,Ind,Expl0,Tab0,ABox,L),!. 
-  
-  max_rule(M,Tab0,[S,Ind,_],L):-
-    get_abox(Tab0,ABox),
-    findClassAssertion(exactCardinality(N,S,C),Ind,Expl0,ABox),
-    \+ indirectly_blocked(Ind,Tab0),
-    s_neighbours(M,Ind,S,Tab0,SN),
-    individual_class_C(SN,C,ABox,SNC),
-    length(SNC,LSS),
-    LSS @> N,
-    get_choice_point_id(M,ID),%gtrace,
-    scan_max_list(M,exactCardinality(N,S,C),S,C,SNC,ID,Ind,Expl0,Tab0,ABox,L),!. % last variable whould be equals to ID
+max_rule(M,Tab0,[S,Ind,_],L):-
+  get_abox(Tab0,ABox),
+  findClassAssertion(exactCardinality(N,S),Ind,Expl0,ABox),
+  \+ indirectly_blocked(Ind,Tab0),
+  s_neighbours(M,Ind,S,Tab0,SN),
+  length(SN,LSS),
+  LSS @> N,
+  get_choice_point_id(M,ID),
+  scan_max_list(M,exactCardinality(N,S),S,'http://www.w3.org/2002/07/owl#Thing',SN,ID,Ind,Expl0,Tab0,ABox,L),!. 
+
+max_rule(M,Tab0,[S,Ind,_],L):-
+  get_abox(Tab0,ABox),
+  findClassAssertion(exactCardinality(N,S,C),Ind,Expl0,ABox),
+  \+ indirectly_blocked(Ind,Tab0),
+  s_neighbours(M,Ind,S,Tab0,SN),
+  individual_class_C(SN,C,ABox,SNC),
+  length(SNC,LSS),
+  LSS @> N,
+  get_choice_point_id(M,ID),%gtrace,
+  scan_max_list(M,exactCardinality(N,S,C),S,C,SNC,ID,Ind,Expl0,Tab0,ABox,L),!. % last variable whould be equals to ID
 
 %---------------------
 
@@ -3713,7 +3715,8 @@ update_clashes_after_merge(M,L,SI,Tableau,[Clash|TC0],[Clash|TC],UpdatedSI):-
  update expansion queue ofter merge
  substitute ind in expansion queue with sameIndividual
  */
-update_expansion_queue_after_merge(L,SI,[ExpQD0,ExpQND0],[ExpQD,ExpQND]):-
+update_expansion_queue_after_merge(L,SI,[Curr0,ExpQD0,ExpQND0],[Curr,ExpQD,ExpQND]):-
+  update_expansion_queue_after_merge_int(L,SI,Curr0,Curr),
   update_expansion_queue_after_merge_int(L,SI,ExpQD0,ExpQD),
   update_expansion_queue_after_merge_int(L,SI,ExpQND0,ExpQND).
 

@@ -123,10 +123,12 @@ find_expls(M,[Clash],Tab,E):- %gtrace,  % QueryArgs
   assert(M:exp_found(Q,E)). % QueryArgs
 
 % checks if an explanations was already found
-find_expls_from_tab_list(M,[],E):-
+find_expls_from_tab_list(M,[],E):-gtrace,
   %findall(Exp-CPs,M:exp_found([C,I,CPs],Exp),Expl),
   %dif(Expl,[]),
-  find_expls_from_choice_point_list(M,E).
+  findall(Ex,find_expls_from_choice_point_list(M,Ex),L),
+  remove_supersets(L,Ls),
+  member(E,Ls).
 
 find_expls_from_tab_list(M,[Tab|_T],E):- %gtrace,  % QueryArgs
   get_solved_clashes(Tab,Clashes),
@@ -139,7 +141,7 @@ find_expls_from_tab_list(M,[Tab|_T],E):- %gtrace,  % QueryArgs
   % this predicate checks if there are inconsistencies in the KB, i.e., explanations without query placeholder qp
   % if it is so, the explanation is labelled as inconsistent kb via Q
   consistency_check(CPs1,CPs2,_),
-  dif(CPs2,[]),
+  %dif(CPs2,[]),
   get_latest_choice(CPs2,ID,Choice),
   subtract(CPs1,[cpp(ID,Choice)],CPs), %remove cpp from CPs1 so the qp remains inside choice points list
   update_choice_point_list(M,ID,Choice,E,CPs),
@@ -717,10 +719,37 @@ and_f1([H1-CP1|T1],L2,L3,L):-
 
 and_f2(_,_,[],[]):- !.
 
-and_f2(L1,CP1,[H2-CP2|T2],[H-CP|T]):-
+/*
+and_f2(L1,CP1,[H2-CP2|T2],[H-CP|T]):-%gtrace,
+  can_i_and(L1,CP1,H2,CP2),!,
+  ( subset(L1,H2) -> 
+    H = H2
+    ;
+    ( subset(H2,L1) -> 
+      H = L1
+      ;
+      append(L1,H2,H)
+    )
+  ),
+  append(CP1,CP2,CP),
+  and_f2(L1,CP1,T2,T).
+*/
+
+
+and_f2(L1,CP1,[H2-CP2|T2],[H-CP|T]):-%gtrace,
   append(L1,H2,H),
   append(CP1,CP2,CP),
   and_f2(L1,CP1,T2,T).
+
+
+can_i_and(L1,CP1,H2,CP2):-
+  dif(L1,[]),
+  dif(H2,[]),
+  (member(A,CP1),
+  member(A,CP2)),!.
+
+same_cpp_or_not(CP1,CP2):-
+  (\+ member(cpp(_,_),CP1) ; \+ member(cpp(_,_),CP2)),!.
 
 or_f([],E,E).
 
