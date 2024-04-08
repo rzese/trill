@@ -129,9 +129,13 @@ find_expls(M,[_Clash|Clashes],Tab,E):-
 find_expls_from_tab_list(M,[],E):-%gtrace,
   %findall(Exp-CPs,M:exp_found([C,I,CPs],Exp),Expl),
   %dif(Expl,[]),
-  findall(Ex,find_expls_from_choice_point_list(M,Ex),L),
+  findall(Ex0,find_expls_from_choice_point_list(M,Ex0),L0),
+  findall(Ex1,M:exp_found(_,Ex1),L1),
+  append(L0,L1,L),
   remove_supersets(L,Ls),
-  member(E,Ls).
+  member(E,Ls),
+  \+ M:exp_found(_,E),
+  assert(M:exp_found(tc,E)).
 
 find_expls_from_tab_list(M,[Tab|_T],E):- %gtrace,  % QueryArgs
   get_solved_clashes(Tab,Clashes),
@@ -177,8 +181,7 @@ combine_expls_from_nondet_rules(M,cp(_,_,_,_,_,Expl),E):-%gtrace,
     ) ;
     (
       ( dif(Q,['inconsistent','kb']) -> true ; print_message(warning,inconsistent)),
-      \+ M:exp_found(Q,E),
-      assert(M:exp_found(Q,E))
+      \+ M:exp_found(Q,E)
     )
   ).
 
