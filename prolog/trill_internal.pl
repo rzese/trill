@@ -107,7 +107,7 @@ find_expls(M,[],Q,E):-
   member(E,Expl).
 */
 % checks if an explanations was already found (instance_of version)
-find_expls(M,[Clash],Tab,E):- %gtrace,  % QueryArgs
+find_expls(M,[Clash|_],Tab,E):- %gtrace,  % QueryArgs
   clash(M,Clash,Tab,EL0),
   member(E0-CPs0,EL0),
   sort(CPs0,CPs1),
@@ -122,8 +122,11 @@ find_expls(M,[Clash],Tab,E):- %gtrace,  % QueryArgs
   \+ M:exp_found(Q,E),
   assert(M:exp_found(Q,E)). % QueryArgs
 
+find_expls(M,[_Clash|Clashes],Tab,E):-
+  find_expls(M,Clashes,Tab,E).
+
 % checks if an explanations was already found
-find_expls_from_tab_list(M,[],E):-gtrace,
+find_expls_from_tab_list(M,[],E):-%gtrace,
   %findall(Exp-CPs,M:exp_found([C,I,CPs],Exp),Expl),
   %dif(Expl,[]),
   findall(Ex,find_expls_from_choice_point_list(M,Ex),L),
@@ -296,6 +299,7 @@ findClassAssertion4OWLNothing(_M,ABox,Expl):-
 %------------
 :- multifile clash/4.
 
+/*
 clash(M,maxCardinality(N,S,C)-Ind,Tab,Expl):-
   get_abox(Tab,ABox),
   %write('clash 9'),nl,
@@ -365,6 +369,7 @@ check_clash(M,exactCardinality(N,S)-Ind,Tab):-
   s_neighbours(M,Ind,S,Tab,SN),
   length(SN,LSS),
   dif(LSS,N),!.
+*/
 
 % --------------
 

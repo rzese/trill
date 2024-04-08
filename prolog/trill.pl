@@ -2094,7 +2094,11 @@ scan_max_list(M,MaxCardClass,S,C,SN,CP,Ind,Expl,Tab0,ABox,Tab_list):-
   ),
   create_list_for_max_rule(M,Ind_couples,FirstChoice,CP,Ind,S,C,Expl,Tab0,ABox,Tab_list),
   dif(Tab_list,[]),
-  create_choice_point(M,Ind,mr,MaxCardClass,Ind_couples,_). % last variable whould be equals to ID
+  ( dif(FirstChoice,-1) ->
+    create_choice_point(M,Ind,mr,MaxCardClass,Ind_couples,_)
+    ;
+    true
+  ). % last variable whould be equals to ID
 
 create_couples_for_merge([],Ind_couples,Ind_couples).
 
@@ -2193,31 +2197,31 @@ ch_rule(M,Tab0,[exactCardinality(N,S,C),Ind1],L):-
   dif(L,[]),
   create_choice_point(M,Ind2,ch,exactCardinality(N,S,C),[C,NC],_),!. % last variable whould be equals to ID
 
-  ch_rule(M,Tab0,[S,Ind1,Ind2],L):-
-    get_abox(Tab0,ABox),
-    findClassAssertion(maxCardinality(N,S,C),Ind1,Expl1,ABox),
-    \+ indirectly_blocked(Ind1,Tab0),
-    findPropertyAssertion(S,Ind1,Ind2,Expl2,ABox),
-    absent_c_not_c(Ind2,C,ABox),
-    and_f(M,Expl1,Expl2,Expl),
-    get_choice_point_id(M,ID),%gtrace,
-    neg_class(C,NC),
-    scan_or_list(M,[C,NC],0,ID,Ind2,Expl,Tab0,L),
-    dif(L,[]),
-    create_choice_point(M,Ind2,ch,maxCardinality(N,S,C),[C,NC],_),!. % last variable whould be equals to ID
-  
-  ch_rule(M,Tab0,[S,Ind1,Ind2],L):-
-    get_abox(Tab0,ABox),
-    findClassAssertion(exactCardinality(N,S,C),Ind1,Expl1,ABox),
-    \+ indirectly_blocked(Ind1,Tab0),
-    findPropertyAssertion(S,Ind1,Ind2,Expl2,ABox),
-    absent_c_not_c(Ind2,C,ABox),
-    and_f(M,Expl1,Expl2,Expl),
-    get_choice_point_id(M,ID),%gtrace,
-    neg_class(C,NC),
-    scan_or_list(M,[C,NC],0,ID,Ind2,Expl,Tab0,L),
-    dif(L,[]),
-    create_choice_point(M,Ind2,ch,exactCardinality(N,S,C),[C,NC],_),!. % last variable whould be equals to ID
+ch_rule(M,Tab0,[S,Ind1,Ind2],L):-
+  get_abox(Tab0,ABox),
+  findClassAssertion(maxCardinality(N,S,C),Ind1,Expl1,ABox),
+  \+ indirectly_blocked(Ind1,Tab0),
+  findPropertyAssertion(S,Ind1,Ind2,Expl2,ABox),
+  absent_c_not_c(Ind2,C,ABox),
+  and_f(M,Expl1,Expl2,Expl),
+  get_choice_point_id(M,ID),%gtrace,
+  neg_class(C,NC),
+  scan_or_list(M,[C,NC],0,ID,Ind2,Expl,Tab0,L),
+  dif(L,[]),
+  create_choice_point(M,Ind2,ch,maxCardinality(N,S,C),[C,NC],_),!. % last variable whould be equals to ID
+
+ch_rule(M,Tab0,[S,Ind1,Ind2],L):-
+  get_abox(Tab0,ABox),
+  findClassAssertion(exactCardinality(N,S,C),Ind1,Expl1,ABox),
+  \+ indirectly_blocked(Ind1,Tab0),
+  findPropertyAssertion(S,Ind1,Ind2,Expl2,ABox),
+  absent_c_not_c(Ind2,C,ABox),
+  and_f(M,Expl1,Expl2,Expl),
+  get_choice_point_id(M,ID),%gtrace,
+  neg_class(C,NC),
+  scan_or_list(M,[C,NC],0,ID,Ind2,Expl,Tab0,L),
+  dif(L,[]),
+  create_choice_point(M,Ind2,ch,exactCardinality(N,S,C),[C,NC],_),!. % last variable whould be equals to ID
 
 %---------------------
 
