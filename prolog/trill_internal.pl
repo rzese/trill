@@ -27,7 +27,6 @@ set_up(M):-
   utility_translation:set_up(M),
   init_delta(M),
   M:(dynamic exp_found/2, setting_trill/2),
-  M:(dynamic tab_end/1, tab_id/1),
   retractall(M:setting_trill(_,_)).
   %foreach(setting_trill_default(DefaultSetting,DefaultVal),assert(M:setting_trill(DefaultSetting,DefaultVal))).
 
@@ -652,23 +651,8 @@ absent2([H-_|T],Expl):-
 */
 
 
-
-build_abox(M,Tableaux,QueryType,QueryArgs):-
-  M:tab_end(Tableaux0),
-  get_individuals_for_build_abox(M,QueryType,QueryArgs,CreateTabsList,AddAllList,LSIA,ExpansionQueue),
-  add_on_each_tableau(M,CreateTabsList,AddAllList,LSIA,ExpansionQueue,Tableaux0,Tableaux).
-
-
-build_abox(M,[Tableau],QueryType,QueryArgs):-
-  %retractall(M:final_abox(_)),
-  get_individuals_for_build_abox(M,QueryType,QueryArgs,CreateTabsList,AddAllList,LSIA,ExpansionQueue),
-  new_abox(ABox0),
-  new_tabs(Tabs0),
-  init_tableau(M,ABox0,Tabs0,ExpansionQueue,Tableau0),
-  add_to_tableau_in_build_abox(M,Tableau0,CreateTabsList,AddAllList,LSIA,Tableau),
-  !.
-
-get_individuals_for_build_abox(M,QueryType,QueryArgs,CreateTabsList,AddAllList,LSIA,ExpansionQueue):-
+build_abox(M,Tableau,QueryType,QueryArgs):-
+  retractall(M:final_abox(_)),
   collect_individuals(M,QueryType,QueryArgs,ConnectedInds),
   ( dif(ConnectedInds,[]) ->
     ( findall((classAssertion(Class,Individual),[[classAssertion(Class,Individual)]-[]]),(member(Individual,ConnectedInds),M:classAssertion(Class,Individual)),LCA),
@@ -687,27 +671,17 @@ get_individuals_for_build_abox(M,QueryType,QueryArgs,CreateTabsList,AddAllList,L
       findall((sameIndividual(L),[[sameIndividual(L)]-[]]),M:sameIndividual(L),LSIA)
     )
   ),
+  new_abox(ABox0),
+  new_tabs(Tabs0),
   init_expansion_queue(LCA,LPA,ExpansionQueue),
+  init_tableau(ABox0,Tabs0,ExpansionQueue,Tableau0),
   append([LCA,LDIA,LPA],CreateTabsList),
-  append([LCA,LPA,LNA,LDIA],AddAllList).
-
-add_to_tableau_in_build_abox(M,Tableau0,CreateTabsList,AddAllList,LSIA,ExpansionQueue,Tableau):-
-  add_to_tableau_in_build_abox(M,Tableau0,CreateTabsList,AddAllList,LSIA,Tableau4),
-  update_expansion_queue_in_tableau(M,Tableau4,ExpansionQueue,Tableau),  
-  !.
-
-add_to_tableau_in_build_abox(M,Tableau0,CreateTabsList,AddAllList,LSIA,Tableau):-
   create_tabs(CreateTabsList,Tableau0,Tableau1),
+  append([LCA,LPA,LNA,LDIA],AddAllList),
   add_all_to_tableau(M,AddAllList,Tableau1,Tableau2),
   merge_all_individuals(M,LSIA,Tableau2,Tableau3),
-  add_owlThing_list(M,Tableau3,Tableau), 
+  add_owlThing_list(M,Tableau3,Tableau),
   !.
-
-add_on_each_tableau(_,_,_,_,_,[],[]):-!.
-
-add_on_each_tableau(M,CreateTabsList,AddAllList,LSIA,ExpansionQueue,[Tableau0|Tableaux0],[Tableau|Tableaux]):-
-  add_to_tableau_in_build_abox(M,Tableau0,CreateTabsList,AddAllList,LSIA,ExpansionQueue,Tableau),
-  add_on_each_tableau(M,CreateTabsList,AddAllList,LSIA,ExpansionQueue,Tableaux0,Tableaux).
 
 
 /* ********** */
@@ -839,7 +813,7 @@ init_expl_per_choice_int(N0,N,ExplPerChoice0,ExplPerChoice):-
 
 % cpp/2 is the choice point pointer. It contains the CP's ID (from the list of choice points delta/2)
 % and the pointer of the choice maide at the choice point
-add_choice_point(_,_,[],[]):-!. 
+add_choice_point(_,_,[],[]). 
 
 add_choice_point(_,CPP,[Expl-CP0|T0],[Expl-CP|T]):- %CPP=cpp(CPID,N)
   (

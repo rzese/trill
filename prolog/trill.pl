@@ -293,17 +293,16 @@ find_n_explanations_time_limit(M,QueryType,QueryArgs,Expl,MonitorNExpl,MonitorTi
 
 
 
-find_single_explanation(M,QueryType,QueryArgs,Expl,_Opt):-
-  build_abox(M,Tableaux,QueryType,QueryArgs), % will expand the KB without the query
-  get_tableau(Tableaux,Tableau),
+find_single_explanation(M,QueryType,QueryArgs,Expl,Opt):-
+  build_abox(M,Tableau,QueryType,QueryArgs), % will expand the KB without the query
   (absence_of_clashes(Tableau) ->  % TODO if QueryType is inconsistent no check
     (
+      add_q(M,QueryType,Tableau,QueryArgs,Tableau0),
       set_up_tableau(M),
       %findall(Expl,expand_queue(M,Tableau0,Tableau1,Expl),L),
-      add_q(M,QueryType,Tableau,QueryArgs,Tableau0),
       set_next_from_expansion_queue(Tableau0,_EA,Tableau1),
-      get_explanation(M,Tableau1,Expl)%,
-      %(query_option(Opt,assert_abox,true) -> (writeln('Asserting ABox...'), M:assert(final_abox(L)), writeln('Done. Asserted in final_abox/1...')) ; true)%,
+      get_explanation(M,Tableau1,Expl),
+      (query_option(Opt,assert_abox,true) -> (writeln('Asserting ABox...'), M:assert(final_abox(L)), writeln('Done. Asserted in final_abox/1...')) ; true)%,
       %find_expls(M,L,QueryArgs,Expl1),
       %check_and_close(M,Expl1,Expl)
     )
@@ -324,7 +323,7 @@ check_time_monitor(M):-
 
 /* *************** */
 
-set_up_reasoner(M):- % TODO no reset trillan_idx e delta
+set_up_reasoner(M):-
   set_up(M),
   retractall(M:exp_found(_,_)),
   retractall(M:exp_found(_,_,_)),
@@ -337,9 +336,6 @@ set_up_tableau(M):-
   %setting_trill_default(nondet_rules,NondetRules),
   %set_tableau_expansion_rules(M:DetRules,NondetRules). 
   prune_tableau_rules(M).
-
-get_tableau(Tableaux,Tableau):-
-  member(Tableau,Tableaux).
 
 % instanceOf
 add_q(M,io,Tableau0,[ClassEx,IndEx],Tableau):- !,
@@ -814,7 +810,7 @@ add_q(M,Tableau0,Query,Tableau):-
 % initialize an empty explanation for the query with the query placeholder 'qp' in teh choicepoint list
 query_empty_expl(M,Expl):-%gtrace,
   empty_expl(M,EExpl),
-  add_choice_point(M,qp,EExpl,Expl),!.
+  add_choice_point(M,qp,EExpl,Expl).
 
 
 % expands query arguments using prefixes and checks their existence in the kb
@@ -1216,7 +1212,7 @@ expand_queue(_M,Tab,Tab,Expl):-
 
 expand_queue(M,Tab,_,_):-
   test_end_expand_queue(M,Tab),!,%gtrace,
-  update_tab_end(M,Tab),
+  assert(M:tab_end(Tab)),
   fail.
 
 expand_queue(M,Tab0,Tab,Expl):-
@@ -1225,23 +1221,6 @@ expand_queue(M,Tab0,Tab,Expl):-
   % update_queue(M,T,NewExpQueue),
   expand_queue(M,Tab2,Tab,Expl).
 
-update_tab_end(M,Tab):-
-  M:tab_end(Tableaux0),!,
-  ID = Tab.id,
-  replace_tab(Tableaux0,Tab,ID,Tableaux),
-  retractall(M:tab_end(_)),
-  assert(M:tab_end(Tableaux)).
-
-update_tab_end(M,Tab):-
-  assert(M:tab_end([Tab])).
-
-replace_tab([],Tab,_,[Tab]).
-
-replace_tab([Tab0|T0],Tab,ID,[Tab|T0]):-
-  ID = Tab0.id,!.
-
-replace_tab([Tab0|T0],Tab,ID,[Tab0|T]):-
-  replace_tab(T0,Tab,ID,T).
 
 test_end_expand_queue(M,_):-
   check_time_monitor(M),!.
@@ -1256,12 +1235,13 @@ get_explanation(M,Tab,Expl):-
   get_explanation_int(M,Tab,Expl).
 
 get_explanation(M,_,Expl):-
-  M:tab_end(L),
+  findall(Tab,M:tab_end(Tab),L),
+  retractall(M:tab_end(_)),
   find_expls_from_tab_list(M,L,Expl).
 
 get_explanation_int(M,Tab,_):-
-  test_end_expand_queue(M,Tab),!,gtrace,
-  update_tab_end(M,Tab),!,
+  test_end_expand_queue(M,Tab),!,
+  assert(M:tab_end(Tab)),
   fail.
 
 get_explanation_int(M,Tab0,Expl):-
@@ -3103,19 +3083,6 @@ expansion_queue_is_empty(Tab):-
 
 empty_expansion_queue([[],[],[]]).
 
-merge_expansion_queue(Tab0,[[CN],DN,NDN],Tab):-
-  get_expansion_queue(Tab0,[C0,D0,ND0]),
-  union(D0,[CN|DN],DM),
-  union(ND0,NDN,NDM),
-  set_expansion_queue(Tab0,[C0,DM,NDM],Tab).
-
-merge_expansion_queue(Tab0,[[],DN,NDN],Tab):-
-  get_expansion_queue(Tab0,[C0,D0,ND0]),
-  union(D0,DN,DM),
-  union(ND0,NDN,NDM),
-  set_expansion_queue(Tab0,[C0,DM,NDM],Tab).
-
-
 same_tableau(Tab1,Tab2):-
   get_abox(Tab1,ABox),
   get_abox(Tab2,ABox),
@@ -3129,18 +3096,16 @@ same_tableau(Tab1,Tab2):-
  * 
  * Initialize an empty tableau.
  */
-new_tableau(M,tableau{
+new_tableau(tableau{
                 abox:ABox, 
                 tabs:Tabs, 
                 clashes:Clashes, 
-                expq:ExpansionQueue,
-                id:ID
+                expq:ExpansionQueue
             }):-
   new_abox(ABox),
   new_tabs(Tabs),
   empty_clashes(Clashes),
-  empty_expansion_queue(ExpansionQueue),
-  next_tableau_id(M,ID).
+  empty_expansion_queue(ExpansionQueue).
 
 
 /**
@@ -3148,31 +3113,18 @@ new_tableau(M,tableau{
  * 
  * Initialize a tableau with the lements given in input.
  */
-init_tableau(M,ABox,Tabs,tableau{abox:ABox, tabs:Tabs, clashes:Clashes, expq:ExpansionQueue, id:ID}):-
+init_tableau(ABox,Tabs,tableau{abox:ABox, tabs:Tabs, clashes:Clashes, expq:ExpansionQueue}):-
   empty_clashes(Clashes),
-  empty_expansion_queue(ExpansionQueue),
-  next_tableau_id(M,ID).
+  empty_expansion_queue(ExpansionQueue).
 
 /**
  * init_tabelau(+ABox:abox, +Tabs:tableau, +ExpansionQueue:expansion_queue, -InitializedTableaus:dict)
  * 
  * Initialize a tableau with the lements given in input.
  */
-init_tableau(M,ABox,Tabs,ExpansionQueue,tableau{abox:ABox, tabs:Tabs, clashes:Clashes, expq:ExpansionQueue, id:ID}):-
-  empty_clashes(Clashes),
-  next_tableau_id(M,ID).
+init_tableau(ABox,Tabs,ExpansionQueue,tableau{abox:ABox, tabs:Tabs, clashes:Clashes, expq:ExpansionQueue}):-
+  empty_clashes(Clashes).
 
-
-
-
-next_tableau_id(M,ID):-
-  M:tab_id(ID),!,
-  retractall(M:tab_id(_)),
-  IDNew is ID + 1,
-  assert(M:tab_id(IDNew)),!.
-
-next_tableau_id(M,0):-
-  assert(M:tab_id(0)),!.
 
 % ======================================================================
 % As List (missing Expansion Queue!)
@@ -3218,20 +3170,20 @@ new_abox([]).
 add_to_tableau(Tableau0,El,Tableau):-
   get_abox(Tableau0,ABox0),
   add_to_abox(ABox0,El,ABox),
-  set_abox(Tableau0,ABox,Tableau),!.
+  set_abox(Tableau0,ABox,Tableau).
 
 remove_from_tableau(Tableau0,El,Tableau):-
   get_abox(Tableau0,ABox0),
   remove_from_abox(ABox0,El,ABox),
-  set_abox(Tableau0,ABox,Tableau),!.
+  set_abox(Tableau0,ABox,Tableau).
 
 add_clash_to_tableau(M,Tableau0,ToCheck,Tableau):-
   check_clash(M,ToCheck,Tableau0),!,
   get_clashes(Tableau0,Clashes0),
   add_to_clashes(Clashes0,ToCheck,Clashes),
-  set_clashes(Tableau0,Clashes,Tableau),!.
+  set_clashes(Tableau0,Clashes,Tableau).
 
-add_clash_to_tableau(_,Tableau,_,Tableau):-!.
+add_clash_to_tableau(_,Tableau,_,Tableau).
 
 assign(L,L).
 /*
@@ -3258,18 +3210,18 @@ find((Ass,Ex),A):-
 /* end of abox as a rb tree */
 
 
-add_to_abox(ABox,El,[El|ABox]):-!.
+add_to_abox(ABox,El,[El|ABox]).
 
 remove_from_abox(ABox0,El,ABox):-
-  delete(ABox0,El,ABox),!.
+  delete(ABox0,El,ABox).
 
 
 add_to_clashes(Clashes,'http://www.w3.org/2002/07/owl#Nothing'-_,[owlnothing|Clashes]):-!.
 
-add_to_clashes(Clashes,El,[El|Clashes]):-!.
+add_to_clashes(Clashes,El,[El|Clashes]).
 
 remove_from_abox(Clashes0,El,Clashes):-
-  delete(Clashes0,El,Clashes),!.
+  delete(Clashes0,El,Clashes).
 
 /*
   add_all_to_tableau(M,L1,L2,LO).
@@ -3280,41 +3232,41 @@ add_all_to_tableau(M,L,Tableau0,Tableau):-
   get_clashes(Tableau0,Clashes0),
   add_all_to_abox_and_clashes(M,L,Tableau0,ABox0,ABox,Clashes0,Clashes),
   set_abox(Tableau0,ABox,Tableau1),
-  set_clashes(Tableau1,Clashes,Tableau),!.
+  set_clashes(Tableau1,Clashes,Tableau).
 
-add_all_to_abox_and_clashes(_,[],_,A,A,C,C):-!.
+add_all_to_abox_and_clashes(_,[],_,A,A,C,C).
 
 add_all_to_abox_and_clashes(M,[(classAssertion(Class,I),Expl)|T],Tab0,A0,A,C0,C):-
   check_clash(M,Class-I,Tab0),!,
   add_to_abox(A0,(classAssertion(Class,I),Expl),A1),
   add_to_clashes(C0,Class-I,C1),
   set_abox(Tab0,A1,Tab),
-  add_all_to_abox_and_clashes(M,T,Tab,A1,A,C1,C),!.
+  add_all_to_abox_and_clashes(M,T,Tab,A1,A,C1,C).
 
 add_all_to_abox_and_clashes(M,[(sameIndividual(LI),Expl)|T],Tab0,A0,A,C0,C):-
   check_clash(M,sameIndividual(LI),Tab0),!,
   add_to_abox(A0,(sameIndividual(LI),Expl),A1),
   add_to_clashes(C0,sameIndividual(LI),C1),
   set_abox(Tab0,A1,Tab),
-  add_all_to_abox_and_clashes(M,T,Tab,A1,A,C1,C),!.
+  add_all_to_abox_and_clashes(M,T,Tab,A1,A,C1,C).
 
 add_all_to_abox_and_clashes(M,[(differentIndividuals(LI),Expl)|T],Tab0,A0,A,C0,C):-
   check_clash(M,differentIndividuals(LI),Tab0),!,
   add_to_abox(A0,(differentIndividuals(LI),Expl),A1),
   add_to_clashes(C0,differentIndividuals(LI),C1),
   set_abox(Tab0,A1,Tab),
-  add_all_to_abox_and_clashes(M,T,Tab,A1,A,C1,C),!.
+  add_all_to_abox_and_clashes(M,T,Tab,A1,A,C1,C).
 
 add_all_to_abox_and_clashes(M,[H|T],Tab0,A0,A,C0,C):-
   add_to_abox(A0,H,A1),
   set_abox(Tab0,A1,Tab),
-  add_all_to_abox_and_clashes(M,T,Tab,A1,A,C0,C),!.
+  add_all_to_abox_and_clashes(M,T,Tab,A1,A,C0,C).
 
-add_all_to_abox([],A,A):-!.
+add_all_to_abox([],A,A).
 
 add_all_to_abox([H|T],A0,A):-
   add_to_abox(A0,H,A1),
-  add_all_to_abox(T,A1,A),!.
+  add_all_to_abox(T,A1,A).
 
 /* ************** */
 
@@ -3329,66 +3281,63 @@ add_all_to_abox([H|T],A0,A):-
 % ------------
 % Utility for rule application
 % ------------
-update_expansion_queue_in_tableau(_M,Tab0,ExpansionQueueToAdd,Tab):-
-  merge_expansion_queue(Tab0,ExpansionQueueToAdd,Tab),!.
-
 update_expansion_queue_in_tableau(M,C,Ind,Tab0,Tab):-
   get_expansion_queue(Tab0,ExpansionQueue0),
   update_expansion_queue(M,C,Ind,ExpansionQueue0,ExpansionQueue),
-  set_expansion_queue(Tab0,ExpansionQueue,Tab),!.
+  set_expansion_queue(Tab0,ExpansionQueue,Tab).
 
 update_expansion_queue_in_tableau(M,P,Ind1,Ind2,Tab0,Tab):-
   get_expansion_queue(Tab0,ExpansionQueue0),
   update_expansion_queue(M,P,Ind1,Ind2,ExpansionQueue0,ExpansionQueue),
-  set_expansion_queue(Tab0,ExpansionQueue,Tab),!.
+  set_expansion_queue(Tab0,ExpansionQueue,Tab).
 
 
 
 update_expansion_queue(_,unionOf(L),Ind,[Curr,DQ,NDQ0],[Curr,DQ,NDQ]):-!,
   delete(NDQ0,[unionOf(L),Ind],NDQ1),
-  append(NDQ1,[[unionOf(L),Ind]],NDQ),!.
+  append(NDQ1,[[unionOf(L),Ind]],NDQ).
 
 update_expansion_queue(_,maxCardinality(N,S,C),Ind,[Curr,DQ,NDQ0],[Curr,DQ,NDQ]):-!,
   delete(NDQ0,[maxCardinality(N,S,C),Ind],NDQ1),
-  append(NDQ1,[[maxCardinality(N,S,C),Ind]],NDQ),!.
+  append(NDQ1,[[maxCardinality(N,S,C),Ind]],NDQ).
 
 update_expansion_queue(_,maxCardinality(N,S),Ind,[Curr,DQ,NDQ0],[Curr,DQ,NDQ]):-!,
   delete(NDQ0,[maxCardinality(N,S),Ind],NDQ1),
-  append(NDQ1,[[maxCardinality(N,S),Ind]],NDQ),!.
+  append(NDQ1,[[maxCardinality(N,S),Ind]],NDQ).
 
 update_expansion_queue(_,exactCardinality(N,S,C),Ind,[Curr,DQ,NDQ0],[Curr,DQ,NDQ]):-!,
   delete(NDQ0,[exactCardinality(N,S,C),Ind],NDQ1),
-  append(NDQ1,[[exactCardinality(N,S,C),Ind]],NDQ),!.
+  append(NDQ1,[[exactCardinality(N,S,C),Ind]],NDQ).
 
 update_expansion_queue(_,exactCardinality(N,S),Ind,[Curr,DQ,NDQ0],[Curr,DQ,NDQ]):-!,
   delete(NDQ0,[exactCardinality(N,S),Ind],NDQ1),
-  append(NDQ1,[[exactCardinality(N,S),Ind]],NDQ),!.
+  append(NDQ1,[[exactCardinality(N,S),Ind]],NDQ).
 
 update_expansion_queue(_,C,Ind,[Curr,DQ0,NDQ],[Curr,DQ,NDQ]):-!,
   delete(DQ0,[C,Ind],DQ1),
-  append(DQ1,[[C,Ind]],DQ),!.
+  append(DQ1,[[C,Ind]],DQ).
 
 update_expansion_queue(_,P,Ind1,Ind2,[Curr,DQ0,NDQ],[Curr,DQ,NDQ]):-!,
   delete(DQ0,[P,Ind1,Ind2],DQ1),
-  append(DQ1,[[P,Ind1,Ind2]],DQ),!.
+  append(DQ1,[[P,Ind1,Ind2]],DQ).
 
 
 init_expansion_queue(LCA,LPA,EQ):-
   empty_expansion_queue(EmptyEQ),
   add_classes_expqueue(LCA,EmptyEQ,EQ0),
-  add_prop_expqueue(LPA,EQ0,EQ),!.
+  add_prop_expqueue(LPA,EQ0,EQ).
 
-add_classes_expqueue([],EQ,EQ):-!.
+add_classes_expqueue([],EQ,EQ).
 
 add_classes_expqueue([(classAssertion(C,I),_)|T],EQ0,EQ):-
   update_expansion_queue(_,C,I,EQ0,EQ1),
-  add_classes_expqueue(T,EQ1,EQ),!.
+  add_classes_expqueue(T,EQ1,EQ).
 
-add_prop_expqueue([],EQ,EQ):-!.
+add_prop_expqueue([],EQ,EQ).
 
 add_prop_expqueue([(propertyAssertion(P,S,O),_)|T],EQ0,EQ):-
   update_expansion_queue(_,P,S,O,EQ0,EQ1),
-  add_prop_expqueue(T,EQ1,EQ),!.
+  add_prop_expqueue(T,EQ1,EQ).
 
 
 
@@ -3406,7 +3355,7 @@ add_prop_expqueue([(propertyAssertion(P,S,O),_)|T],EQ0,EQ):-
 */
 new_tabs(([],ItR,RtI)):-
   rb_new(ItR),
-  rb_new(RtI),!.
+  rb_new(RtI).
 
 /*
   adds nodes and edges to tabs given axioms
@@ -3414,22 +3363,22 @@ new_tabs(([],ItR,RtI)):-
 create_tabs(L,Tableau0,Tableau):-
   get_tabs(Tableau0,Tabs0),
   create_tabs_int(L,Tabs0,Tabs),
-  set_tabs(Tableau0,Tabs,Tableau),!.
+  set_tabs(Tableau0,Tabs,Tableau).
 
 
-create_tabs_int([],G,G):-!.
+create_tabs_int([],G,G).
   
 create_tabs_int([(propertyAssertion(P,S,O),_Expl)|T],Tabl0,Tabl):-
   add_edge_int(P,S,O,Tabl0,Tabl1),
-  create_tabs_int(T,Tabl1,Tabl),!.
+  create_tabs_int(T,Tabl1,Tabl).
   
 create_tabs_int([(differentIndividuals(Ld),_Expl)|Tail],(T0,RBN,RBR),Tabs):-
   add_vertices(T0,Ld,T1),
-  create_tabs_int(Tail,(T1,RBN,RBR),Tabs),!.
+  create_tabs_int(Tail,(T1,RBN,RBR),Tabs).
 
 create_tabs_int([(classAssertion(_,I),_Expl)|Tail],(T0,RBN,RBR),Tabs):-
   add_vertices(T0,[I],T1),
-  create_tabs_int(Tail,(T1,RBN,RBR),Tabs),!.
+  create_tabs_int(Tail,(T1,RBN,RBR),Tabs).
 
 
 /*
@@ -3440,17 +3389,17 @@ create_tabs_int([(classAssertion(_,I),_Expl)|Tail],(T0,RBN,RBR),Tabs):-
 add_edge(P,S,O,Tableau0,Tableau):-
   get_tabs(Tableau0,Tabs0),
   add_edge_int(P,S,O,Tabs0,Tabs),
-  set_tabs(Tableau0,Tabs,Tableau),!.
+  set_tabs(Tableau0,Tabs,Tableau).
 
 add_edge_int(P,S,O,(T0,ItR0,RtI0),(T1,ItR1,RtI1)):-
   add_node_to_tree(P,S,O,ItR0,ItR1),
   add_role_to_tree(P,S,O,RtI0,RtI1),
-  add_edge_to_tabl(P,S,O,T0,T1),!.
+  add_edge_to_tabl(P,S,O,T0,T1).
 
 add_node_to_tree(P,S,O,RB0,RB1):-
   rb_lookup((S,O),V,RB0),
   \+ member(P,V),!,
-  rb_update(RB0,(S,O),[P|V],RB1),!.
+  rb_update(RB0,(S,O),[P|V],RB1).
 
 add_node_to_tree(P,S,O,RB0,RB0):-
   rb_lookup((S,O),V,RB0),
@@ -3458,12 +3407,12 @@ add_node_to_tree(P,S,O,RB0,RB0):-
 
 add_node_to_tree(P,S,O,RB0,RB1):-
   \+ rb_lookup([S,O],_,RB0),!,
-  rb_insert(RB0,(S,O),[P],RB1),!.
+  rb_insert(RB0,(S,O),[P],RB1).
 
 add_role_to_tree(P,S,O,RB0,RB1):-
   rb_lookup(P,V,RB0),
   \+ member((S,O),V),!,
-  rb_update(RB0,P,[(S,O)|V],RB1),!.
+  rb_update(RB0,P,[(S,O)|V],RB1).
 
 add_role_to_tree(P,S,O,RB0,RB0):-
   rb_lookup(P,V,RB0),
@@ -3471,13 +3420,13 @@ add_role_to_tree(P,S,O,RB0,RB0):-
 
 add_role_to_tree(P,S,O,RB0,RB1):-
   \+ rb_lookup(P,_,RB0),!,
-  rb_insert(RB0,P,[(S,O)],RB1),!.
+  rb_insert(RB0,P,[(S,O)],RB1).
 
 add_edge_to_tabl(_R,Ind1,Ind2,T0,T0):-
   graph_edge(Ind1,Ind2,T0),!.
 
 add_edge_to_tabl(_R,Ind1,Ind2,T0,T1):-
-  add_edges(T0,[Ind1-Ind2],T1),!.
+  add_edges(T0,[Ind1-Ind2],T1).
 
 
 
@@ -3501,11 +3450,11 @@ graph_edge(Ind1,Ind2,T0):-
 % key (Subject,Object) exists
 remove_all_nodes_from_tree(_P,S,O,RB0,RB1):-
   rb_lookup((S,O),_,RB0),
-  rb_delete(RB0,(S,O),RB1),!.
+  rb_delete(RB0,(S,O),RB1).
 
 % key (Subject,Object) does not exist
 remove_all_nodes_from_tree(_P,S,O,RB0,_RB1):-
-  \+ rb_lookup((S,O),_,RB0),!.
+  \+ rb_lookup((S,O),_,RB0).
 % ----------------
 
 % remove_role_from_tree(Property,Subject,Object,RBR0,RBR)
@@ -3513,7 +3462,7 @@ remove_all_nodes_from_tree(_P,S,O,RB0,_RB1):-
 % pair (Subject,Object) does not exist for key Property
 remove_role_from_tree(P,S,O,RB,RB):-
   rb_lookup(P,V,RB),
-  \+ member((S,O),V),!.
+  \+ member((S,O),V).
 
 % pair (Subject,Object) exists for key Property but it is not the only pair associated to it
 remove_role_from_tree(P,S,O,RB0,RB1):-
@@ -3521,7 +3470,7 @@ remove_role_from_tree(P,S,O,RB0,RB1):-
   member((S,O),V),
   delete(V,(S,O),V1),
   dif(V1,[]),
-  rb_update(RB0,P,V1,RB1),!.
+  rb_update(RB0,P,V1,RB1).
 
 % pair (Subject,Object) exists for key Property and it is the only pair associated to it
 remove_role_from_tree(P,S,O,RB0,RB1):-
@@ -3529,23 +3478,23 @@ remove_role_from_tree(P,S,O,RB0,RB1):-
   member((S,O),V),
   delete(V,(S,O),V1),
   V1==[],
-  rb_delete(RB0,P,RB1),!.
+  rb_delete(RB0,P,RB1).
 % ----------------
 
 % remove_edge_from_table(Property,Subject,Object,Tab0,Tab)
 % removes from T the edge from Subject to Object
 remove_edge_from_table(_P,S,O,T,T):-
-  \+ graph_edge(S,O,T),!.
+  \+ graph_edge(S,O,T).
 
 remove_edge_from_table(_P,S,O,T0,T1):-
   graph_edge(S,O,T0),
-  del_edges(T0,[S-O],T1),!.
+  del_edges(T0,[S-O],T1).
 % ----------------
 
 % remove_node_from_table(Subject,Tab0,Tab)
 % removes from T the node corresponding to Subject
 remove_node_from_table(S,T0,T1):-
-  del_vertices(T0,[S],T1),!.
+  del_vertices(T0,[S],T1).
 
 
 
@@ -3602,7 +3551,7 @@ merge(M,X,Y,Expl,Tableau0,Tableau):-
   set_clashes(Tableau2,Clashes,Tableau3),
   get_expansion_queue(Tableau3,ExpQ0),
   update_expansion_queue_after_merge(L,SI,ExpQ0,ExpQ),
-  set_expansion_queue(Tableau3,ExpQ,Tableau),!.
+  set_expansion_queue(Tableau3,ExpQ,Tableau).
 
 
 /*
@@ -3622,7 +3571,7 @@ merge_tabs(X,Y,(T0,RBN0,RBR0),(T,RBN,RBR)):-
   set_successor(SI,X,LSX,(T1,RBN1,RBR1),(T2,RBN2,RBR2)),!,
   set_predecessor(SI,Y,LPY,(T2,RBN2,RBR2),(T3,RBN3,RBR3)),!,
   set_successor(SI,Y,LSY,(T3,RBN3,RBR3),(T4,RBN4,RBR4)),!,
-  remove_nodes(X,Y,(T4,RBN4,RBR4),(T,RBN,RBR)),!.
+  remove_nodes(X,Y,(T4,RBN4,RBR4),(T,RBN,RBR)).
 
 remove_nodes(X,Y,Tabs0,Tabs):-
   remove_node(X,Tabs0,Tabs1),
@@ -3693,35 +3642,35 @@ set_successor1(NN,H,[R|L],(T0,RBN0,RBR0),(T,RBN,RBR)):-
 */
 
 % TODO update
-merge_abox(_M,_L,_,_,[],[],[]):-!.
+merge_abox(_M,_L,_,_,[],[],[]).
 
 merge_abox(M,L,SI,Expl0,[(classAssertion(C,Ind),ExplT)|T],[(classAssertion(C,SI),Expl)|ABox],[C-SI|CTC]):-
   member(Ind,L),!,
   and_f(M,Expl0,ExplT,Expl),
   %and_f_ax(M,sameIndividual(L),Expl1,Expl),
-  merge_abox(M,L,SI,Expl0,T,ABox,CTC),!.
+  merge_abox(M,L,SI,Expl0,T,ABox,CTC).
 
 merge_abox(M,L,SI,Expl0,[(propertyAssertion(P,Ind1,Ind2),ExplT)|T],[(propertyAssertion(P,SI,Ind2),Expl)|ABox],CTC):-
   member(Ind1,L),!,
   and_f(M,Expl0,ExplT,Expl),
   %and_f_ax(M,sameIndividual(L),Expl1,Expl),
-  merge_abox(M,L,SI,Expl0,T,ABox,CTC),!.
+  merge_abox(M,L,SI,Expl0,T,ABox,CTC).
 
 merge_abox(M,L,SI,Expl0,[(propertyAssertion(P,Ind1,Ind2),ExplT)|T],[(propertyAssertion(P,Ind1,SI),Expl)|ABox],CTC):-
   member(Ind2,L),!,
   and_f(M,Expl0,ExplT,Expl),
   %and_f_ax(M,sameIndividual(L),Expl1,Expl),
-  merge_abox(M,L,SI,Expl0,T,ABox,CTC),!.
+  merge_abox(M,L,SI,Expl0,T,ABox,CTC).
 
 merge_abox(M,L,SI,Expl0,[H|T],[H|ABox],CTC):-
-  merge_abox(M,L,SI,Expl0,T,ABox,CTC),!.
+  merge_abox(M,L,SI,Expl0,T,ABox,CTC).
 
 
 /*
   check for new clashes due to merge
  */
 
-check_merged_classes(_,[],_,[]):-!.
+check_merged_classes(_,[],_,[]).
 
 check_merged_classes(M,[ToCheck|TC],Tab,[ToCheck|NewClashes]):-
   check_clash(M,ToCheck,Tab),!,
@@ -3744,7 +3693,7 @@ update_clashes_after_merge(M,_,SI,Tableau,[],[SI],0):-
   check_clash(M,SI,Tableau),!.
 
 % (*)
-update_clashes_after_merge(_,_,_,_,[],[],_):-!.
+update_clashes_after_merge(_,_,_,_,[],[],_).
 
 update_clashes_after_merge(M,L,SI,Tableau,[sameIndividual(LC)|TC0],[SI|TC],0):-
   memberchk(I,L),
@@ -3773,7 +3722,7 @@ update_clashes_after_merge(M,L,SI,Tableau,[Clash|TC0],[Clash|TC],UpdatedSI):-
 update_expansion_queue_after_merge(L,SI,[Curr0,ExpQD0,ExpQND0],[Curr,ExpQD,ExpQND]):-
   update_expansion_queue_after_merge_int(L,SI,Curr0,Curr),
   update_expansion_queue_after_merge_int(L,SI,ExpQD0,ExpQD),
-  update_expansion_queue_after_merge_int(L,SI,ExpQND0,ExpQND),!.
+  update_expansion_queue_after_merge_int(L,SI,ExpQND0,ExpQND).
 
 update_expansion_queue_after_merge_int(_,_,[],[]).
 
