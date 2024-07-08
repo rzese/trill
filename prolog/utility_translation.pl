@@ -3522,10 +3522,9 @@ fix_duplicated_wrongly_classified_properties([_H|T],DP,KBA0,KBA):-
 :- multifile trill:add_axiom/1.
 trill:add_axiom(M:Ax):-
   assert(M:addKBName),
-  init_kb_atom(M),
+  %init_kb_atom(M),
   create_and_assert_axioms(M,Ax),
-  retractall(M:addKBName),
-  utility_kb:update_kb(M,add,Ax).
+  retractall(M:addKBName).
 
 :- multifile trill:add_axioms/1.
 trill:add_axioms(_:[]).
