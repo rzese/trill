@@ -270,7 +270,7 @@ execute_query(M,QueryType,QueryArgsNC,Expl,QueryOptions):-
 % Execution monitor
 find_explanations(M,QueryType,QueryArgs,Expl,QueryOptions):-
   % TODO call_with_time_limit
-  ( query_option(QueryOptions,assert_abox,AssertABox) -> Opt=[assert_abox(AssertABox)] ; Opt=[]),
+  Opt=[],% ( query_option(QueryOptions,assert_abox,AssertABox) -> Opt=[assert_abox(AssertABox)] ; Opt=[]),
   ( query_option(QueryOptions,max_expl,N) -> 
     MonitorNExpl = N
     ; 
@@ -301,8 +301,8 @@ find_single_explanation(M,QueryType,QueryArgs,Expl,Opt):-
       set_up_tableau(M),
       %findall(Expl,expand_queue(M,Tableau0,Tableau1,Expl),L),
       set_next_from_expansion_queue(Tableau0,_EA,Tableau1),
-      get_explanation(M,Tableau1,Expl),
-      (query_option(Opt,assert_abox,true) -> (writeln('Asserting ABox...'), M:assert(final_abox(L)), writeln('Done. Asserted in final_abox/1...')) ; true)%,
+      get_explanation(M,Tableau1,Expl)
+      % (query_option(Opt,assert_abox,true) -> (writeln('Asserting ABox...'), M:assert(final_abox(L)), writeln('Done. Asserted in final_abox/1...')) ; true)%,
       %find_expls(M,L,QueryArgs,Expl1),
       %check_and_close(M,Expl1,Expl)
     )
