@@ -22,6 +22,7 @@ details.
                  property_value/3, property_value/4, prob_property_value/4, property_value/5, all_property_value/4,
                  unsat/1, unsat/2, prob_unsat/2, unsat/3, all_unsat/2,
                  inconsistent_theory/0, inconsistent_theory/1, prob_inconsistent_theory/1, inconsistent_theory/2, all_inconsistent_theory/1,
+                 resume_query/1,
                  axiom/1, kb_prefixes/1, add_kb_prefix/2, add_kb_prefixes/1, add_axiom/1, add_axioms/1, remove_kb_prefix/2, remove_kb_prefix/1, remove_axiom/1, remove_axioms/1,
                  load_kb/1, load_owl_kb/1, load_owl_kb_from_string/1, init_trill/1,
                  set_tableau_expansion_rules/2] ).
@@ -50,6 +51,7 @@ details.
 :- meta_predicate inconsistent_theory(:,+).
 :- meta_predicate all_inconsistent_theory(:).
 :- meta_predicate prob_inconsistent_theory(:).
+:- meta_predicate resume_query(:).
 :- meta_predicate axiom(:).
 :- meta_predicate kb_prefixes(:).
 :- meta_predicate add_kb_prefix(:,+).
@@ -293,15 +295,34 @@ find_n_explanations_time_limit(M,QueryType,QueryArgs,Expl,MonitorNExpl,MonitorTi
 
 
 
-find_single_explanation(M,QueryType,QueryArgs,Expl,Opt):-
+find_single_explanation(M,QueryType,QueryArgs,Expl,_Opt):-
   build_abox(M,Tableau,QueryType,QueryArgs), % will expand the KB without the query
   (absence_of_clashes(Tableau) ->  % TODO if QueryType is inconsistent no check
     (
       add_q(M,QueryType,Tableau,QueryArgs,Tableau0),
+      retractall(M:query_to_resume(_,_)),
+      assert(M:query_to_resume(QueryType,QueryArgs)),
       set_up_tableau(M),
       %findall(Expl,expand_queue(M,Tableau0,Tableau1,Expl),L),
       set_next_from_expansion_queue(Tableau0,_EA,Tableau1),
       get_explanation(M,Tableau1,Expl)
+      % (query_option(Opt,assert_abox,true) -> (writeln('Asserting ABox...'), M:assert(final_abox(L)), writeln('Done. Asserted in final_abox/1...')) ; true)%,
+      %find_expls(M,L,QueryArgs,Expl1),
+      %check_and_close(M,Expl1,Expl)
+    )
+  ;
+    print_message(warning,inconsistent),!,false
+  ).
+
+
+resume_query(M:Expl):-
+  M:tab_end(Tab),
+  (absence_of_clashes(Tab) ->  % TODO if QueryType is inconsistent no check
+    (
+      set_up_tableau(M),
+      %findall(Expl,expand_queue(M,Tableau0,Tableau1,Expl),L),
+      check_and_set_next_from_expansion_queue(Tab,_EA,Tab1),
+      get_explanation(M,Tab1,Expl)
       % (query_option(Opt,assert_abox,true) -> (writeln('Asserting ABox...'), M:assert(final_abox(L)), writeln('Done. Asserted in final_abox/1...')) ; true)%,
       %find_expls(M,L,QueryArgs,Expl1),
       %check_and_close(M,Expl1,Expl)
@@ -1236,7 +1257,7 @@ get_explanation(M,Tab,Expl):-
 
 get_explanation(M,_,Expl):-
   findall(Tab,M:tab_end(Tab),L),
-  retractall(M:tab_end(_)),
+  %retractall(M:tab_end(_)),
   find_expls_from_tab_list(M,L,Expl).
 
 get_explanation_int(M,Tab,_):-
@@ -1257,12 +1278,14 @@ apply_all_rules(M,Tab0,EA,Tab,Expl):-
   M:setting_trill(det_rules,Rules),
   apply_det_rules(M,Rules,Tab0,EA,Tab1),
   pop_clashes(Tab1,Clash,Tab2),
+  assert(M:tab_end(Tab2)),
   continue(M,Rules,Tab0,EA,Tab2,Clash,Tab,Expl).
 
 continue(M,_Rules,_Tab0,_EA,Tab,Clash,Tab,Expl):-
   find_expls(M,Clash,Tab,Expl).
 
 continue(M,_Rules,Tab0,EA,Tab1,_Clash,Tab,Expl):-
+  retract(M:tab_end(Tab1)),
   ( test_end_apply_rule(M,Tab0,Tab1) ->
       ( set_next_from_expansion_queue(Tab0,_EA1,Tab), 
         Expl=[]
@@ -2449,12 +2472,6 @@ writeABox(Tab):-
   ===============
 */
 
-%---------------
-subProp(M,SubProperty,Property,Subject,Object):-
-  M:subPropertyOf(SubProperty,Property),M:propertyAssertion(SubProperty,Subject,Object).
-
-%--------------
-
 add_owlThing_ind(M,Tab0,Ind,Tab):-
   prepare_nom_list(M,[Ind],NomListOut),
   add_all_to_tableau(M,NomListOut,Tab0,Tab).
@@ -3077,6 +3094,12 @@ extract_from_expansion_queue_int([_,[EA|T],NonDetQ],EA,[[EA],T,NonDetQ]).
 
 extract_from_expansion_queue_int([_,[],[]],[],[[],[],[]]).
 
+check_and_set_next_from_expansion_queue(Tab,EA,Tab):-
+  get_expansion_queue(Tab,[[EA],_,_]),!.
+
+check_and_set_next_from_expansion_queue(Tab0,EA,Tab):-
+  set_next_from_expansion_queue(Tab0,EA,Tab).
+
 expansion_queue_is_empty(Tab):-
   get_expansion_queue(Tab,EQ),
   empty_expansion_queue(EQ).
@@ -3230,37 +3253,47 @@ remove_from_abox(Clashes0,El,Clashes):-
 add_all_to_tableau(M,L,Tableau0,Tableau):-
   get_abox(Tableau0,ABox0),
   get_clashes(Tableau0,Clashes0),
-  add_all_to_abox_and_clashes(M,L,Tableau0,ABox0,ABox,Clashes0,Clashes),
+  get_tabs(Tableau0,Tabs0),
+  add_all_to_abox_and_clashes(M,L,Tableau0,ABox0,ABox,Clashes0,Clashes,Tabs0,Tabs),
   set_abox(Tableau0,ABox,Tableau1),
-  set_clashes(Tableau1,Clashes,Tableau).
+  set_clashes(Tableau1,Clashes,Tableau2),
+  set_tabs(Tableau2,Tabs,Tableau).
 
-add_all_to_abox_and_clashes(_,[],_,A,A,C,C).
+add_all_to_abox_and_clashes(_,[],_,A,A,C,C,T,T).
 
-add_all_to_abox_and_clashes(M,[(classAssertion(Class,I),Expl)|T],Tab0,A0,A,C0,C):-
-  check_clash(M,Class-I,Tab0),!,
+add_all_to_abox_and_clashes(M,[(classAssertion(Class,I),Expl)|Tail],Tableau0,A0,A,C0,C,(T0,RBN,RBR),T):-
+  check_clash(M,Class-I,Tableau0),!,
   add_to_abox(A0,(classAssertion(Class,I),Expl),A1),
   add_to_clashes(C0,Class-I,C1),
-  set_abox(Tab0,A1,Tab),
-  add_all_to_abox_and_clashes(M,T,Tab,A1,A,C1,C).
+  add_vertices(T0,[I],T1),
+  set_abox(Tableau0,A1,Tableau),
+  add_all_to_abox_and_clashes(M,Tail,Tableau,A1,A,C1,C,(T1,RBN,RBR),T).
 
-add_all_to_abox_and_clashes(M,[(sameIndividual(LI),Expl)|T],Tab0,A0,A,C0,C):-
-  check_clash(M,sameIndividual(LI),Tab0),!,
+add_all_to_abox_and_clashes(M,[(sameIndividual(LI),Expl)|Tail],Tableau0,A0,A,C0,C,T0,T):-
+  check_clash(M,sameIndividual(LI),Tableau0),!,
   add_to_abox(A0,(sameIndividual(LI),Expl),A1),
   add_to_clashes(C0,sameIndividual(LI),C1),
-  set_abox(Tab0,A1,Tab),
-  add_all_to_abox_and_clashes(M,T,Tab,A1,A,C1,C).
+  set_abox(Tableau0,A1,Tableau),
+  add_all_to_abox_and_clashes(M,Tail,Tableau,A1,A,C1,C,T0,T).
 
-add_all_to_abox_and_clashes(M,[(differentIndividuals(LI),Expl)|T],Tab0,A0,A,C0,C):-
-  check_clash(M,differentIndividuals(LI),Tab0),!,
+add_all_to_abox_and_clashes(M,[(differentIndividuals(LI),Expl)|Tail],Tableau0,A0,A,C0,C,(T0,RBN,RBR),T):-
+  check_clash(M,differentIndividuals(LI),Tableau0),!,
   add_to_abox(A0,(differentIndividuals(LI),Expl),A1),
   add_to_clashes(C0,differentIndividuals(LI),C1),
-  set_abox(Tab0,A1,Tab),
-  add_all_to_abox_and_clashes(M,T,Tab,A1,A,C1,C).
+  add_vertices(T0,LI,T1),
+  set_abox(Tableau0,A1,Tableau),
+  add_all_to_abox_and_clashes(M,Tail,Tableau,A1,A,C1,C,(T1,RBN,RBR),T).
 
-add_all_to_abox_and_clashes(M,[H|T],Tab0,A0,A,C0,C):-
+add_all_to_abox_and_clashes(M,[(propertyAssertion(P,S,O),Expl)|Tail],Tableau0,A0,A,C0,C,T0,T):-!,
+  add_to_abox(A0,(propertyAssertion(P,S,O),Expl),A1),
+  add_edge_int(P,S,O,T0,T1),
+  set_abox(Tableau0,A1,Tableau),
+  add_all_to_abox_and_clashes(M,Tail,Tableau,A1,A,C0,C,T1,T).
+
+add_all_to_abox_and_clashes(M,[H|Tail],Tableau0,A0,A,C0,C,T0,T):-
   add_to_abox(A0,H,A1),
-  set_abox(Tab0,A1,Tab),
-  add_all_to_abox_and_clashes(M,T,Tab,A1,A,C0,C).
+  set_abox(Tableau0,A1,Tableau),
+  add_all_to_abox_and_clashes(M,Tail,Tableau,A1,A,C0,C,T0,T).
 
 add_all_to_abox([],A,A).
 
@@ -3292,6 +3325,9 @@ update_expansion_queue_in_tableau(M,P,Ind1,Ind2,Tab0,Tab):-
   set_expansion_queue(Tab0,ExpansionQueue,Tab).
 
 
+update_expansion_queue(_,Class,Ind,[[[Class,Ind]],DQ,NDQ0],[[[Class,Ind]],DQ,NDQ0]):-!.
+
+update_expansion_queue(_,P,Ind1,Ind2,[[[P,Ind1,Ind2]],DQ0,NDQ],[[[P,Ind1,Ind2]],DQ0,NDQ]):-!.
 
 update_expansion_queue(_,unionOf(L),Ind,[Curr,DQ,NDQ0],[Curr,DQ,NDQ]):-!,
   delete(NDQ0,[unionOf(L),Ind],NDQ1),
@@ -3741,6 +3777,169 @@ substitute_individual(L,sameIndividual(LSI),SI,SI):-
 
 substitute_individual(_,I,_,I):-!.
 
+% ====================================================
+% NEW STUFF
+% ====================================================
+
+update_tabs(M,Axiom) :-
+  functor(Axiom,Pred,Arity),
+  member(Pred/Arity,[subClassOf/2, equivalentClasses/1, disjointClasses/1, disjointUnion/2,
+    subPropertyOf/2, equivalentProperties/1, disjointProperties/1, inverseProperties/2, propertyDomain/2, propertyRange/2,
+    symmetricProperty/1, transitiveProperty/1, sameIndividual/1, differentIndividuals/1, classAssertion/2, propertyAssertion/3]),
+  !,
+  findall(Tab,M:tab_end(Tab),TabsL),
+  retractall(M:tab_end(_)),
+  update_tabs_int(M,Axiom,TabsL).
+
+update_tabs(_M,_Axiom) :- !.
+
+update_tabs_int(_M,_Axiom,[]) :- !.
+
+update_tabs_int(M,subClassOf(C1,_),[Tab|TabsL]):-
+  get_abox(Tab,ABox),
+  findall((classAssertion(C1,I),_),findClassAssertion(C1,I,_,ABox),LCA),
+  get_expansion_queue(Tab,EQ0),
+  add_classes_expqueue(LCA,EQ0,EQ),
+  set_expansion_queue(Tab,EQ,NewTab),
+  assert(M:tab_end(NewTab)),
+  update_tabs_int(M,subClassOf(C1,_),TabsL).
+
+  
+update_tabs_int(M,equivalentClasses([CL]),[Tab|TabsL]):-
+  get_abox(Tab,ABox),
+  findall((classAssertion(C1,I),_),(member(C1,CL),findClassAssertion(C1,I,_,ABox)),LCA), % maybe it is sufficient to find one
+  get_expansion_queue(Tab,EQ0),
+  add_classes_expqueue(LCA,EQ0,EQ),
+  set_expansion_queue(Tab,EQ,NewTab),
+  assert(M:tab_end(NewTab)),
+  update_tabs_int(M,equivalentClasses([CL]),TabsL).
+
+update_tabs_int(M,disjointClasses([CL]),[Tab|TabsL]):-
+  get_abox(Tab,ABox),
+  findall((classAssertion(C1,I),_),(member(C1,CL),findClassAssertion(C1,I,_,ABox)),LCA), % maybe it is sufficient to find one
+  get_expansion_queue(Tab,EQ0),
+  add_classes_expqueue(LCA,EQ0,EQ),
+  set_expansion_queue(Tab,EQ,NewTab),
+  assert(M:tab_end(NewTab)),
+  update_tabs_int(M,disjointClasses([CL]),TabsL).
+
+update_tabs_int(M,disjointUnion(C,[CL]),[Tab|TabsL]):-
+  get_abox(Tab,ABox),
+  findall((classAssertion(C1,I),_),(member(C1,[C|CL]),findClassAssertion(C1,I,_,ABox)),LCA), % maybe it is sufficient to find one
+  get_expansion_queue(Tab,EQ0),
+  add_classes_expqueue(LCA,EQ0,EQ),
+  set_expansion_queue(Tab,EQ,NewTab),
+  assert(M:tab_end(NewTab)),
+  update_tabs_int(M,disjointUnion(C,[CL]),TabsL).
+
+update_tabs_int(M,subPropertyOf(P,_),[Tab|TabsL]):-
+  get_abox(Tab,ABox),
+  findall((propertyAssertion(P,S,O),_),findPropertyAssertion(P,S,O,_,ABox),LPA),
+  get_expansion_queue(Tab,EQ0),
+  add_prop_expqueue(LPA,EQ0,EQ1),
+  findall((classAssertion(C1,I),_),(member(C1,[allValuesFrom(P,_), someValuesFrom(P,_),exactCardinality(_,P,_),minCardinality(_,P,_),maxCardinality(_,P,_),exactCardinality(P,_),minCardinality(P,_),maxCardinality(P,_)]),findClassAssertion(C1,I,_,ABox)),LCA),
+  add_classes_expqueue(LCA,EQ1,EQ),
+  set_expansion_queue(Tab,EQ,NewTab),
+  assert(M:tab_end(NewTab)),
+  update_tabs_int(M,subPropertyOf(P,_),TabsL).
+
+update_tabs_int(M,equivalentProperties(LP),[Tab|TabsL]):-
+  get_abox(Tab,ABox),
+  findall((propertyAssertion(P,S,O),_),(member(P,LP),findPropertyAssertion(P,S,O,_,ABox)),LPA),
+  get_expansion_queue(Tab,EQ0),
+  add_prop_expqueue(LPA,EQ0,EQ1),
+  findall((classAssertion(C1,I),_),(member(P,LP),member(C1,[allValuesFrom(P,_), someValuesFrom(P,_),exactCardinality(_,P,_),minCardinality(_,P,_),maxCardinality(_,P,_),exactCardinality(P,_),minCardinality(P,_),maxCardinality(P,_)]),findClassAssertion(C1,I,_,ABox)),LCA),
+  add_classes_expqueue(LCA,EQ1,EQ),
+  set_expansion_queue(Tab,EQ,NewTab),
+  assert(M:tab_end(NewTab)),
+  update_tabs_int(M,equivalentProperties(LP),TabsL).
+
+update_tabs_int(M,disjointProperties(LP),[Tab|TabsL]):-
+  get_abox(Tab,ABox),
+  findall((propertyAssertion(P,S,O),_),(member(P,LP),findPropertyAssertion(P,S,O,_,ABox)),LPA),
+  get_expansion_queue(Tab,EQ0),
+  add_prop_expqueue(LPA,EQ0,EQ1),
+  findall((classAssertion(C1,I),_),(member(P,LP),member(C1,[allValuesFrom(P,_), someValuesFrom(P,_),exactCardinality(_,P,_),minCardinality(_,P,_),maxCardinality(_,P,_),exactCardinality(P,_),minCardinality(P,_),maxCardinality(P,_)]),findClassAssertion(C1,I,_,ABox)),LCA),
+  add_classes_expqueue(LCA,EQ1,EQ),
+  set_expansion_queue(Tab,EQ,NewTab),
+  assert(M:tab_end(NewTab)),
+  update_tabs_int(M,disjointProperties(LP),TabsL).
+    
+update_tabs_int(M,inverseProperties(P1,P2),[Tab|TabsL]):-
+  get_abox(Tab,ABox),
+  findall((propertyAssertion(P,S,O),_),(member(P,[P1,P2]),findPropertyAssertion(P,S,O,_,ABox)),LPA),
+  get_expansion_queue(Tab,EQ0),
+  add_prop_expqueue(LPA,EQ0,EQ1),
+  findall((classAssertion(C1,I),_),(member(P,[P1,P2]),member(C1,[allValuesFrom(P,_), someValuesFrom(P,_),exactCardinality(_,P,_),minCardinality(_,P,_),maxCardinality(_,P,_),exactCardinality(P,_),minCardinality(P,_),maxCardinality(P,_)]),findClassAssertion(C1,I,_,ABox)),LCA),
+  add_classes_expqueue(LCA,EQ1,EQ),
+  set_expansion_queue(Tab,EQ,NewTab),
+  assert(M:tab_end(NewTab)),
+  update_tabs_int(M,inverseProperties(P1,P2),TabsL).
+
+update_tabs_int(M,propertyDomain(P,_), [Tab|TabsL]):-
+  get_abox(Tab,ABox),
+  findall((propertyAssertion(P,S,O),_),findPropertyAssertion(P,S,O,_,ABox),LPA),
+  get_expansion_queue(Tab,EQ0),
+  add_prop_expqueue(LPA,EQ0,EQ),
+  set_expansion_queue(Tab,EQ,NewTab),
+  assert(M:tab_end(NewTab)),
+  update_tabs_int(M,propertyDomain(P,_),TabsL).
+
+update_tabs_int(M,propertyRange(P,_), [Tab|TabsL]):-
+  get_abox(Tab,ABox),
+  findall((propertyAssertion(P,S,O),_),findPropertyAssertion(P,S,O,_,ABox),LPA),
+  get_expansion_queue(Tab,EQ0),
+  add_prop_expqueue(LPA,EQ0,EQ),
+  set_expansion_queue(Tab,EQ,NewTab),
+  assert(M:tab_end(NewTab)),
+  update_tabs_int(M,propertyRange(P,_),TabsL).
+
+update_tabs_int(M,symmetricProperty(P),[Tab|TabsL]):-
+  get_abox(Tab,ABox),
+  findall((propertyAssertion(P,S,O),_),findPropertyAssertion(P,S,O,_,ABox),LPA),
+  get_expansion_queue(Tab,EQ0),
+  add_prop_expqueue(LPA,EQ0,EQ1),
+  findall((classAssertion(C1,I),_),(member(C1,[allValuesFrom(P,_), someValuesFrom(P,_),exactCardinality(_,P,_),minCardinality(_,P,_),maxCardinality(_,P,_),exactCardinality(P,_),minCardinality(P,_),maxCardinality(P,_)]),findClassAssertion(C1,I,_,ABox)),LCA),
+  add_classes_expqueue(LCA,EQ1,EQ),
+  set_expansion_queue(Tab,EQ,NewTab),
+  assert(M:tab_end(NewTab)),
+  update_tabs_int(M,symmetricProperty(P),TabsL).
+
+update_tabs_int(M,transitiveProperty(P),[Tab|TabsL]):-
+  get_abox(Tab,ABox),
+  findall((propertyAssertion(P,S,O),_),findPropertyAssertion(P,S,O,_,ABox),LPA),
+  get_expansion_queue(Tab,EQ0),
+  add_prop_expqueue(LPA,EQ0,EQ1),
+  findall((classAssertion(C1,I),_),(member(C1,[allValuesFrom(P,_), someValuesFrom(P,_),exactCardinality(_,P,_),minCardinality(_,P,_),maxCardinality(_,P,_),exactCardinality(P,_),minCardinality(P,_),maxCardinality(P,_)]),findClassAssertion(C1,I,_,ABox)),LCA),
+  add_classes_expqueue(LCA,EQ1,EQ),
+  set_expansion_queue(Tab,EQ,NewTab),
+  assert(M:tab_end(NewTab)),
+  update_tabs_int(M,transitiveProperty(P),TabsL).
+
+update_tabs_int(M,sameIndividual(L),[Tab|TabsL]):-
+  merge_all_individuals(M,[(sameIndividual(L),[[sameIndividual(L)]-[]])],Tab,NewTab),
+  assert(M:tab_end(NewTab)),
+  update_tabs_int(M,sameIndividual(L),TabsL).
+
+update_tabs_int(M,differentIndividuals(L),[Tab|TabsL]):-
+  get_abox(Tab,ABox),
+  add_all_to_tableau(M,[(differentIndividuals(L),[[differentIndividuals(L)]-[]])],Tab,Tab1),
+  findall((classAssertion(C1,I),_),(member(I,L),member(C1,[allValuesFrom(P,_), someValuesFrom(P,_),exactCardinality(_,P,_),minCardinality(_,P,_),maxCardinality(_,P,_),exactCardinality(P,_),minCardinality(P,_),maxCardinality(P,_)]),findClassAssertion(C1,I,_,ABox)),LCA),
+  get_expansion_queue(Tab,EQ0),
+  add_classes_expqueue(LCA,EQ0,EQ),
+  set_expansion_queue(Tab1,EQ,NewTab),
+  assert(M:tab_end(NewTab)),
+  update_tabs_int(M,differentIndividuals(P),TabsL).
+
+update_tabs_int(M,classAssertion(C,I),[Tab|TabsL]):-
+  add_all_to_tableau(M,(classAssertion(C,I),[[classAssertion(C,I)]-[]]),Tab,NewTab),
+  assert(M:tab_end(NewTab)),
+  update_tabs_int(M,classAssertion(C,I),TabsL).
+
+update_tabs_int(M,propertyAssertion(P,S,O),[Tab|TabsL]):-
+  add_all_to_tableau(M,(propertyAssertion(P,S,O),[[propertyAssertion(P,S,O)]-[]]),Tab,NewTab),
+  assert(M:tab_end(NewTab)),
+  update_tabs_int(M,propertyAssertion(P,S,O),TabsL).
 
 
 % ==================================================================================================================
@@ -3797,6 +3996,7 @@ sandbox:safe_meta(trill:inconsistent_theory(_),[]).
 sandbox:safe_meta(trill:inconsistent_theory(_,_),[]).
 sandbox:safe_meta(trill:all_inconsistent_theory(_),[]).
 sandbox:safe_meta(trill:prob_inconsistent_theory(_),[]).
+sandbox:safe_meta(trill:resume_query(_),[]).
 sandbox:safe_meta(trill:axiom(_),[]).
 sandbox:safe_meta(trill:kb_prefixes(_),[]).
 sandbox:safe_meta(trill:add_kb_prefix(_,_),[]).

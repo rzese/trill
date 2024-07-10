@@ -26,7 +26,7 @@ setting_trill_default(nondet_rules,[or_rule,max_rule,ch_rule]).
 set_up(M):-
   utility_translation:set_up(M),
   init_delta(M),
-  M:(dynamic exp_found/2, setting_trill/2),
+  M:(dynamic exp_found/2, setting_trill/2, tab_end/1),
   retractall(M:setting_trill(_,_)).
   %foreach(setting_trill_default(DefaultSetting,DefaultVal),assert(M:setting_trill(DefaultSetting,DefaultVal))).
 
@@ -657,7 +657,6 @@ build_abox(M,Tableau,QueryType,QueryArgs):-
   ( dif(ConnectedInds,[]) ->
     ( findall((classAssertion(Class,Individual),[[classAssertion(Class,Individual)]-[]]),(member(Individual,ConnectedInds),M:classAssertion(Class,Individual)),LCA),
       findall((propertyAssertion(Property,Subject, Object),[[propertyAssertion(Property,Subject, Object)]-[]]),(member(Subject,ConnectedInds),M:propertyAssertion(Property,Subject, Object),dif('http://www.w3.org/2000/01/rdf-schema#comment',Property)),LPA),
-      % findall((propertyAssertion(Property,Subject,Object),[subPropertyOf(SubProperty,Property),propertyAssertion(SubProperty,Subject,Object)]),subProp(M,SubProperty,Property,Subject,Object),LSPA),
       findall(nominal(NominalIndividual),(member(NominalIndividual,ConnectedInds),M:classAssertion(oneOf(_),NominalIndividual)),LNA),
       findall((differentIndividuals(Ld),[[differentIndividuals(Ld)]-[]]),(M:differentIndividuals(Ld),intersect(Ld,ConnectedInds)),LDIA),
       findall((sameIndividual(L),[[sameIndividual(L)]-[]]),(M:sameIndividual(L),intersect(L,ConnectedInds)),LSIA)
@@ -665,7 +664,6 @@ build_abox(M,Tableau,QueryType,QueryArgs):-
     ; % all the individuals
     ( findall((classAssertion(Class,Individual),[[classAssertion(Class,Individual)]-[]]),M:classAssertion(Class,Individual),LCA),
       findall((propertyAssertion(Property,Subject, Object),[[propertyAssertion(Property,Subject, Object)]-[]]),(M:propertyAssertion(Property,Subject, Object),dif('http://www.w3.org/2000/01/rdf-schema#comment',Property)),LPA),
-      % findall((propertyAssertion(Property,Subject,Object),[subPropertyOf(SubProperty,Property),propertyAssertion(SubProperty,Subject,Object)]),subProp(M,SubProperty,Property,Subject,Object),LSPA),
       findall(nominal(NominalIndividual),M:classAssertion(oneOf(_),NominalIndividual),LNA),
       findall((differentIndividuals(Ld),[[differentIndividuals(Ld)]-[]]),M:differentIndividuals(Ld),LDIA),
       findall((sameIndividual(L),[[sameIndividual(L)]-[]]),M:sameIndividual(L),LSIA)
@@ -675,10 +673,10 @@ build_abox(M,Tableau,QueryType,QueryArgs):-
   new_tabs(Tabs0),
   init_expansion_queue(LCA,LPA,ExpansionQueue),
   init_tableau(ABox0,Tabs0,ExpansionQueue,Tableau0),
-  append([LCA,LDIA,LPA],CreateTabsList),
-  create_tabs(CreateTabsList,Tableau0,Tableau1),
+  %append([LCA,LPA,LDIA],CreateTabsList),
+  %create_tabs(CreateTabsList,Tableau0,Tableau1),
   append([LCA,LPA,LNA,LDIA],AddAllList),
-  add_all_to_tableau(M,AddAllList,Tableau1,Tableau2),
+  add_all_to_tableau(M,AddAllList,Tableau0,Tableau2),
   merge_all_individuals(M,LSIA,Tableau2,Tableau3),
   add_owlThing_list(M,Tableau3,Tableau),
   !.

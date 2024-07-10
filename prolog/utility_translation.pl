@@ -3524,7 +3524,8 @@ trill:add_axiom(M:Ax):-
   assert(M:addKBName),
   %init_kb_atom(M),
   create_and_assert_axioms(M,Ax),
-  retractall(M:addKBName).
+  retractall(M:addKBName),
+  trill:update_tabs(M,Ax).
 
 :- multifile trill:add_axioms/1.
 trill:add_axioms(_:[]).
@@ -3539,8 +3540,7 @@ trill:remove_axiom(M:Ax):-
   ( M:ns4query(NSList) -> true; NSList = []),
   expand_axiom(M,Ax,NSList,ExpAx),
   retract_axiom(M,ExpAx),
-  retractall(M:owl(ExpAx,'ont')),!,
-  trill:reload_kb(M:false).
+  retractall(M:owl(ExpAx,'ont')),!.
 
 
 /*
