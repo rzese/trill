@@ -230,6 +230,9 @@ prolog:message(wrong_number_max_expl) -->
 prolog:message(timeout_reached) -->
   [ 'Timeout reached' ].
 
+prolog:message(unknown_query_option(Option)) -->
+  [ 'Unknown query option: ~w' -[Option] ].
+
 /*****************************
   QUERY OPTIONS
 ******************************/
@@ -246,27 +249,48 @@ prolog:message(timeout_reached) -->
  * - max_expl(Value) to limit the maximum number of explanations to find. Value must be an integer. The predicate will return a list containing at most Value different explanations
  * - time_limit(Value) to limit the time for the inference. The predicate will return the explanations found in the time allowed. Value is the number of seconds allowed for the search of explanations 
 */
+
+trill_available_option(assert_abox,in).
+trill_available_option(return_prob,out).
+trill_available_option(return_single_prob,in).
+trill_available_option(max_expl,in).
+trill_available_option(time_limit,in).
+
 query_option(OptList,Option,Value):-
   Opt=..[Option,Value],
   memberchk(Opt,OptList).
+
+
+set_query_options(_,[]):- !.
+
+set_query_options(M,[QueryOption|TailQueryOptions]) :-
+  QueryOption=..[Option,Value],
+  add_trill_query_option(M,Option,Value),
+  set_query_options(M,TailQueryOptions).
+
+add_trill_query_option(M,Option,Value) :-
+  trill_available_option(Option,in),!,
+  retractall(M:query_option(Option,_)),
+  assert(M:query_option(Option,Value)).
+
+add_trill_query_option(M,Option,_Value) :-
+  trill_available_option(Option,out),!,
+  retractall(M:query_option(Option,_)),
+  assert(M:query_option(Option,true)).
+
+add_trill_query_option(_M,Option,_Value) :-
+  print_message(warning,iri_not_exists(Option)),!.
 
 /****************************
   QUERY PREDICATES
 *****************************/
 
 execute_query(M,QueryType,QueryArgsNC,Expl,QueryOptions):-
-  check_query_args(M,QueryType,QueryArgsNC,QueryArgs,QueryArgsNotPresent),
-  ( dif(QueryArgsNotPresent,[]) ->
-    (print_message(warning,iri_not_exists(QueryArgsNotPresent)),!,false) ; true
-  ),
+  check_query_args(M,QueryType,QueryArgsNC,QueryArgs),
   set_up_reasoner(M),
+  set_query_options(M,QueryOptions),
   find_explanations(M,QueryType,QueryArgs,Expl,QueryOptions),
-  ( query_option(QueryOptions,return_prob,Prob) ->
-    (
-      compute_prob_and_close(M,Expl,Prob),
-      (query_option(QueryOptions,return_single_prob,false) -> true ; !)
-    ) ; true
-  ).
+  compute_prob_and_close(M,QueryOptions).
 
 
 % Execution monitor
@@ -836,14 +860,19 @@ query_empty_expl(M,Expl):-%gtrace,
 
 % expands query arguments using prefixes and checks their existence in the kb
 % returns the non-present arguments
-check_query_args(M,QT,QA,QAEx,NotEx):-
+check_query_args(M,QT,QA,QAEx):-
   from_query_type_to_args_type(QT,AT),
-  check_query_args_int(M,AT,QA,QAExT,NotEx),!,
+  check_query_args_1(M,AT,QA,QAExT,NotEx),!,
+  check_query_not_existent_args(QA,QAExT,NotEx,QAEx),!.
+
+check_query_not_existent_args(QA,QAExT,[],QAEx) :- !,
   ( length(QA,1) -> 
     QAEx = ['unsat'|QAExT]
     ;
     ( length(QA,0) -> QAEx = ['inconsistent','kb'] ; QAEx = QAExT)
   ).
+check_query_not_existent_args(_QA,_QAExT,NotEx,_QAEx) :-
+  print_message(warning,iri_not_exists(NotEx)),!.
 
 from_query_type_to_args_type(io,[class,ind]):- !.
 from_query_type_to_args_type(pv,[prop,ind,ind]):- !.
@@ -851,17 +880,17 @@ from_query_type_to_args_type(sc,[class,class]):- !.
 from_query_type_to_args_type(un,[class]):- !.
 from_query_type_to_args_type(it,[]):- !.
 
-check_query_args_int(_,_,[],[],[]).
+check_query_args_1(_,_,[],[],[]).
 
-check_query_args_int(M,[ATH|ATT],[H|T],[HEx|TEx],NotEx):-
-  check_query_args(M,[ATH],[H],[HEx]),!,
-  check_query_args_int(M,ATT,T,TEx,NotEx).
+check_query_args_1(M,[ATH|ATT],[H|T],[HEx|TEx],NotEx):-
+  check_query_args_2(M,[ATH],[H],[HEx]),!,
+  check_query_args_1(M,ATT,T,TEx,NotEx).
 
-check_query_args_int(M,[_|ATT],[H|T],TEx,[H|NotEx]):-
-  check_query_args_int(M,ATT,T,TEx,NotEx).
+check_query_args_1(M,[_|ATT],[H|T],TEx,[H|NotEx]):-
+  check_query_args_1(M,ATT,T,TEx,NotEx).
 
 % expands query arguments using prefixes and checks their existence in the kb
-check_query_args(M,AT,L,LEx) :-
+check_query_args_2(M,AT,L,LEx) :-
   M:ns4query(NSList),
   expand_all_ns(M,L,NSList,false,LEx), %from utility_translation module
   check_query_args_presence(M,AT,LEx).

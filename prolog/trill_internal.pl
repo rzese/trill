@@ -26,8 +26,9 @@ setting_trill_default(nondet_rules,[or_rule,max_rule,ch_rule]).
 set_up(M):-
   utility_translation:set_up(M),
   init_delta(M),
-  M:(dynamic exp_found/2, setting_trill/2, tab_end/1),
-  retractall(M:setting_trill(_,_)).
+  M:(dynamic exp_found/2, setting_trill/2, tab_end/1, query_option/2),
+  retractall(M:setting_trill(_,_)),
+  retractall(M:query_option(_,_)).
   %foreach(setting_trill_default(DefaultSetting,DefaultVal),assert(M:setting_trill(DefaultSetting,DefaultVal))).
 
 clean_up(M):-
@@ -77,8 +78,13 @@ all_inconsistent_theory_int(M:Exps):-
   findall(Expl,inconsistent_theory(M:Expl),Exps).
 
 
-compute_prob_and_close(M,Exps,Prob):-
+compute_prob_and_close(M,QueryOptions):-
+  M:query_option(return_prob,true),!,
+  query_option(QueryOptions,return_prob,Prob),
+  findall(Exp,M:exp_found(qp,Exp),Exps),
   compute_prob(M,Exps,Prob),!.
+
+compute_prob_and_close(_M,_):-!.
 
 % checks the explanation
 check_and_close(_,Expl0,Expl):-
