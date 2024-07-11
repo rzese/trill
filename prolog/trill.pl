@@ -256,7 +256,7 @@ trill_available_option(return_single_prob,in).
 trill_available_option(max_expl,in).
 trill_available_option(time_limit,in).
 
-query_option(OptList,Option,Value):-
+get_from_query_options(OptList,Option,Value):-
   Opt=..[Option,Value],
   memberchk(Opt,OptList).
 
@@ -288,34 +288,48 @@ add_trill_query_option(_M,Option,_Value) :-
 execute_query(M,QueryType,QueryArgsNC,Expl,QueryOptions):-
   check_query_args(M,QueryType,QueryArgsNC,QueryArgs),
   set_up_reasoner(M),
-  set_query_options(M,QueryOptions),
-  find_explanations(M,QueryType,QueryArgs,Expl,QueryOptions),
+  set_query_options(M,QueryOptions),!,
+  find_explanations(M,QueryType,QueryArgs,Expl),
   compute_prob_and_close(M,QueryOptions).
 
 
 % Execution monitor
-find_explanations(M,QueryType,QueryArgs,Expl,QueryOptions):-
-  % TODO call_with_time_limit
-  Opt=[],% ( query_option(QueryOptions,assert_abox,AssertABox) -> Opt=[assert_abox(AssertABox)] ; Opt=[]),
-  ( query_option(QueryOptions,max_expl,N) -> 
-    MonitorNExpl = N
-    ; 
-    ( ( query_option(QueryOptions,return_prob,_) -> MonitorNExpl=all ; MonitorNExpl=bt) ) % if return_prob is present and no max_expl force to find all the explanations
-  ),
-  ( query_option(QueryOptions,time_limit,MonitorTimeLimit) ->
-    find_n_explanations_time_limit(M,QueryType,QueryArgs,Expl,MonitorNExpl,MonitorTimeLimit,Opt)
-    ;
-    find_n_explanations(M,QueryType,QueryArgs,Expl,MonitorNExpl,Opt)
-  ).
+find_explanations(M,QueryType,QueryArgs,Expl):-
+  get_n_explanation_monitor(M,MonitorNExpl),
+  get_time_limit_monitor(M,MonitorTimeLimit),
+  find_n_explanations(M,QueryType,QueryArgs,Expl,MonitorNExpl,Opt),
+  check_time_limit_monitor(M,MonitorTimeLimit).
 
-find_n_explanations_time_limit(M,QueryType,QueryArgs,Expl,MonitorNExpl,MonitorTimeLimit,Opt):-
+
+get_n_explanation_monitor(M,MonitorNExpl):-
+  M:query_option(max_expl,MonitorNExpl),!. 
+
+get_n_explanation_monitor(M,all):-
+  M:query_option(return_prob,true),!.
+
+get_n_explanation_monitor(_M,bt):-!.
+
+
+get_time_limit_monitor(M,MonitorTimeLimit):-
+  M:query_option(time_limit,TimeLimit),!,
   retractall(M:setting_trill(timeout,_)),
   get_time(Start),
-  Timeout is Start + MonitorTimeLimit,
-  assert(M:setting_trill(timeout,Timeout)),
-  find_n_explanations(M,QueryType,QueryArgs,Expl,MonitorNExpl,Opt),
+  MonitorTimeLimit is Start + TimeLimit,
+  assert(M:setting_trill(timeout,MonitorTimeLimit)).
+
+get_time_limit_monitor(_M,inf):-!.
+
+check_time_limit_monitor(_M,inf):-!. % forse no cut.
+
+check_time_limit_monitor(M,MonitorTimeLimit):-
   get_time(End),
-  (End<Timeout -> true ; print_message(warning,timeout_reached)).
+  End < MonitorTimeLimit,!,
+  retractall(M:query_option(time_limit,_)),
+  NewTimeLimit is MonitorTimeLimit - End,
+  assert(M:query_option(time_limit,NewTimeLimit)).
+
+check_time_limit_monitor(_M,_MonitorTimeLimit):-
+  print_message(warning,timeout_reached),false.
 
 
 

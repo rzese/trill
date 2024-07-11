@@ -80,7 +80,7 @@ all_inconsistent_theory_int(M:Exps):-
 
 compute_prob_and_close(M,QueryOptions):-
   M:query_option(return_prob,true),!,
-  query_option(QueryOptions,return_prob,Prob),
+  get_from_query_options(QueryOptions,return_prob,Prob),
   findall(Exp,M:exp_found(qp,Exp),Exps),
   compute_prob(M,Exps,Prob),!.
 
