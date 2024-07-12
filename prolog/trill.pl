@@ -353,8 +353,6 @@ find_single_explanation(M,QueryType,QueryArgs,Expl,_Opt):-
   (absence_of_clashes(Tableau) ->  % TODO if QueryType is inconsistent no check
     (
       add_q(M,QueryType,Tableau,QueryArgs,Tableau0),
-      retractall(M:query_to_resume(_,_)),
-      assert(M:query_to_resume(QueryType,QueryArgs)),
       set_up_tableau(M),
       %findall(Expl,expand_queue(M,Tableau0,Tableau1,Expl),L),
       set_next_from_expansion_queue(Tableau0,_EA,Tableau1),
@@ -370,6 +368,7 @@ find_single_explanation(M,QueryType,QueryArgs,Expl,_Opt):-
 
 resume_query(M:Expl):-
   M:tab_end(Tab),
+  retract(M:tab_end(Tab)),
   (absence_of_clashes(Tab) ->  % TODO if QueryType is inconsistent no check
     (
       set_up_tableau(M),
@@ -1327,10 +1326,16 @@ apply_all_rules(M,Tab0,EA,Tab,Expl):-
   apply_det_rules(M,Rules,Tab0,EA,Tab1),
   pop_clashes(Tab1,Clash,Tab2),
   assert(M:tab_end(Tab2)),
-  continue(M,Rules,Tab0,EA,Tab2,Clash,Tab,Expl).
+  continue_of_return_expl(M,Rules,Tab0,EA,Tab2,Clash,Tab,Expl).
 
-continue(M,_Rules,_Tab0,_EA,Tab,Clash,Tab,Expl):-
+continue_of_return_expl(M,Rules,Tab0,EA,Tab1,[],Tab,Expl):-!,
+  continue(M,Rules,Tab0,EA,Tab1,[],Tab,Expl).
+  
+continue_of_return_expl(M,_Rules,_Tab0,_EA,Tab,Clash,Tab,Expl):-
   find_expls(M,Clash,Tab,Expl).
+
+continue_of_return_expl(M,Rules,Tab0,EA,Tab1,Clash,Tab,Expl):-!,
+  continue(M,Rules,Tab0,EA,Tab1,Clash,Tab,Expl).
 
 continue(M,_Rules,Tab0,EA,Tab1,_Clash,Tab,Expl):-
   retract(M:tab_end(Tab1)),
