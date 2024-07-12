@@ -839,7 +839,7 @@ prob_inconsistent_theory(M:Prob):-
  * resume_query(:Expl:list) is det
  *
  * Continues with the search for new justifications for the previous query if a previous query is open.
- * It only works when justifications are returned one by one.
+ * It only works returning justifications one by one.
  */
 resume_query(M:Expl):-
   check_open_query_monitor_status(M,_,_),
