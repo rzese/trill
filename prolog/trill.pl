@@ -369,19 +369,13 @@ find_single_explanation(M,QueryType,QueryArgs,Expl,_Opt):-
 resume_query(M:Expl):-
   M:tab_end(Tab),
   retract(M:tab_end(Tab)),
-  (absence_of_clashes(Tab) ->  % TODO if QueryType is inconsistent no check
-    (
-      set_up_tableau(M),
-      %findall(Expl,expand_queue(M,Tableau0,Tableau1,Expl),L),
-      check_and_set_next_from_expansion_queue(Tab,_EA,Tab1),
-      get_explanation(M,Tab1,Expl)
-      % (query_option(Opt,assert_abox,true) -> (writeln('Asserting ABox...'), M:assert(final_abox(L)), writeln('Done. Asserted in final_abox/1...')) ; true)%,
-      %find_expls(M,L,QueryArgs,Expl1),
-      %check_and_close(M,Expl1,Expl)
-    )
-  ;
-    print_message(warning,inconsistent),!,false
-  ).
+  set_up_tableau(M),
+  %findall(Expl,expand_queue(M,Tableau0,Tableau1,Expl),L),
+  check_and_set_next_from_expansion_queue(Tab,_EA,Tab1),
+  get_explanation(M,Tab1,Expl).
+  % (query_option(Opt,assert_abox,true) -> (writeln('Asserting ABox...'), M:assert(final_abox(L)), writeln('Done. Asserted in final_abox/1...')) ; true)%,
+  %find_expls(M,L,QueryArgs,Expl1),
+  %check_and_close(M,Expl1,Expl)
 
 
 compute_query_prob(M:Prob) :-
@@ -1324,14 +1318,14 @@ get_explanation_int(M,Tab0,Expl):-
 apply_all_rules(M,Tab0,EA,Tab,Expl):-
   M:setting_trill(det_rules,Rules),
   apply_det_rules(M,Rules,Tab0,EA,Tab1),
-  pop_clashes(Tab1,Clash,Tab2),
-  assert(M:tab_end(Tab2)),
-  continue_of_return_expl(M,Rules,Tab0,EA,Tab2,Clash,Tab,Expl).
+  get_clashes(Tab1,Clash),
+  assert(M:tab_end(Tab1)),
+  continue_of_return_expl(M,Rules,Tab0,EA,Tab1,Clash,Tab,Expl).
 
 continue_of_return_expl(M,Rules,Tab0,EA,Tab1,[],Tab,Expl):-!,
   continue(M,Rules,Tab0,EA,Tab1,[],Tab,Expl).
   
-continue_of_return_expl(M,_Rules,_Tab0,_EA,Tab,Clash,Tab,Expl):-
+continue_of_return_expl(M,_Rules,_Tab0,_EA,Tab,Clash,Tab,Expl):- 
   find_expls(M,Clash,Tab,Expl).
 
 continue_of_return_expl(M,Rules,Tab0,EA,Tab1,Clash,Tab,Expl):-!,
@@ -1339,12 +1333,13 @@ continue_of_return_expl(M,Rules,Tab0,EA,Tab1,Clash,Tab,Expl):-!,
 
 continue(M,_Rules,Tab0,EA,Tab1,_Clash,Tab,Expl):-
   retract(M:tab_end(Tab1)),
-  ( test_end_apply_rule(M,Tab0,Tab1) ->
+  pop_clashes(Tab1,_,Tab2),
+  ( test_end_apply_rule(M,Tab0,Tab2) ->
       ( set_next_from_expansion_queue(Tab0,_EA1,Tab), 
         Expl=[]
       ) 
       ;
-      apply_all_rules(M,Tab1,EA,Tab,Expl)
+      apply_all_rules(M,Tab2,EA,Tab,Expl)
   ).
 
 
