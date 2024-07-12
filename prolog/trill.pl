@@ -306,50 +306,25 @@ execute_query(M,QueryType,QueryArgsNC,Expl,QueryOptions):-
 
 % Execution monitor
 find_explanations(M,QueryType,QueryArgs,Expl):-
+  get_open_query_monitor(M,QueryType,QueryArgs),
   get_n_explanation_monitor(M,MonitorNExpl),
   get_time_limit_monitor(M,MonitorTimeLimit),
-  find_n_explanations(M,QueryType,QueryArgs,Expl,MonitorNExpl,Opt),
+  find_n_explanations(M,QueryType,QueryArgs,Expl,MonitorNExpl),
   check_time_limit_monitor(M,MonitorTimeLimit).
 
 
-find_single_explanation(M,QueryType,QueryArgs,Expl,_Opt):-
+find_single_explanation(M,QueryType,QueryArgs,Expl):-
   build_abox(M,Tableau,QueryType,QueryArgs), % will expand the KB without the query
   (absence_of_clashes(Tableau) ->  % TODO if QueryType is inconsistent no check
     (
       add_q(M,QueryType,Tableau,QueryArgs,Tableau0),
       set_up_tableau(M),
-      %findall(Expl,expand_queue(M,Tableau0,Tableau1,Expl),L),
       set_next_from_expansion_queue(Tableau0,_EA,Tableau1),
       get_explanation(M,Tableau1,Expl)
-      % (query_option(Opt,assert_abox,true) -> (writeln('Asserting ABox...'), M:assert(final_abox(L)), writeln('Done. Asserted in final_abox/1...')) ; true)%,
-      %find_expls(M,L,QueryArgs,Expl1),
-      %check_and_close(M,Expl1,Expl)
     )
   ;
     print_message(warning,inconsistent),!,false
   ).
-
-
-resume_query(M:Expl):-
-  M:tab_end(Tab),
-  retract(M:tab_end(Tab)),
-  set_up_tableau(M),
-  %findall(Expl,expand_queue(M,Tableau0,Tableau1,Expl),L),
-  check_and_set_next_from_expansion_queue(Tab,_EA,Tab1),
-  get_explanation(M,Tab1,Expl).
-  % (query_option(Opt,assert_abox,true) -> (writeln('Asserting ABox...'), M:assert(final_abox(L)), writeln('Done. Asserted in final_abox/1...')) ; true)%,
-  %find_expls(M,L,QueryArgs,Expl1),
-  %check_and_close(M,Expl1,Expl)
-
-
-compute_query_prob(M:Prob) :-
-  findall(Exp,M:exp_found(qp,Exp),Exps),
-  compute_prob(M,Exps,Prob),!.
-
-reset_query:-
-  get_trill_current_module(M),
-  set_up_reasoner(M).
-
 
 /*************
  
@@ -395,6 +370,16 @@ check_time_limit_monitor_status(M):-
   get_time(Now),
   Timeout<Now. % I must stop
 
+% --- open query ---
+get_open_query_monitor(M,QueryType,QueryArgs):-
+  retractall(M:query_option(active_query,_)),
+  assert(M:query_option(active_query,[QueryType,QueryArgs])).
+
+check_open_query_monitor_status(M,QueryType,QueryArgs):-
+  M:query_option(active_query,[QueryType,QueryArgs]),!.
+
+check_open_query_monitor(M):-
+  retractall(M:query_option(active_query,_)).
 /* *************** */
 
 set_up_reasoner(M):-
@@ -849,6 +834,41 @@ prob_unsat(M:Concept,Prob):-
  */
 prob_inconsistent_theory(M:Prob):-
   inconsistent_theory(M:_,[compute_prob(query,Prob)]).
+
+/**
+ * resume_query(:Expl:list) is det
+ *
+ * Continues with the search for new justifications for the previous query if a previous query is open.
+ * It only works when justifications are returned one by one.
+ */
+resume_query(M:Expl):-
+  check_open_query_monitor_status(M,_,_),
+  M:tab_end(Tab),
+  retract(M:tab_end(Tab)),
+  set_up_tableau(M),
+  check_and_set_next_from_expansion_queue(Tab,_EA,Tab1),
+  get_explanation(M,Tab1,Expl).
+
+/**
+ * compute_query_prob(:Prob:double) is det
+ *
+ * Computes the probability of the previous query if there is one open.
+ */
+compute_query_prob(M:Prob) :-
+  check_open_query_monitor_status(M,_,_),
+  findall(Exp,M:exp_found(qp,Exp),Exps),
+  compute_prob(M,Exps,Prob),!.
+
+/**
+ * reset_query is det
+ *
+ * Closes the open query and reset the reasoner status to prepare it for a new query.
+ */
+reset_query:-
+  get_trill_current_module(M),
+  set_up_reasoner(M).
+
+
 
 /***********
   Utilities for queries
@@ -3057,6 +3077,12 @@ set_algorithm(M:tornado):-
   consult(library(tornado_internal)),
   clean_up(M),!.
 
+
+/**
+ * init_trill(++Alg:reasoner)
+ * 
+ * It initializes the algorithms Alg
+ */
 init_trill(Alg):-
   utility_translation:get_module(M),
   set_algorithm(M:Alg),

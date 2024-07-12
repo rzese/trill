@@ -46,19 +46,19 @@ clean_up(M):-
  ***********/
 
 % findall
-find_n_explanations(M,QueryType,QueryArgs,Expls,all,Opt):-
+find_n_explanations(M,QueryType,QueryArgs,Expls,all):-
   !, % CUT so that no other calls to find_explanation can be ran (to avoid running that with variable N)
-  findall(Expl,find_single_explanation(M,QueryType,QueryArgs,Expl,Opt),Expls).
+  findall(Expl,find_single_explanation(M,QueryType,QueryArgs,Expl),Expls).
 
 % find one in backtracking
-find_n_explanations(M,QueryType,QueryArgs,Expl,bt,Opt):-
+find_n_explanations(M,QueryType,QueryArgs,Expl,bt):-
   !, % CUT so that no other calls to find_explanation can be ran (to avoid running that with variable N)
-  find_single_explanation(M,QueryType,QueryArgs,Expl,Opt).
+  find_single_explanation(M,QueryType,QueryArgs,Expl).
 
 % find_n_sol
-find_n_explanations(M,QueryType,QueryArgs,Expls,N,Opt):-
+find_n_explanations(M,QueryType,QueryArgs,Expls,N):-
   (number(N) -> % CUT so that no other calls to find_explanation can be ran
-    (findnsols(N,Expl,find_single_explanation(M,QueryType,QueryArgs,Expl,Opt),Expls),!) % CUT otherwise findnsols would backtracks to look for another N sols
+    (findnsols(N,Expl,find_single_explanation(M,QueryType,QueryArgs,Expl),Expls),!) % CUT otherwise findnsols would backtracks to look for another N sols
     ;
     (print_message(warning,wrong_number_max_expl),!,false)
   ).
