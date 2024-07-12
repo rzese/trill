@@ -78,9 +78,14 @@ all_inconsistent_theory_int(M:Exps):-
   findall(Expl,inconsistent_theory(M:Expl),Exps).
 
 
-compute_prob_and_close(M,QueryOptions):-
-  M:query_option(return_prob,true),!,
-  get_from_query_options(QueryOptions,return_prob,Prob),
+compute_prob_and_close(M,Expl,QueryOptions):-
+  M:query_option(compute_prob,expl),!,
+  get_from_query_options(QueryOptions,compute_prob,expl,Prob),
+  compute_prob_single_explanation(M,Expl,Prob),!.
+
+compute_prob_and_close(M,_,QueryOptions):-
+  M:query_option(compute_prob,query),!,
+  get_from_query_options(QueryOptions,compute_prob,query,Prob),
   findall(Exp,M:exp_found(qp,Exp),Exps),
   compute_prob(M,Exps,Prob),!.
 

@@ -251,35 +251,45 @@ prolog:message(unknown_query_option(Option)) -->
 */
 
 trill_available_option(assert_abox,in).
-trill_available_option(return_prob,out).
-trill_available_option(return_single_prob,in).
+trill_available_option(compute_prob,in,out).
 trill_available_option(max_expl,in).
 trill_available_option(time_limit,in).
 
-get_from_query_options(OptList,Option,Value):-
-  Opt=..[Option,Value],
+get_from_query_options(OptList,Option,SingleValue):-
+  trill_available_option(Option,_),!,
+  Opt=..[Option,SingleValue],
+  memberchk(Opt,OptList).
+
+get_from_query_options(OptList,Option,Value1,Value2):-
+  trill_available_option(Option,_,_),
+  Opt=..[Option,Value1,Value2],
   memberchk(Opt,OptList).
 
 
 set_query_options(_,[]):- !.
 
 set_query_options(M,[QueryOption|TailQueryOptions]) :-
-  QueryOption=..[Option,Value],
+  QueryOption=..[Option|Value],
   add_trill_query_option(M,Option,Value),
   set_query_options(M,TailQueryOptions).
 
-add_trill_query_option(M,Option,Value) :-
+add_trill_query_option(M,Option,[ValueIn]) :-
   trill_available_option(Option,in),!,
   retractall(M:query_option(Option,_)),
-  assert(M:query_option(Option,Value)).
+  assert(M:query_option(Option,ValueIn)).
 
-add_trill_query_option(M,Option,_Value) :-
+add_trill_query_option(M,Option,_ValueOut) :-
   trill_available_option(Option,out),!,
   retractall(M:query_option(Option,_)),
   assert(M:query_option(Option,true)).
 
+add_trill_query_option(M,Option,[ValueIn,_ValueOut]) :-
+  trill_available_option(Option,in,out),!,
+  retractall(M:query_option(Option,_)),
+  assert(M:query_option(Option,ValueIn)).
+
 add_trill_query_option(_M,Option,_Value) :-
-  print_message(warning,iri_not_exists(Option)),!.
+  print_message(warning,unknown_query_option(Option)),!.
 
 /****************************
   QUERY PREDICATES
@@ -290,7 +300,8 @@ execute_query(M,QueryType,QueryArgsNC,Expl,QueryOptions):-
   set_up_reasoner(M),
   set_query_options(M,QueryOptions),!,
   find_explanations(M,QueryType,QueryArgs,Expl),
-  compute_prob_and_close(M,QueryOptions).
+  is_expl(M,Expl),
+  compute_prob_and_close(M,Expl,QueryOptions).
 
 
 % Execution monitor
@@ -305,7 +316,7 @@ get_n_explanation_monitor(M,MonitorNExpl):-
   M:query_option(max_expl,MonitorNExpl),!. 
 
 get_n_explanation_monitor(M,all):-
-  M:query_option(return_prob,true),!.
+  M:query_option(compute_prob,query),!.
 
 get_n_explanation_monitor(_M,bt):-!.
 
@@ -571,8 +582,7 @@ prune_tableau_rules(KBA,[_|TR],PTR):-
  * Opt is a list containing settings for the execution of the query. 
   */
 instanceOf(M:Class,Ind,Expl,Opt):-
-  execute_query(M,io,[Class,Ind],Expl,Opt),
-  is_expl(M,Expl).
+  execute_query(M,io,[Class,Ind],Expl,Opt).
   
 
 /**
@@ -585,8 +595,7 @@ instanceOf(M:Class,Ind,Expl,Opt):-
  * The predicate fails if the individual does not belong to the class.
  */
 instanceOf(M:Class,Ind,Expl):-
-  instanceOf(M:Class,Ind,Expl,[]),
-  is_expl(M,Expl).
+  instanceOf(M:Class,Ind,Expl,[]).
 
 /**
  * all_instanceOf(:Class:concept_description,++Ind:individual_name)
@@ -598,8 +607,7 @@ instanceOf(M:Class,Ind,Expl):-
  * The predicate fails if the individual does not belong to the class.
  */
 all_instanceOf(M:Class,Ind,Expl):-
-  execute_query(M,io,[Class,Ind],Expl,[max_expl(all)]),
-  is_expl(M,Expl).
+  execute_query(M,io,[Class,Ind],Expl,[max_expl(all)]).
 
 /**
  * instanceOf(:Class:concept_description,++Ind:individual_name) is det
@@ -609,8 +617,7 @@ all_instanceOf(M:Class,Ind,Expl):-
  * returns true if the individual belongs to the class, false otherwise.
  */
 instanceOf(M:Class,Ind):-
-  execute_query(M,io,[Class,Ind],Expl,[max_expl(1)]),!,
-  is_expl(M,Expl).
+  execute_query(M,io,[Class,Ind],_,[max_expl(1)]),!.
 
 /**
  * property_value(:Prop:property_name,++Ind1:individual_name,++Ind2:individual_name,-Expl:list,++Opt:list)
@@ -625,8 +632,7 @@ instanceOf(M:Class,Ind):-
  * - return_prob(Prob) if present the probability of the query is computed and unified with Prob
  */
 property_value(M:Prop, Ind1, Ind2,Expl,Opt):-
-  execute_query(M,pv,[Prop, Ind1, Ind2],Expl,Opt),
-  is_expl(M,Expl).
+  execute_query(M,pv,[Prop, Ind1, Ind2],Expl,Opt).
 
 /**
  * property_value(:Prop:property_name,++Ind1:individual_name,++Ind2:individual_name,-Expl:list)
@@ -637,8 +643,7 @@ property_value(M:Prop, Ind1, Ind2,Expl,Opt):-
  * The predicate fails if the two individual are not Prop-related.
  */
 property_value(M:Prop, Ind1, Ind2,Expl):-
-  property_value(M:Prop, Ind1, Ind2,Expl,[]),
-  is_expl(M,Expl).
+  property_value(M:Prop, Ind1, Ind2,Expl,[]).
 
 /**
  * all_property_value(:Prop:property_name,++Ind1:individual_name,++Ind2:individual_name,-Expl:list)
@@ -649,8 +654,7 @@ property_value(M:Prop, Ind1, Ind2,Expl):-
  * The predicate fails if the individual does not belong to the class.
  */
 all_property_value(M:Prop, Ind1, Ind2,Expl):-
-  execute_query(M,pv,[Prop, Ind1, Ind2],Expl,[max_expl(all)]),
-  is_expl(M,Expl).
+  execute_query(M,pv,[Prop, Ind1, Ind2],Expl,[max_expl(all)]).
 
 /**
  * property_value(:Prop:property_name,++Ind1:individual_name,++Ind2:individual_name) is det
@@ -659,8 +663,7 @@ all_property_value(M:Prop, Ind1, Ind2,Expl):-
  * and returns true if the two individual are Prop-related, false otherwise.
  */
 property_value(M:Prop, Ind1, Ind2):-
-  execute_query(M,pv,[Prop, Ind1, Ind2],Expl,[max_expl(1)]),!,
-  is_expl(M,Expl).
+  execute_query(M,pv,[Prop, Ind1, Ind2],_,[max_expl(1)]),!.
 
 /**
  * sub_class(:Class:concept_description,++SupClass:concept_description,-Expl:list,++Opt:list)
@@ -676,8 +679,7 @@ property_value(M:Prop, Ind1, Ind2):-
  * - return_prob(Prob) if present the probability of the query is computed and unified with Prob
  */
 sub_class(M:Class,SupClass,Expl,Opt):-
-  execute_query(M,sc,[Class,SupClass],Expl,Opt),
-  is_expl(M,Expl).
+  execute_query(M,sc,[Class,SupClass],Expl,Opt).
   
 /**
  * sub_class(:Class:concept_description,++SupClass:concept_description,-Expl:list)
@@ -689,8 +691,7 @@ sub_class(M:Class,SupClass,Expl,Opt):-
  * The predicate fails if there is not a subclass relation between the two classes.
  */
 sub_class(M:Class,SupClass,Expl):-
-  sub_class(M:Class,SupClass,Expl,[]),
-  is_expl(M,Expl).
+  sub_class(M:Class,SupClass,Expl,[]).
 
 /**
  * all_sub_class(:Class:concept_description,++SupClass:concept_description,-Expl:list)
@@ -702,8 +703,7 @@ sub_class(M:Class,SupClass,Expl):-
  * The predicate fails if Class is not subclass of SupClass.
  */
 all_sub_class(M:Class,SupClass,Expl):-
-  execute_query(M,sc,[Class,SupClass],Expl,[max_expl(all)]),
-  is_expl(M,Expl).
+  execute_query(M,sc,[Class,SupClass],Expl,[max_expl(all)]).
 /**
  * sub_class(:Class:concept_description,++SupClass:concept_description) is det
  *
@@ -712,8 +712,7 @@ all_sub_class(M:Class,SupClass,Expl):-
  * true if Class is a subclass of SupClass, and false otherwise.
  */
 sub_class(M:Class,SupClass):-
-  execute_query(M,sc,[Class,SupClass],Expl,[max_expl(1)]),!,
-  is_expl(M,Expl).
+  execute_query(M,sc,[Class,SupClass],_,[max_expl(1)]),!.
 
 /**
  * unsat(:Concept:concept_description,-Expl:list,++Opt:list)
@@ -728,8 +727,7 @@ sub_class(M:Class,SupClass):-
  * - return_prob(Prob) if present the probability of the query is computed and unified with Prob
  */
 unsat(M:Concept,Expl,Opt):-
-  execute_query(M,un,[Concept],Expl,Opt),
-  is_expl(M,Expl).
+  execute_query(M,un,[Concept],Expl,Opt).
 
 /**
  * unsat(:Concept:concept_description,-Expl:list)
@@ -740,8 +738,7 @@ unsat(M:Concept,Expl,Opt):-
  * The predicate fails if the concept is satisfiable.
  */
 unsat(M:Concept,Expl):-
-  unsat(M:Concept,Expl,[]),
-  is_expl(M,Expl).
+  unsat(M:Concept,Expl,[]).
 
 /**
  * all_unsat(:Concept:concept_description,-Expl:list)
@@ -752,8 +749,7 @@ unsat(M:Concept,Expl):-
  * The predicate fails if the individual does not belong to the class.
  */
 all_unsat(M:Concept,Expl):-
-  execute_query(M,un,[Concept],Expl,[max_expl(all)]),
-  is_expl(M,Expl).
+  execute_query(M,un,[Concept],Expl,[max_expl(all)]).
 
 /**
  * unsat(:Concept:concept_description) is det
@@ -762,8 +758,7 @@ all_unsat(M:Concept,Expl):-
  * a complex concept as a ground term and returns true if the concept is unsatisfiable, false otherwise.
  */
 unsat(M:Concept):-
-  execute_query(M,un,[Concept],Expl,[max_expl(1)]),!,
-  is_expl(M,Expl).
+  execute_query(M,un,[Concept],_,[max_expl(1)]),!.
 
 /**
  * inconsistent_theory(:Expl:list,++Opt:list)
@@ -775,8 +770,7 @@ unsat(M:Concept):-
  * - return_prob(Prob) if present the probability of the query is computed and unified with Prob
  */
 inconsistent_theory(M:Expl,Opt):-
-  execute_query(M,it,[],Expl,Opt),
-  is_expl(M,Expl).
+  execute_query(M,it,[],Expl,Opt).
 
 /**
  * inconsistent_theory(:Expl:list)
@@ -784,8 +778,7 @@ inconsistent_theory(M:Expl,Opt):-
  * This predicate returns one explanation for the inconsistency of the loaded knowledge base.
  */
 inconsistent_theory(M:Expl):-
-  inconsistent_theory(M:Expl,[]),
-  is_expl(M,Expl).
+  inconsistent_theory(M:Expl,[]).
 
 /**
  * all_inconsistent_theory(:Expl:list)
@@ -795,8 +788,7 @@ inconsistent_theory(M:Expl):-
  * The predicate fails if the individual does not belong to the class.
  */
 all_inconsistent_theory(M:Expl):-
-  execute_query(M,it,[],Expl,[max_expl(all)]),
-  is_expl(M,Expl).
+  execute_query(M,it,[],Expl,[max_expl(all)]).
 
 /**
  * inconsistent_theory
@@ -805,8 +797,7 @@ all_inconsistent_theory(M:Expl):-
  */
 inconsistent_theory:-
   get_trill_current_module(M),
-  execute_query(M,it,[],Expl,[max_expl(1)]),!,
-  is_expl(M,Expl).
+  execute_query(M,it,[],_,[max_expl(1)]),!.
 
 /**
  * prob_instanceOf(:Class:concept_description,++Ind:individual_name,--Prob:double) is det
@@ -816,7 +807,7 @@ inconsistent_theory:-
  * returns the probability of the instantiation of the individual to the given class.
  */
 prob_instanceOf(M:Class,Ind,Prob):-
-  instanceOf(M:Class,Ind,_,[return_prob(Prob)]).
+  instanceOf(M:Class,Ind,_,[compute_prob(query,Prob)]).
 
 /**
  * prob_property_value(:Prop:property_name,++Ind1:individual_name,++Ind2:individual_name,--Prob:double) is det
@@ -825,7 +816,7 @@ prob_instanceOf(M:Class,Ind,Prob):-
  * and returns the probability of the fact Ind1 is related with Ind2 via Prop.
  */
 prob_property_value(M:Prop, Ind1, Ind2,Prob):-
-  property_value(M:Prop, Ind1, Ind2,_,[return_prob(Prob)]).
+  property_value(M:Prop, Ind1, Ind2,_,[compute_prob(query,Prob)]).
 
 /**
  * prob_sub_class(:Class:concept_description,++SupClass:class_name,--Prob:double) is det
@@ -835,7 +826,7 @@ prob_property_value(M:Prop, Ind1, Ind2,Prob):-
  * the probability of the subclass relation between Class and SupClass.
  */
 prob_sub_class(M:Class,SupClass,Prob):-
-  sub_class(M:Class,SupClass,_,[return_prob(Prob)]).
+  sub_class(M:Class,SupClass,_,[compute_prob(query,Prob)]).
 
 /**
  * prob_unsat(:Concept:concept_description,--Prob:double) is det
@@ -845,7 +836,7 @@ prob_sub_class(M:Class,SupClass,Prob):-
  * of the concept.
  */
 prob_unsat(M:Concept,Prob):-
-  unsat(M:Concept,_,[return_prob(Prob)]).
+  unsat(M:Concept,_,[compute_prob(query,Prob)]).
 
 /**
  * prob_inconsistent_theory(:Prob:double) is det
@@ -853,7 +844,7 @@ prob_unsat(M:Concept,Prob):-
  * If the knowledge base is inconsistent, this predicate returns the probability of the inconsistency.
  */
 prob_inconsistent_theory(M:Prob):-
-  inconsistent_theory(M:_,[return_prob(Prob)]).
+  inconsistent_theory(M:_,[compute_prob(query,Prob)]).
 
 /***********
   Utilities for queries
@@ -2958,16 +2949,30 @@ compute_prob_ax1([Prob1 | T],Prob):-
 
 %rule_n(0).
 
-compute_prob(M,Expl,Prob):-
+compute_prob(M,Explanations,Prob):-
   retractall(v(_,_,_)),
   retractall(na(_,_)),
   retractall(rule_n(_)),
   assert(rule_n(0)),
   %findall(1,M:annotationAssertion('http://ml.unife.it/disponte#probability',_,_),NAnnAss),length(NAnnAss,NV),
   get_bdd_environment(M,Env),
-  build_bdd(M,Env,Expl,BDD),
+  build_bdd(M,Env,Explanations,BDD),
   ret_prob(Env,BDD,Prob),
   clean_environment(M,Env), !.
+
+compute_prob_single_explanation(M,Expl,Prob):-
+  ret_prob(M,Expl,1.0,Prob).
+
+ret_prob(_,[],Prob,Prob):-!.
+
+ret_prob(M,[Ax|T],Prob0,Prob):-
+  compute_prob_ax(M,Ax,Prob1),!,
+  Prob2 is Prob0 * Prob1,
+  ret_prob(M,T,Prob2,Prob).
+
+ret_prob(M,[Ax|T],Prob0,Prob):-
+  ret_prob(M,T,Prob0,Prob).
+
 
 get_var_n(Env,R,S,Probs,V):-
   (
@@ -2991,6 +2996,7 @@ get_prob_ax(M,(Ax,_Ind),N,Prob):- !,
       N1 is N + 1,
       assert(rule_n(N1))
   ).
+
 get_prob_ax(M,Ax,N,Prob):- !,
   compute_prob_ax(M,Ax,Prob),
   ( na(Ax,N) ->
