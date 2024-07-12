@@ -22,7 +22,7 @@ details.
                  property_value/3, property_value/4, prob_property_value/4, property_value/5, all_property_value/4,
                  unsat/1, unsat/2, prob_unsat/2, unsat/3, all_unsat/2,
                  inconsistent_theory/0, inconsistent_theory/1, prob_inconsistent_theory/1, inconsistent_theory/2, all_inconsistent_theory/1,
-                 resume_query/1,
+                 resume_query/1, compute_query_prob/1, reset_query/0,
                  axiom/1, kb_prefixes/1, add_kb_prefix/2, add_kb_prefixes/1, add_axiom/1, add_axioms/1, remove_kb_prefix/2, remove_kb_prefix/1, remove_axiom/1, remove_axioms/1,
                  load_kb/1, load_owl_kb/1, load_owl_kb_from_string/1, init_trill/1,
                  set_tableau_expansion_rules/2] ).
@@ -52,6 +52,7 @@ details.
 :- meta_predicate all_inconsistent_theory(:).
 :- meta_predicate prob_inconsistent_theory(:).
 :- meta_predicate resume_query(:).
+:- meta_predicate compute_query_prob(:).
 :- meta_predicate axiom(:).
 :- meta_predicate kb_prefixes(:).
 :- meta_predicate add_kb_prefix(:,+).
@@ -312,6 +313,8 @@ find_explanations(M,QueryType,QueryArgs,Expl):-
   check_time_limit_monitor(M,MonitorTimeLimit).
 
 
+% Monitors
+%  --- number of explanations ---
 get_n_explanation_monitor(M,MonitorNExpl):-
   M:query_option(max_expl,MonitorNExpl),!. 
 
@@ -321,6 +324,7 @@ get_n_explanation_monitor(M,all):-
 get_n_explanation_monitor(_M,bt):-!.
 
 
+% --- time limit ---
 get_time_limit_monitor(M,MonitorTimeLimit):-
   M:query_option(time_limit,TimeLimit),!,
   retractall(M:setting_trill(timeout,_)),
@@ -342,7 +346,7 @@ check_time_limit_monitor(M,MonitorTimeLimit):-
 check_time_limit_monitor(_M,_MonitorTimeLimit):-
   print_message(warning,timeout_reached),false.
 
-
+% End Monitors
 
 find_single_explanation(M,QueryType,QueryArgs,Expl,_Opt):-
   build_abox(M,Tableau,QueryType,QueryArgs), % will expand the KB without the query
@@ -379,6 +383,16 @@ resume_query(M:Expl):-
   ;
     print_message(warning,inconsistent),!,false
   ).
+
+
+compute_query_prob(M:Prob) :-
+  findall(Exp,M:exp_found(qp,Exp),Exps),
+  compute_prob(M,Exps,Prob),!.
+
+reset_query:-
+  get_trill_current_module(M),
+  set_up_reasoner(M).
+
 
 /*************
  
@@ -2970,7 +2984,7 @@ ret_prob(M,[Ax|T],Prob0,Prob):-
   Prob2 is Prob0 * Prob1,
   ret_prob(M,T,Prob2,Prob).
 
-ret_prob(M,[Ax|T],Prob0,Prob):-
+ret_prob(M,[_|T],Prob0,Prob):-
   ret_prob(M,T,Prob0,Prob).
 
 
@@ -4046,6 +4060,8 @@ sandbox:safe_meta(trill:inconsistent_theory(_,_),[]).
 sandbox:safe_meta(trill:all_inconsistent_theory(_),[]).
 sandbox:safe_meta(trill:prob_inconsistent_theory(_),[]).
 sandbox:safe_meta(trill:resume_query(_),[]).
+sandbox:safe_meta(trill:compute_query_prob(_),[]).
+sandbox:safe_meta(trill:reset_query,[]).
 sandbox:safe_meta(trill:axiom(_),[]).
 sandbox:safe_meta(trill:kb_prefixes(_),[]).
 sandbox:safe_meta(trill:add_kb_prefix(_,_),[]).
