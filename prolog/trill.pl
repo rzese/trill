@@ -245,8 +245,7 @@ prolog:message(unknown_query_option(Option)) -->
 
  * Options can be:
  * - assert_abox(Boolean) if Boolean is set to true the list of aboxes is asserted with the predicate final_abox/1
- * - return_prob(Prob) if present the probability of the query is computed and unified with Prob
- * - return_single_prob(Boolean) must be used with return_prob(Prob). It forces TRILL to return the probability of each single explanation
+ * - compute_prob(mode,Prob) if mode is query trill is forced to find all the explanations, and compute the probability of the query is computed and unified with Prob (same as using prob_<query> but it also returns the set of justifications); if mode is expl trill will compute the probability of each single explanation.
  * - max_expl(Value) to limit the maximum number of explanations to find. Value must be an integer. The predicate will return a list containing at most Value different explanations
  * - time_limit(Value) to limit the time for the inference. The predicate will return the explanations found in the time allowed. Value is the number of seconds allowed for the search of explanations 
 */
@@ -313,41 +312,6 @@ find_explanations(M,QueryType,QueryArgs,Expl):-
   check_time_limit_monitor(M,MonitorTimeLimit).
 
 
-% Monitors
-%  --- number of explanations ---
-get_n_explanation_monitor(M,MonitorNExpl):-
-  M:query_option(max_expl,MonitorNExpl),!. 
-
-get_n_explanation_monitor(M,all):-
-  M:query_option(compute_prob,query),!.
-
-get_n_explanation_monitor(_M,bt):-!.
-
-
-% --- time limit ---
-get_time_limit_monitor(M,MonitorTimeLimit):-
-  M:query_option(time_limit,TimeLimit),!,
-  retractall(M:setting_trill(timeout,_)),
-  get_time(Start),
-  MonitorTimeLimit is Start + TimeLimit,
-  assert(M:setting_trill(timeout,MonitorTimeLimit)).
-
-get_time_limit_monitor(_M,inf):-!.
-
-check_time_limit_monitor(_M,inf):-!. % forse no cut.
-
-check_time_limit_monitor(M,MonitorTimeLimit):-
-  get_time(End),
-  End < MonitorTimeLimit,!,
-  retractall(M:query_option(time_limit,_)),
-  NewTimeLimit is MonitorTimeLimit - End,
-  assert(M:query_option(time_limit,NewTimeLimit)).
-
-check_time_limit_monitor(_M,_MonitorTimeLimit):-
-  print_message(warning,timeout_reached),false.
-
-% End Monitors
-
 find_single_explanation(M,QueryType,QueryArgs,Expl,_Opt):-
   build_abox(M,Tableau,QueryType,QueryArgs), % will expand the KB without the query
   (absence_of_clashes(Tableau) ->  % TODO if QueryType is inconsistent no check
@@ -393,7 +357,40 @@ reset_query:-
 
 **************/
 
-check_time_monitor(M):-
+% Monitors
+%  --- number of explanations ---
+get_n_explanation_monitor(M,MonitorNExpl):-
+  M:query_option(max_expl,MonitorNExpl),!. 
+
+get_n_explanation_monitor(M,all):-
+  M:query_option(compute_prob,query),!.
+
+get_n_explanation_monitor(_M,bt):-!.
+
+
+% --- time limit ---
+get_time_limit_monitor(M,MonitorTimeLimit):-
+  M:query_option(time_limit,TimeLimit),!,
+  retractall(M:setting_trill(timeout,_)),
+  get_time(Start),
+  MonitorTimeLimit is Start + TimeLimit,
+  assert(M:setting_trill(timeout,MonitorTimeLimit)).
+
+get_time_limit_monitor(_M,inf):-!.
+
+check_time_limit_monitor(_M,inf):-!. % forse no cut.
+
+check_time_limit_monitor(M,MonitorTimeLimit):-
+  get_time(End),
+  End < MonitorTimeLimit,!,
+  retractall(M:query_option(time_limit,_)),
+  NewTimeLimit is MonitorTimeLimit - End,
+  assert(M:query_option(time_limit,NewTimeLimit)).
+
+check_time_limit_monitor(_M,_MonitorTimeLimit):-
+  print_message(warning,timeout_reached),false.
+
+check_time_limit_monitor_status(M):-
   M:setting_trill(timeout,Timeout),!,
   get_time(Now),
   Timeout<Now. % I must stop
@@ -1285,7 +1282,7 @@ expand_queue(M,Tab0,Tab,Expl):-
 
 
 test_end_expand_queue(M,_):-
-  check_time_monitor(M),!.
+  check_time_limit_monitor_status(M),!.
 
 test_end_expand_queue(_,Tab):-
   expansion_queue_is_empty(Tab).
@@ -1345,7 +1342,7 @@ continue(M,_Rules,Tab0,EA,Tab1,_Clash,Tab,Expl):-
 
 
 apply_det_rules(M,_,Tab,_,Tab):-
-  check_time_monitor(M),!.
+  check_time_limit_monitor_status(M),!.
 
 apply_det_rules(M,[],Tab0,EA,Tab):-
   M:setting_trill(nondet_rules,Rules),
@@ -1360,7 +1357,7 @@ apply_det_rules(M,[_|T],Tab0,EA,Tab):-
 
 
 apply_nondet_rules(M,_,Tab,_,Tab):-
-  check_time_monitor(M),!.
+  check_time_limit_monitor_status(M),!.
 
 apply_nondet_rules(_,[],Tab,_EA,Tab).
 
@@ -1375,7 +1372,7 @@ apply_nondet_rules(M,[_|T],Tab0,EA,Tab):-
 
 
 test_end_apply_rule(M,_,_):-
-  check_time_monitor(M),!.
+  check_time_limit_monitor_status(M),!.
 
 test_end_apply_rule(_,Tab0,Tab1):-
   same_tableau(Tab0,Tab1).
