@@ -295,7 +295,7 @@ add_trill_query_option(_M,Option,_Value) :-
   QUERY PREDICATES
 *****************************/
 
-execute_query(M,QueryType,QueryArgsNC,Expl,QueryOptions):-
+execute_query(M,QueryType,QueryArgsNC,Expl,QueryOptions):-gtrace,
   check_query_args(M,QueryType,QueryArgsNC,QueryArgs),
   set_up_reasoner(M),
   set_query_options(M,QueryOptions),!,

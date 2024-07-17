@@ -59,14 +59,14 @@ prolog:message(and_in_and) -->
  ***********/
 
 % findall
-find_n_explanations(M,QueryType,QueryArgs,Expls,_,Opt):- % This will not check the arg max_expl as TRILLP returns a pinpointing formula
+find_n_explanations(M,QueryType,QueryArgs,Expls,_):- % This will not check the arg max_expl as TRILLP returns a pinpointing formula
  assert(M:keep_env),
- find_single_explanation(M,QueryType,QueryArgs,Expls,Opt),!.
+ find_single_explanation(M,QueryType,QueryArgs,Expls),!.
 
-find_n_explanations(M,_,_,Expls,_,_):-
+find_n_explanations(M,_,_,Expls,_):-
  initial_expl(M,Expls-_).
 
-compute_prob_and_close(M,Exps,Prob):-
+compute_prob_and_close(M,Exps-_,Prob):-
   compute_prob(M,Exps,Prob),
   retractall(M:keep_env),!.
 
@@ -84,41 +84,37 @@ is_expl(M,Expl):-
   dif(Expl,EExpl).
 
 
-find_expls(M,Tabs,Q,E):-
-  find_expls_int(M,Tabs,Q,E-_),!.
-
 find_expls(M,_,_,_):-
-  M:inconsistent_theory_flag,!,
-  print_message(warning,inconsistent),!,false.
+  (M:inconsistent_theory_flag -> print_message(warning,inconsistent) ; true),!,false.
 
 % checks if an explanations was already found
-find_expls_int(M,[],_,BDD):-
+find_expls_from_tab_list(M,[],BDD):-
   empty_expl(M,BDD),!.
 
 % checks if an explanations was already found (instance_of version)
-find_expls_int(M,[Tab|T],Q,E):-
-  get_clashes(Tab,Clashes),
+find_expls_from_tab_list(M,[Tab|T],E):-
+  get_solved_clashes(Tab,Clashes),
   findall(E0,(member(Clash,Clashes),clash(M,Clash,Tab,E0)),Expls0),!,
   % this predicate checks if there are inconsistencies in the KB, i.e., explanations without query placeholder qp
   consistency_check(M,Expls0,Q),
+  ( dif(Q,['inconsistent','kb']) -> true ; print_message(warning,inconsistent)),
   or_all_f(M,Expls0,Expls1),
-  find_expls_int(M,T,Q,E1),
+  find_expls_from_tab_list(M,T,E1),
   and_f(M,Expls1,E1,E).
 
-find_expls_int(M,[_Tab|T],Query,Expl):-
+  find_expls_from_tab_list(M,[_Tab|T],Expl):-
   \+ length(T,0),
-  find_expls_int(M,T,Query,Expl).
+  find_expls_from_tab_list(M,T,Expl).
 
 % this predicate checks if there are inconsistencies in the KB, i.e., explanations without query placeholder qp
-consistency_check(_,_,['inconsistent','kb']):-!.
-
-consistency_check(_,[],_):-!.
+consistency_check(_,[],qp):-!.
 
 consistency_check(M,[_-CPs|T],Q):-
   dif(CPs,[]),!,
+  member(qp,CPs),!,
   consistency_check(M,T,Q).
 
-consistency_check(M,_,_):-
+consistency_check(M,_,['inconsistent','kb']):-!,
   assert(M:inconsistent_theory_flag).
 
 /****************************/
