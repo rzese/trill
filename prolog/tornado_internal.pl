@@ -95,7 +95,7 @@ check_and_close(M,Expl,dot(Dot)):-
   create_dot_string(Env,Expl,Dot),
   clean_environment(M,Env).
 
-is_expl(M,Expl):-
+is_expl(M,Expl-_):-
   initial_expl(M,EExpl-_),
   dif(Expl,EExpl).
 
