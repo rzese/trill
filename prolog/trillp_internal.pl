@@ -27,17 +27,22 @@ setting_trill_default(nondet_rules,[or_rule]).
 
 set_up(M):-
   utility_translation:set_up(M),
-  M:(dynamic exp_found/2, inconsistent_theory_flag/0, setting_trill/2).
+  M:(dynamic exp_found/2, inconsistent_theory_flag/0, setting_trill/2, tab_end/1, query_option/2),
+  retractall(M:setting_trill(_,_)),
+  retractall(M:query_option(_,_)),
+  retractall(M:tab_end(_)).
   %retractall(M:setting_trill(_,_)),
   %prune_tableau_rules(M).
   %foreach(setting_trill_default(DefaultSetting,DefaultVal),assert(M:setting_trill(DefaultSetting,DefaultVal))).
 
 clean_up(M):-
   utility_translation:clean_up(M),
-  M:(dynamic exp_found/2, inconsistent_theory_flag/0, setting_trill/2),
+  M:(dynamic exp_found/2, inconsistent_theory_flag/0, setting_trill/2, tab_end/1, query_option/2),
   retractall(M:exp_found(_,_)),
   retractall(M:inconsistent_theory_flag),
-  retractall(M:setting_trill(_,_)).
+  retractall(M:setting_trill(_,_)),
+  retractall(M:query_option(_,_)),
+  retractall(M:tab_end(_)).
 
 /*****************************
   MESSAGES
@@ -66,14 +71,18 @@ find_n_explanations(_,_,_,Expls,_):-
   empty_expl(_,Expls-_).
 
 
-compute_prob_and_close(M,Exps,Prob):-
-  compute_prob(M,Exps,Prob).
+compute_prob_and_close(M,Exps-_,QueryOptions):-
+  M:query_option(compute_prob,CPType),!,
+  get_from_query_options(QueryOptions,compute_prob,CPType,Prob),
+  compute_prob(M,Exps,Prob),!.
+
+compute_prob_and_close(_M,_,_):-!.
 
 % checks the explanation
 check_and_close(_,Expl,Expl):-
   dif(Expl,[]).
 
-is_expl(M,Expl):-
+is_expl(M,Expl-_):-
   initial_expl(M,EExpl-_),
   dif(Expl,EExpl).
 
@@ -102,15 +111,14 @@ find_expls_from_tab_list(M,[_Tab|T],Expl):-
   find_expls_from_tab_list(M,T,Expl).
 
 % this predicate checks if there are inconsistencies in the KB, i.e., explanations without query placeholder qp
-consistency_check(_,_,['inconsistent','kb']):-!.
-
-consistency_check(_,[],_):-!.
+consistency_check(_,[],qp):-!.
 
 consistency_check(M,[_-CPs|T],Q):-
   dif(CPs,[]),!,
+  member(qp,CPs),!,
   consistency_check(M,T,Q).
 
-consistency_check(M,_,_):-
+consistency_check(M,_,['inconsistent','kb']):-!,
   assert(M:inconsistent_theory_flag).
 
 /****************************/

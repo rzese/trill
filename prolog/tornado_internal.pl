@@ -73,7 +73,7 @@ find_n_explanations(M,_,_,Expls,_):-
 
 
 compute_prob_and_close(M,Exps-_,QueryOptions):-
-  M:query_option(compute_prob,expl),!,
+  M:query_option(compute_prob,CPType),!,
   get_from_query_options(QueryOptions,compute_prob,expl,Prob),
   compute_prob(M,Exps,Prob),!,
   retractall(M:keep_env),!.
