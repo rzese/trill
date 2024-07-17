@@ -25,19 +25,24 @@ setting_trill_default(nondet_rules,[or_rule]).
 
 set_up(M):-
   utility_translation:set_up(M),
-  M:(dynamic exp_found/2, keep_env/0, tornado_bdd_environment/1, inconsistent_theory_flag/0, setting_trill/2).
+  M:(dynamic exp_found/2, keep_env/0, tornado_bdd_environment/1, inconsistent_theory_flag/0, setting_trill/2, tab_end/1, query_option/2),
+  retractall(M:setting_trill(_,_)),
+  retractall(M:query_option(_,_)),
+  retractall(M:tab_end(_)).
   %retractall(M:setting_trill(_,_)),
   %prune_tableau_rules(M).
   %foreach(setting_trill_default(DefaultSetting,DefaultVal),assert(M:setting_trill(DefaultSetting,DefaultVal))).
 
 clean_up(M):-
   utility_translation:clean_up(M),
-  M:(dynamic exp_found/2, keep_env/0, tornado_bdd_environment/1, inconsistent_theory_flag/0, setting_trill/2),
+  M:(dynamic exp_found/2, keep_env/0, tornado_bdd_environment/1, inconsistent_theory_flag/0, setting_trill/2, tab_end/1, query_option/2),
   retractall(M:exp_found(_,_)),
   retractall(M:keep_env),
   retractall(M:tornado_bdd_environment(_)),
   retractall(M:inconsistent_theory_flag),
-  retractall(M:setting_trill(_,_)).
+  retractall(M:setting_trill(_,_)),
+  retractall(M:query_option(_,_)),
+  retractall(M:tab_end(_)).
 
 /*****************************
   MESSAGES
@@ -66,9 +71,20 @@ find_n_explanations(M,QueryType,QueryArgs,Expls,_):- % This will not check the a
 find_n_explanations(M,_,_,Expls,_):-
  initial_expl(M,Expls-_).
 
-compute_prob_and_close(M,Exps-_,Prob):-
-  compute_prob(M,Exps,Prob),
+
+compute_prob_and_close(M,Exps-_,QueryOptions):-
+  M:query_option(compute_prob,expl),!,
+  get_from_query_options(QueryOptions,compute_prob,expl,Prob),
+  compute_prob(M,Exps,Prob),!,
   retractall(M:keep_env),!.
+
+compute_prob_and_close(M,Exps-_,QueryOptions):-
+  M:query_option(compute_prob,query),!,
+  get_from_query_options(QueryOptions,compute_prob,query,Prob),
+  compute_prob(M,Exps,Prob),!,
+  retractall(M:keep_env),!.
+
+compute_prob_and_close(_M,_,_):-!.
 
 % checks the explanation
 check_and_close(M,Expl,Expl):-
