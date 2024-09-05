@@ -669,21 +669,7 @@ absent2([H-_|T],Expl):-
 build_abox(M,Tableau,QueryType,QueryArgs):-
   retractall(M:final_abox(_)),
   collect_individuals(M,QueryType,QueryArgs,ConnectedInds),
-  ( dif(ConnectedInds,[]) ->
-    ( findall((classAssertion(Class,Individual),[[classAssertion(Class,Individual)]-[]]),(member(Individual,ConnectedInds),M:classAssertion(Class,Individual)),LCA),
-      findall((propertyAssertion(Property,Subject, Object),[[propertyAssertion(Property,Subject, Object)]-[]]),(member(Subject,ConnectedInds),M:propertyAssertion(Property,Subject, Object),dif('http://www.w3.org/2000/01/rdf-schema#comment',Property)),LPA),
-      findall(nominal(NominalIndividual),(member(NominalIndividual,ConnectedInds),M:classAssertion(oneOf(_),NominalIndividual)),LNA),
-      findall((differentIndividuals(Ld),[[differentIndividuals(Ld)]-[]]),(M:differentIndividuals(Ld),intersect(Ld,ConnectedInds)),LDIA),
-      findall((sameIndividual(L),[[sameIndividual(L)]-[]]),(M:sameIndividual(L),intersect(L,ConnectedInds)),LSIA)
-    )
-    ; % all the individuals
-    ( findall((classAssertion(Class,Individual),[[classAssertion(Class,Individual)]-[]]),M:classAssertion(Class,Individual),LCA),
-      findall((propertyAssertion(Property,Subject, Object),[[propertyAssertion(Property,Subject, Object)]-[]]),(M:propertyAssertion(Property,Subject, Object),dif('http://www.w3.org/2000/01/rdf-schema#comment',Property)),LPA),
-      findall(nominal(NominalIndividual),M:classAssertion(oneOf(_),NominalIndividual),LNA),
-      findall((differentIndividuals(Ld),[[differentIndividuals(Ld)]-[]]),M:differentIndividuals(Ld),LDIA),
-      findall((sameIndividual(L),[[sameIndividual(L)]-[]]),M:sameIndividual(L),LSIA)
-    )
-  ),
+  get_axioms_of_individuals(M,ConnectedInds,LCA,LPA,LNA,LDIA,LSIA),
   new_abox(ABox0),
   new_tabs(Tabs0),
   init_expansion_queue(LCA,LPA,ExpansionQueue),
@@ -695,6 +681,24 @@ build_abox(M,Tableau,QueryType,QueryArgs):-
   merge_all_individuals(M,LSIA,Tableau2,Tableau3),
   add_owlThing_list(M,Tableau3,Tableau),
   !.
+
+
+get_axioms_of_individuals(M,IndividualsList,LCA,LPA,LNA,LDIA,LSIA):-
+  ( dif(IndividualsList,[]) ->
+    ( findall((classAssertion(Class,Individual),[[classAssertion(Class,Individual)]-[]]),(member(Individual,IndividualsList),M:classAssertion(Class,Individual)),LCA),
+      findall((propertyAssertion(Property,Subject, Object),[[propertyAssertion(Property,Subject, Object)]-[]]),(member(Subject,IndividualsList),M:propertyAssertion(Property,Subject, Object),dif('http://www.w3.org/2000/01/rdf-schema#comment',Property)),LPA),
+      findall(nominal(NominalIndividual),(member(NominalIndividual,IndividualsList),M:classAssertion(oneOf(_),NominalIndividual)),LNA),
+      findall((differentIndividuals(Ld),[[differentIndividuals(Ld)]-[]]),(M:differentIndividuals(Ld),intersect(Ld,IndividualsList)),LDIA),
+      findall((sameIndividual(L),[[sameIndividual(L)]-[]]),(M:sameIndividual(L),intersect(L,IndividualsList)),LSIA)
+    )
+    ; % all the individuals
+    ( findall((classAssertion(Class,Individual),[[classAssertion(Class,Individual)]-[]]),M:classAssertion(Class,Individual),LCA),
+      findall((propertyAssertion(Property,Subject, Object),[[propertyAssertion(Property,Subject, Object)]-[]]),(M:propertyAssertion(Property,Subject, Object),dif('http://www.w3.org/2000/01/rdf-schema#comment',Property)),LPA),
+      findall(nominal(NominalIndividual),M:classAssertion(oneOf(_),NominalIndividual),LNA),
+      findall((differentIndividuals(Ld),[[differentIndividuals(Ld)]-[]]),M:differentIndividuals(Ld),LDIA),
+      findall((sameIndividual(L),[[sameIndividual(L)]-[]]),M:sameIndividual(L),LSIA)
+    )
+  ).
 
 
 /* ********** */

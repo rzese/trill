@@ -2549,12 +2549,12 @@ add_owlThing_list(M,Tab0,Tab):- % TODO
 
 %--------------
 
-prepare_nom_list(_,[],[]).
+prepare_nom_list(_,[],[]):-!.
 
 prepare_nom_list(M,[literal(_)|T],T1):-!,
   prepare_nom_list(M,T,T1).
 
-prepare_nom_list(M,[H|T],[(classAssertion('http://www.w3.org/2002/07/owl#Thing',H),Expl)|T1]):-
+prepare_nom_list(M,[H|T],[(classAssertion('http://www.w3.org/2002/07/owl#Thing',H),Expl)|T1]):-!,
   initial_expl(M,Expl),
   prepare_nom_list(M,T,T1).
 %--------------
@@ -2562,7 +2562,7 @@ prepare_nom_list(M,[H|T],[(classAssertion('http://www.w3.org/2002/07/owl#Thing',
 
 /* merge nodes in (ABox,Tabs) */
 
-merge_all_individuals(_,[],Tab,Tab).
+merge_all_individuals(_,[],Tab,Tab):-!.
 
 merge_all_individuals(M,[(sameIndividual(H),Expl)|T],Tab0,Tab):-
   get_abox(Tab0,ABox0),
@@ -3345,7 +3345,7 @@ add_all_to_tableau(M,L,Tableau0,Tableau):-
   set_clashes(Tableau1,Clashes,Tableau2),
   set_tabs(Tableau2,Tabs,Tableau).
 
-add_all_to_abox_and_clashes(_,[],_,A,A,C,C,T,T).
+add_all_to_abox_and_clashes(_,[],_,A,A,C,C,T,T):-!.
 
 add_all_to_abox_and_clashes(M,[(classAssertion(Class,I),Expl)|Tail],Tableau0,A0,A,C0,C,(T0,RBN,RBR),T):-
   check_clash(M,Class-I,Tableau0),!,
@@ -3376,7 +3376,7 @@ add_all_to_abox_and_clashes(M,[(propertyAssertion(P,S,O),Expl)|Tail],Tableau0,A0
   set_abox(Tableau0,A1,Tableau),
   add_all_to_abox_and_clashes(M,Tail,Tableau,A1,A,C0,C,T1,T).
 
-add_all_to_abox_and_clashes(M,[H|Tail],Tableau0,A0,A,C0,C,T0,T):-
+add_all_to_abox_and_clashes(M,[H|Tail],Tableau0,A0,A,C0,C,T0,T):-!,
   add_to_abox(A0,H,A1),
   set_abox(Tableau0,A1,Tableau),
   add_all_to_abox_and_clashes(M,Tail,Tableau,A1,A,C0,C,T0,T).
@@ -4018,12 +4018,28 @@ update_tabs_int(M,differentIndividuals(L),[Tab|TabsL]):-
   update_tabs_int(M,differentIndividuals(P),TabsL).
 
 update_tabs_int(M,classAssertion(C,I),[Tab|TabsL]):-
-  add_all_to_tableau(M,(classAssertion(C,I),[[classAssertion(C,I)]-[]]),Tab,NewTab),
+  get_axioms_of_individuals(M,[I],LCA,LPA,LNA,LDIA,LSIA),
+  append([[(classAssertion(C,I),[[classAssertion(C,I)]-[]])],LCA,LPA,LNA,LDIA],AddAllList),
+  add_all_to_tableau(M,AddAllList,Tab,NewTab0),
+  merge_all_individuals(M,LSIA,NewTab0,NewTab1),
+  add_owlThing_list(M,NewTab1,NewTab2),
+  get_expansion_queue(NewTab2,EQ0),
+  add_classes_expqueue(LCA,EQ0,EQ1),
+  add_prop_expqueue(LPA,EQ1,EQ),
+  set_expansion_queue(NewTab2,EQ,NewTab),
   assert(M:tab_end(NewTab)),
   update_tabs_int(M,classAssertion(C,I),TabsL).
 
 update_tabs_int(M,propertyAssertion(P,S,O),[Tab|TabsL]):-
-  add_all_to_tableau(M,(propertyAssertion(P,S,O),[[propertyAssertion(P,S,O)]-[]]),Tab,NewTab),
+  get_axioms_of_individuals(M,[S,O],LCA,LPA,LNA,LDIA,LSIA),
+  append([[(propertyAssertion(P,S,O),[[propertyAssertion(P,S,O)]-[]])],LCA,LPA,LNA,LDIA],AddAllList),
+  add_all_to_tableau(M,AddAllList,Tab,NewTab0),
+  merge_all_individuals(M,LSIA,NewTab0,NewTab1),
+  add_owlThing_list(M,NewTab1,NewTab2),
+  get_expansion_queue(NewTab2,EQ0),
+  add_classes_expqueue(LCA,EQ0,EQ1),
+  add_prop_expqueue(LPA,EQ1,EQ),
+  set_expansion_queue(NewTab2,EQ,NewTab),
   assert(M:tab_end(NewTab)),
   update_tabs_int(M,propertyAssertion(P,S,O),TabsL).
 
