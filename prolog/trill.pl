@@ -86,6 +86,17 @@ details.
 :- table blocked/2.
 
 /********************************
+  DISPONTE IRIS
+*********************************/
+
+disponte_iri('http://sites.google.com/a/unife.it/ml/disponte#probability'). % Retro-compatibility
+disponte_iri('https://sites.google.com/a/unife.it/ml/disponte#probability'). % Retro-compatibility
+disponte_iri('http://ml.unife.it/disponte#probability'). % Retro-compatibility
+disponte_iri('https://ml.unife.it/disponte#probability'). % Retro-compatibility
+disponte_iri('http://ai.unife.it/disponte#probability').
+disponte_iri('https://ai.unife.it/disponte#probability').
+
+/********************************
   SETTINGS
 *********************************/
 :- multifile setting_trill_default/2.
@@ -3040,10 +3051,26 @@ get_prob_ax(M,Ax,N,Prob):- !,
       assert(rule_n(N1))
   ).
 
-compute_prob_ax(M,Ax,Prob):-
-  findall(ProbA,(M:annotationAssertion('https://sites.google.com/a/unife.it/ml/disponte#probability',Ax,literal(ProbAT)),atom_number(ProbAT,ProbA)),ProbsOld), % Retro-compatibility
-  findall(ProbA,(M:annotationAssertion('http://ml.unife.it/disponte#probability',Ax,literal(ProbAT)),atom_number(ProbAT,ProbA)),ProbsNew),
-  append(ProbsNew, ProbsOld, Probs),
+
+/*
+prob_number(ProbAT,ProbA):-
+  atom_number(ProbAT,ProbAC),
+  ProbAC==1,!,
+  Epsilon is 10**(-10),
+  ProbA is ProbAC - Epsilon.
+
+prob_number(ProbAT,ProbA):-
+  atom_number(ProbAT,ProbAC),
+  ProbAC==1.0,!,
+  Epsilon is 10**(-10),
+  ProbA is ProbAC - Epsilon.
+*/
+
+prob_number(ProbAT,ProbA):-
+  atom_number(ProbAT,ProbA).
+
+compute_prob_ax(M,Ax,Prob):-%gtrace,
+  findall(ProbA,(disponte_iri(DisponteIri),M:annotationAssertion(DisponteIri,Ax,literal(ProbAT)),prob_number(ProbAT,ProbA)),Probs),
   compute_prob_ax1(Probs,Prob).
 
 compute_prob_ax1([Prob],Prob):-!.
