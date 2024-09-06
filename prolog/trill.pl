@@ -255,10 +255,10 @@ prolog:message(unknown_query_option(Option)) -->
  * Check if the option defined by Option is in OptList and returns the option Value.
 
  * Options can be:
- * - assert_abox(Boolean) if Boolean is set to true the list of aboxes is asserted with the predicate final_abox/1
+ * - assert_abox(Boolean) if Boolean is set to true the list of aboxes is asserted with the predicate final_abox/1.
  * - compute_prob(mode,Prob) if mode is query trill is forced to find all the explanations, and compute the probability of the query is computed and unified with Prob (same as using prob_<query> but it also returns the set of justifications); if mode is expl trill will compute the probability of each single explanation.
- * - max_expl(Value) to limit the maximum number of explanations to find. Value must be an integer. The predicate will return a list containing at most Value different explanations
- * - time_limit(Value) to limit the time for the inference. The predicate will return the explanations found in the time allowed. Value is the number of seconds allowed for the search of explanations 
+ * - max_expl(Value) to limit the maximum number of explanations to find. Value must be an integer. The predicate will return a list containing at most Value different explanations.
+ * - time_limit(Value) to limit the time for the inference. The predicate will return the explanations found in the time allowed. Value is the number of seconds allowed for the search of explanations. 
 */
 
 trill_available_option(assert_abox,in).
@@ -626,10 +626,12 @@ instanceOf(M:Class,Ind):-
  * and returns one explanation for the fact Ind1 is related with Ind2 via Prop.
  * The returning explanation is a set of axioms.
  * The predicate fails if the two individual are not Prop-related. * 
- * Opt is a list containing settings for the execution of the query. 
- * Settings can be:
- * - assert_abox(Boolean) if Boolean is set to true the list of aboxes is asserted with the predicate final_abox/1
- * - return_prob(Prob) if present the probability of the query is computed and unified with Prob
+ * Opt is a list containing options for the execution of the query. 
+ * Options can be:
+ * - assert_abox(Boolean) if Boolean is set to true the list of aboxes is asserted with the predicate final_abox/1.
+ * - compute_prob(mode,Prob) if mode is query trill is forced to find all the explanations, and compute the probability of the query is computed and unified with Prob (same as using prob_<query> but it also returns the set of justifications); if mode is expl trill will compute the probability of each single explanation.
+ * - max_expl(Value) to limit the maximum number of explanations to find. Value must be an integer. The predicate will return a list containing at most Value different explanations.
+ * - time_limit(Value) to limit the time for the inference. The predicate will return the explanations found in the time allowed. Value is the number of seconds allowed for the search of explanations. 
  */
 property_value(M:Prop, Ind1, Ind2,Expl,Opt):-
   execute_query(M,pv,[Prop, Ind1, Ind2],Expl,Opt).
@@ -673,10 +675,12 @@ property_value(M:Prop, Ind1, Ind2):-
  * one explanation for the subclass relation between Class and SupClass.
  * The returning explanation is a set of axioms.
  * The predicate fails if there is not a subclass relation between the two classes.
- * Opt is a list containing settings for the execution of the query. 
- * Settings can be:
- * - assert_abox(Boolean) if Boolean is set to true the list of aboxes is asserted with the predicate final_abox/1
- * - return_prob(Prob) if present the probability of the query is computed and unified with Prob
+ * Opt is a list containing options for the execution of the query. 
+ * Options can be:
+ * - assert_abox(Boolean) if Boolean is set to true the list of aboxes is asserted with the predicate final_abox/1.
+ * - compute_prob(mode,Prob) if mode is query trill is forced to find all the explanations, and compute the probability of the query is computed and unified with Prob (same as using prob_<query> but it also returns the set of justifications); if mode is expl trill will compute the probability of each single explanation.
+ * - max_expl(Value) to limit the maximum number of explanations to find. Value must be an integer. The predicate will return a list containing at most Value different explanations.
+ * - time_limit(Value) to limit the time for the inference. The predicate will return the explanations found in the time allowed. Value is the number of seconds allowed for the search of explanations. 
  */
 sub_class(M:Class,SupClass,Expl,Opt):-
   execute_query(M,sc,[Class,SupClass],Expl,Opt).
@@ -721,10 +725,12 @@ sub_class(M:Class,SupClass):-
  * a complex concept as a ground term and returns one explanation for the unsatisfiability of the concept.
  * The returning explanation is a set of axioms.
  * The predicate fails if the concept is satisfiable.
- * Opt is a list containing settings for the execution of the query. 
- * Settings can be:
- * - assert_abox(Boolean) if Boolean is set to true the list of aboxes is asserted with the predicate final_abox/1
- * - return_prob(Prob) if present the probability of the query is computed and unified with Prob
+ * Opt is a list containing options for the execution of the query. 
+ * Options can be:
+ * - assert_abox(Boolean) if Boolean is set to true the list of aboxes is asserted with the predicate final_abox/1.
+ * - compute_prob(mode,Prob) if mode is query trill is forced to find all the explanations, and compute the probability of the query is computed and unified with Prob (same as using prob_<query> but it also returns the set of justifications); if mode is expl trill will compute the probability of each single explanation.
+ * - max_expl(Value) to limit the maximum number of explanations to find. Value must be an integer. The predicate will return a list containing at most Value different explanations.
+ * - time_limit(Value) to limit the time for the inference. The predicate will return the explanations found in the time allowed. Value is the number of seconds allowed for the search of explanations. 
  */
 unsat(M:Concept,Expl,Opt):-
   execute_query(M,un,[Concept],Expl,Opt).
@@ -764,10 +770,12 @@ unsat(M:Concept):-
  * inconsistent_theory(:Expl:list,++Opt:list)
  *
  * This predicate returns one explanation for the inconsistency of the loaded knowledge base.
- * Opt is a list containing settings for the execution of the query. 
- * Settings can be:
- * - assert_abox(Boolean) if Boolean is set to true the list of aboxes is asserted with the predicate final_abox/1
- * - return_prob(Prob) if present the probability of the query is computed and unified with Prob
+ * Opt is a list containing options for the execution of the query. 
+ * Options can be:
+ * - assert_abox(Boolean) if Boolean is set to true the list of aboxes is asserted with the predicate final_abox/1.
+ * - compute_prob(mode,Prob) if mode is query trill is forced to find all the explanations, and compute the probability of the query is computed and unified with Prob (same as using prob_<query> but it also returns the set of justifications); if mode is expl trill will compute the probability of each single explanation.
+ * - max_expl(Value) to limit the maximum number of explanations to find. Value must be an integer. The predicate will return a list containing at most Value different explanations.
+ * - time_limit(Value) to limit the time for the inference. The predicate will return the explanations found in the time allowed. Value is the number of seconds allowed for the search of explanations. 
  */
 inconsistent_theory(M:Expl,Opt):-
   execute_query(M,it,[],Expl,Opt).
