@@ -1585,7 +1585,7 @@ assert_axiom(M,Axiom) :-
         		->  assert(M:ontologyAxiom(O,ExpAxiom))
         		;   true)
        	  )
-       	), !.
+       	), !,trill:update_tabs(M,ExpAxiom).
 assert_axiom(_M,_Axiom).
   
 %% assert_axiom(+Module,+Axiom:axiom,+Ontology:ontology) is det

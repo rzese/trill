@@ -1356,15 +1356,15 @@ apply_all_rules(M,Tab0,EA,Tab,Expl):-
   apply_det_rules(M,Rules,Tab0,EA,Tab1),
   get_clashes(Tab1,Clash),
   assert(M:tab_end(Tab1)),
-  continue_of_return_expl(M,Rules,Tab0,EA,Tab1,Clash,Tab,Expl).
+  continue_or_return_expl(M,Rules,Tab0,EA,Tab1,Clash,Tab,Expl).
 
-continue_of_return_expl(M,Rules,Tab0,EA,Tab1,[],Tab,Expl):-!,
+continue_or_return_expl(M,Rules,Tab0,EA,Tab1,[],Tab,Expl):-!,
   continue(M,Rules,Tab0,EA,Tab1,[],Tab,Expl).
   
-continue_of_return_expl(M,_Rules,_Tab0,_EA,Tab,Clash,Tab,Expl):- 
+continue_or_return_expl(M,_Rules,_Tab0,_EA,Tab,Clash,Tab,Expl):- 
   find_expls(M,Clash,Tab,Expl).
 
-continue_of_return_expl(M,Rules,Tab0,EA,Tab1,Clash,Tab,Expl):-!,
+continue_or_return_expl(M,Rules,Tab0,EA,Tab1,Clash,Tab,Expl):-!,
   continue(M,Rules,Tab0,EA,Tab1,Clash,Tab,Expl).
 
 continue(M,_Rules,Tab0,EA,Tab1,_Clash,Tab,Expl):-
@@ -2397,7 +2397,7 @@ list_as_sameIndividual_int([H|T0],[H|T]):-
   list_as_sameIndividual_int(T0,T).
 
 
-find_same(H,ABox,sameIndividual(L),Expl):-
+find_same(H,ABox,L,Expl):-
   find((sameIndividual(L),Expl),ABox),
   member(X,L),
   member(X,H),!.
@@ -2588,7 +2588,9 @@ merge_all_individuals(M,[(sameIndividual(H),Expl)|T],Tab0,Tab):-
   find_same(H,ABox0,L,ExplL),
   dif(L,[]),!,
   merge_all1(M,H,Expl,L,Tab0,Tab1),
-  list_as_sameIndividual([H,L],SI), %TODO
+  flatten([H,L],HL0),
+  sort(HL0,HL),
+  list_as_sameIndividual(HL,SI), %TODO
   %flatten([H,L],L0),
   %sort(L0,SI),
   and_f(M,Expl,ExplL,ExplT),
