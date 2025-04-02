@@ -3164,7 +3164,7 @@ set_abox(Tab0,ABox,Tab):-
 get_sameind(Tab,SameInd):-
   SameInd = Tab.sameind.
 
-set_abox(Tab0,SameInd,Tab):-
+set_sameind(Tab0,SameInd,Tab):-
   Tab = Tab0.put(sameind,SameInd).
 
 get_tabs(Tab,Tabs):-
@@ -3264,7 +3264,7 @@ new_tableau(tableau{
 /**
  * init_tabelau(+ABox:abox, +Tabs:tableau, -InitializedTableaus:dict)
  * 
- * Initialize a tableau with the lements given in input.
+ * Initialize a tableau with the elements given in input.
  */
 init_tableau(ABox,Tabs,tableau{
                             abox:ABox,
@@ -3279,7 +3279,7 @@ init_tableau(ABox,Tabs,tableau{
 /**
  * init_tabelau(+ABox:abox, +Tabs:tableau, +ExpansionQueue:expansion_queue, -InitializedTableaus:dict)
  * 
- * Initialize a tableau with the lements given in input.
+ * Initialize a tableau with the elements given in input.
  */
 init_tableau(ABox,Tabs,ExpansionQueue,tableau{
                                             abox:ABox,
@@ -3289,6 +3289,13 @@ init_tableau(ABox,Tabs,ExpansionQueue,tableau{
                                             sameind:[]
                                       }):-
   empty_clashes(Clashes).
+
+/**
+ * init_tabelau(+ABox:abox, -InitializedTableaus:dict)
+ * 
+ * Initialize a tableau with only the abox.
+ */
+init_tableau(ABox,tableau{abox:ABox}):-!.
 
 
 % ======================================================================
@@ -3415,47 +3422,45 @@ add_all_to_tableau(M,L,Tableau0,Tableau):-
   get_abox(Tableau0,ABox0),
   get_clashes(Tableau0,Clashes0),
   get_tabs(Tableau0,Tabs0),
-  add_all_to_abox_and_clashes(M,L,Tableau0,ABox0,ABox,Clashes0,Clashes,Tabs0,Tabs),
+  get_sameind(Tableau0,SameInd0),
+  add_all_to_abox_and_clashes(M,L,Tableau0,ABox0,ABox,Clashes0,Clashes,Tabs0,Tabs,SameInd0,SameInd),
   set_abox(Tableau0,ABox,Tableau1),
   set_clashes(Tableau1,Clashes,Tableau2),
-  set_tabs(Tableau2,Tabs,Tableau).
+  set_tabs(Tableau2,Tabs,Tableau3),
+  set_sameind(Tableau3,SameInd,Tableau).
 
-add_all_to_abox_and_clashes(_,[],_,A,A,C,C,T,T):-!.
+add_all_to_abox_and_clashes(_,[],_,A,A,C,C,T,T,S,S):-!.
 
-add_all_to_abox_and_clashes(M,[(classAssertion(Class,I),Expl)|Tail],Tableau0,A0,A,C0,C,(T0,RBN,RBR),T):-
+add_all_to_abox_and_clashes(M,[(classAssertion(Class,I),Expl)|Tail],Tableau,A0,A,C0,C,(T0,RBN,RBR),T,SameInd0,SameInd):-
   add_to_abox(A0,(classAssertion(Class,I),Expl),A1),
-  check_clash_and_add_to_clashes(M,Class-I,Tableau0,C0,C1),!,
+  init_tableau(A1,TabOnlyABox),
+  check_clash_and_add_to_clashes(M,Class-I,TabOnlyABox,C0,C1),!,
   add_vertices(T0,[I],T1),
-  set_abox(Tableau0,A1,Tableau),
-  add_all_to_abox_and_clashes(M,Tail,Tableau,A1,A,C1,C,(T1,RBN,RBR),T).
+  add_all_to_abox_and_clashes(M,Tail,Tableau,A1,A,C1,C,(T1,RBN,RBR),T,SameInd0,SameInd).
 
-add_all_to_abox_and_clashes(M,[(sameIndividual(LI),Expl)|Tail],Tableau0,A0,A,C0,C,(T0,RBN,RBR),T):-
+add_all_to_abox_and_clashes(M,[(sameIndividual(LI),Expl)|Tail],Tableau,A0,A,C0,C,(T0,RBN,RBR),T,SameInd0,SameInd):-
   add_to_abox(A0,(sameIndividual(LI),Expl),A1),
-  check_clash_and_add_to_clashes(M,sameIndividual(LI),Tableau0,C0,C1),!,
+  init_tableau(A1,TabOnlyABox),
+  check_clash_and_add_to_clashes(M,sameIndividual(LI),TabOnlyABox,C0,C1),!,
   add_vertices(T0,LI,T1),
-  set_abox(Tableau0,A1,Tableau1),
-  get_sameInd(Tableau1,SameInd0),
-  add_to_sameind(SameInd0,LI,SameInd),
-  set_sameind(Tableau1,SameInd,Tableau),
-  add_all_to_abox_and_clashes(M,Tail,Tableau,A1,A,C1,C,(T1,RBN,RBR),T).
+  add_to_sameind(SameInd0,LI,SameInd1),
+  add_all_to_abox_and_clashes(M,Tail,Tableau,A1,A,C1,C,(T1,RBN,RBR),T,SameInd1,SameInd).
 
-add_all_to_abox_and_clashes(M,[(differentIndividuals(LI),Expl)|Tail],Tableau0,A0,A,C0,C,(T0,RBN,RBR),T):-
+add_all_to_abox_and_clashes(M,[(differentIndividuals(LI),Expl)|Tail],Tableau,A0,A,C0,C,(T0,RBN,RBR),T,SameInd0,SameInd):-
   add_to_abox(A0,(differentIndividuals(LI),Expl),A1),
-  check_clash_and_add_to_clashes(M,differentIndividuals(LI),Tableau0,C0,C1),!,
+  init_tableau(A1,TabOnlyABox),
+  check_clash_and_add_to_clashes(M,differentIndividuals(LI),TabOnlyABox,C0,C1),!,
   add_vertices(T0,LI,T1),
-  set_abox(Tableau0,A1,Tableau),
-  add_all_to_abox_and_clashes(M,Tail,Tableau,A1,A,C1,C,(T1,RBN,RBR),T).
+  add_all_to_abox_and_clashes(M,Tail,Tableau,A1,A,C1,C,(T1,RBN,RBR),T,SameInd0,SameInd).
 
-add_all_to_abox_and_clashes(M,[(propertyAssertion(P,S,O),Expl)|Tail],Tableau0,A0,A,C0,C,T0,T):-!,
+add_all_to_abox_and_clashes(M,[(propertyAssertion(P,S,O),Expl)|Tail],Tableau,A0,A,C0,C,T0,T,SameInd0,SameInd):-!,
   add_to_abox(A0,(propertyAssertion(P,S,O),Expl),A1),
   add_edge_int(P,S,O,T0,T1),
-  set_abox(Tableau0,A1,Tableau),
-  add_all_to_abox_and_clashes(M,Tail,Tableau,A1,A,C0,C,T1,T).
+  add_all_to_abox_and_clashes(M,Tail,Tableau,A1,A,C0,C,T1,T,SameInd0,SameInd).
 
-add_all_to_abox_and_clashes(M,[H|Tail],Tableau0,A0,A,C0,C,T0,T):-!,
+add_all_to_abox_and_clashes(M,[H|Tail],Tableau,A0,A,C0,C,T0,T,SameInd0,SameInd):-!,
   add_to_abox(A0,H,A1),
-  set_abox(Tableau0,A1,Tableau),
-  add_all_to_abox_and_clashes(M,Tail,Tableau,A1,A,C0,C,T0,T).
+  add_all_to_abox_and_clashes(M,Tail,Tableau,A1,A,C0,C,T0,T,SameInd0,SameInd).
 
 add_all_to_abox([],A,A).
 
