@@ -328,7 +328,7 @@ find_single_explanation(M,QueryType,QueryArgs,Expl):-
   build_abox(M,Tableau,QueryType,QueryArgs), % will expand the KB without the query
   (absence_of_clashes(Tableau) ->  % TODO if QueryType is inconsistent no check
     (
-      add_q(M,QueryType,Tableau,QueryArgs,Tableau0),
+      add_q(M,QueryType,Tableau,QueryArgs,Tableau0),!,
       set_up_tableau(M),
       set_next_from_expansion_queue(Tableau0,_EA,Tableau1),
       get_explanation(M,Tableau1,Expl)
@@ -920,7 +920,7 @@ check_query_not_existent_args(QA,QAExT,[],QAEx) :- !,
     ( length(QA,0) -> QAEx = ['inconsistent','kb'] ; QAEx = QAExT)
   ).
 check_query_not_existent_args(_QA,_QAExT,NotEx,_QAEx) :-
-  print_message(warning,iri_not_exists(NotEx)),!.
+  print_message(warning,iri_not_exists(NotEx)),!,fail.
 
 from_query_type_to_args_type(io,[class,ind]):- !.
 from_query_type_to_args_type(pv,[prop,ind,ind]):- !.
@@ -3161,6 +3161,12 @@ get_abox(Tab,ABox):-
 set_abox(Tab0,ABox,Tab):-
   Tab = Tab0.put(abox,ABox).
 
+get_sameind(Tab,SameInd):-
+  SameInd = Tab.sameind.
+
+set_abox(Tab0,SameInd,Tab):-
+  Tab = Tab0.put(sameind,SameInd).
+
 get_tabs(Tab,Tabs):-
   Tabs = Tab.tabs.
 
@@ -3246,7 +3252,8 @@ new_tableau(tableau{
                 abox:ABox, 
                 tabs:Tabs, 
                 clashes:Clashes, 
-                expq:ExpansionQueue
+                expq:ExpansionQueue,
+                sameind:[]
             }):-
   new_abox(ABox),
   new_tabs(Tabs),
@@ -3259,7 +3266,13 @@ new_tableau(tableau{
  * 
  * Initialize a tableau with the lements given in input.
  */
-init_tableau(ABox,Tabs,tableau{abox:ABox, tabs:Tabs, clashes:Clashes, expq:ExpansionQueue}):-
+init_tableau(ABox,Tabs,tableau{
+                            abox:ABox,
+                            tabs:Tabs,
+                            clashes:Clashes,
+                            expq:ExpansionQueue,
+                            sameind:[]
+                        }):-
   empty_clashes(Clashes),
   empty_expansion_queue(ExpansionQueue).
 
@@ -3268,7 +3281,13 @@ init_tableau(ABox,Tabs,tableau{abox:ABox, tabs:Tabs, clashes:Clashes, expq:Expan
  * 
  * Initialize a tableau with the lements given in input.
  */
-init_tableau(ABox,Tabs,ExpansionQueue,tableau{abox:ABox, tabs:Tabs, clashes:Clashes, expq:ExpansionQueue}):-
+init_tableau(ABox,Tabs,ExpansionQueue,tableau{
+                                            abox:ABox,
+                                            tabs:Tabs,
+                                            clashes:Clashes,
+                                            expq:ExpansionQueue,
+                                            sameind:[]
+                                      }):-
   empty_clashes(Clashes).
 
 
@@ -3361,6 +3380,25 @@ add_to_abox(ABox,El,[El|ABox]).
 remove_from_abox(ABox0,El,ABox):-
   delete(ABox0,El,ABox).
 
+add_to_sameind(SameInd0,LI,SameInd):-
+  findall(I1-I2,(member(I1,LI),member(I2,LI),dif(I1,I2)),ToAdd),
+  add_to_sameind_int(SameInd0,ToAdd,SameInd).
+
+add_to_sameind_int(SameInd0,[],SameInd0):-!.
+
+add_to_sameind_int(SameInd0,[H|TToAdd],SameInd):-
+  member(H,SameInd0),!,
+  add_to_sameind_int(SameInd0,TToAdd,SameInd).
+
+add_to_sameind_int(SameInd0,[H|TToAdd],[H|SameInd]):-!,
+  add_to_sameind_int(SameInd0,TToAdd,SameInd).
+
+
+check_clash_and_add_to_clashes(M,El,Tableau0,C0,C1):-
+  check_clash(M,El,Tableau0),!,
+  add_to_clash(C0,El,C1).
+
+check_clash_and_add_to_clashes(_M,_El,_Tableau,C,C):- !.
 
 add_to_clashes(Clashes,'http://www.w3.org/2002/07/owl#Nothing'-_,[owlnothing|Clashes]):-!.
 
@@ -3385,24 +3423,25 @@ add_all_to_tableau(M,L,Tableau0,Tableau):-
 add_all_to_abox_and_clashes(_,[],_,A,A,C,C,T,T):-!.
 
 add_all_to_abox_and_clashes(M,[(classAssertion(Class,I),Expl)|Tail],Tableau0,A0,A,C0,C,(T0,RBN,RBR),T):-
-  check_clash(M,Class-I,Tableau0),!,
   add_to_abox(A0,(classAssertion(Class,I),Expl),A1),
-  add_to_clashes(C0,Class-I,C1),
+  check_clash_and_add_to_clashes(M,Class-I,Tableau0,C0,C1),!,
   add_vertices(T0,[I],T1),
   set_abox(Tableau0,A1,Tableau),
   add_all_to_abox_and_clashes(M,Tail,Tableau,A1,A,C1,C,(T1,RBN,RBR),T).
 
-add_all_to_abox_and_clashes(M,[(sameIndividual(LI),Expl)|Tail],Tableau0,A0,A,C0,C,T0,T):-
-  check_clash(M,sameIndividual(LI),Tableau0),!,
+add_all_to_abox_and_clashes(M,[(sameIndividual(LI),Expl)|Tail],Tableau0,A0,A,C0,C,(T0,RBN,RBR),T):-
   add_to_abox(A0,(sameIndividual(LI),Expl),A1),
-  add_to_clashes(C0,sameIndividual(LI),C1),
-  set_abox(Tableau0,A1,Tableau),
-  add_all_to_abox_and_clashes(M,Tail,Tableau,A1,A,C1,C,T0,T).
+  check_clash_and_add_to_clashes(M,sameIndividual(LI),Tableau0,C0,C1),!,
+  add_vertices(T0,LI,T1),
+  set_abox(Tableau0,A1,Tableau1),
+  get_sameInd(Tableau1,SameInd0),
+  add_to_sameind(SameInd0,LI,SameInd),
+  set_sameind(Tableau1,SameInd,Tableau),
+  add_all_to_abox_and_clashes(M,Tail,Tableau,A1,A,C1,C,(T1,RBN,RBR),T).
 
 add_all_to_abox_and_clashes(M,[(differentIndividuals(LI),Expl)|Tail],Tableau0,A0,A,C0,C,(T0,RBN,RBR),T):-
-  check_clash(M,differentIndividuals(LI),Tableau0),!,
   add_to_abox(A0,(differentIndividuals(LI),Expl),A1),
-  add_to_clashes(C0,differentIndividuals(LI),C1),
+  check_clash_and_add_to_clashes(M,differentIndividuals(LI),Tableau0,C0,C1),!,
   add_vertices(T0,LI,T1),
   set_abox(Tableau0,A1,Tableau),
   add_all_to_abox_and_clashes(M,Tail,Tableau,A1,A,C1,C,(T1,RBN,RBR),T).

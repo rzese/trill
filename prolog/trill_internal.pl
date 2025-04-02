@@ -677,7 +677,7 @@ build_abox(M,Tableau,QueryType,QueryArgs):-
   %append([LCA,LPA,LDIA],CreateTabsList),
   %create_tabs(CreateTabsList,Tableau0,Tableau1),
   append([LCA,LPA,LNA,LDIA],AddAllList),
-  add_all_to_tableau(M,AddAllList,Tableau0,Tableau2),
+  add_all_to_tableau(M,AddAllList,Tableau0,Tableau2),gtrace,
   merge_all_individuals(M,LSIA,Tableau2,Tableau3),
   add_owlThing_list(M,Tableau3,Tableau),
   !.
