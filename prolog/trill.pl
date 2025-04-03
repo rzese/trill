@@ -1374,7 +1374,7 @@ continue_or_return_expl(M,Rules,Tab0,EA,Tab1,Clash,Tab,Expl):-!,
 
 continue(M,_Rules,Tab0,EA,Tab1,_Clash,Tab,Expl):-
   retract(M:tab_end(Tab1)),
-  pop_clashes(Tab1,_,Tab2),
+  pop_clashes(Tab1,_,Tab2),!,
   ( test_end_apply_rule(M,Tab0,Tab2) ->
       ( set_next_from_expansion_queue(Tab0,_EA1,Tab), 
         Expl=[]
@@ -1738,7 +1738,7 @@ find_neg_class(someValuesFrom(R,C),allValuesFrom(R,NC)):-
 
 neg_class(complementOf(C),C):- !.
 
-neg_class(C,complementOf(C)).
+neg_class(C,complementOf(C)):- !.
 
 % ---------------
 
@@ -1963,19 +1963,19 @@ find_transitive_property(M,C,transitiveProperty(C)):-
 % sub classes
 unfold_rule(M,Tab0,[C,Ind],Tab):-
   get_abox(Tab0,ABox),
-  findClassAssertion(C,Ind,Expl,ABox),
-  get_sameind(Tab0,SameInd),
-  IndList = SameInd.get(Ind,[]),
+  findClassAssertion(C,Ind,Expl0,ABox),
+  delete(Expl0,[]-[qp],Expl), dif(Expl,[]),
+  get_sameind(Tab0,Ind,IndList),
   copy_to_same_inds_class(M,C,Ind,IndList,Expl,ABox,Tab0,Tab),
   dif(Tab0,Tab).
 
 % sub properties
 unfold_rule(M,Tab0,[C,Ind1,Ind2],Tab):-
   get_abox(Tab0,ABox),
-  findPropertyAssertion(C,Ind1,Ind2,Expl,ABox),
-  get_sameind(Tab0,SameInd),
-  IndList1 = SameInd.get(Ind1,[]),
-  IndList2 = SameInd.get(Ind2,[]),
+  findPropertyAssertion(C,Ind1,Ind2,Expl0,ABox),
+  delete(Expl0,[]-[qp],Expl), dif(Expl,[]),
+  get_sameind(Tab0,Ind1,IndList1),
+  get_sameind(Tab0,Ind2,IndList2),
   copy_to_same_inds_property(M,C,Ind1,Ind2,IndList1,1,Expl,ABox,Tab0,Tab1),
   copy_to_same_inds_property(M,C,Ind1,Ind2,IndList2,2,Expl,ABox,Tab1,Tab),
   dif(Tab0,Tab).
@@ -1990,7 +1990,7 @@ copy_to_same_inds_class(M,C,IndStart,[Ind|IndList],Expl0,ABox,Tab0,Tab):-
   add_nominal(M,C,Ind,Tab1,Tab2),
   copy_to_same_inds_class(M,C,IndStart,IndList,Expl0,ABox,Tab2,Tab).
 
-copy_to_same_inds_class(M,C,IndStart,[_|IndList],Expl0,ABox,Tab0,Tab):-
+copy_to_same_inds_class(M,C,IndStart,[_|IndList],Expl0,ABox,Tab0,Tab):- !,
   copy_to_same_inds_class(M,C,IndStart,IndList,Expl0,ABox,Tab0,Tab).
 
 %-----------------
@@ -2003,8 +2003,8 @@ copy_to_same_inds_property(M,C,IndStart1,IndStart2,[Ind|IndList],1,Expl0,ABox,Ta
   add_nominal(M,C,Ind,Tab1,Tab2),
   copy_to_same_inds_property(M,C,IndStart1,IndStart2,IndList,1,Expl0,ABox,Tab2,Tab).
 
-copy_to_same_inds_property(M,C,IndStart1,IndStart2,[_|IndList],1,Expl0,ABox,Tab0,Tab):-
-  copy_to_same_inds_property(M,C,IndStart1,IndStart2,IndList,1,Expl0,ABox,Tab0,Tab).
+%copy_to_same_inds_property(M,C,IndStart1,IndStart2,[_|IndList],1,Expl0,ABox,Tab0,Tab):- !,
+%  copy_to_same_inds_property(M,C,IndStart1,IndStart2,IndList,1,Expl0,ABox,Tab0,Tab).
 
 copy_to_same_inds_property(M,C,IndStart1,IndStart2,[Ind|IndList],2,Expl0,ABox,Tab0,Tab):-
   findSameIndividual([IndStart2,Ind],(_,Expl1),ABox),
@@ -2013,8 +2013,8 @@ copy_to_same_inds_property(M,C,IndStart1,IndStart2,[Ind|IndList],2,Expl0,ABox,Ta
   add_nominal(M,C,Ind,Tab1,Tab2),
   copy_to_same_inds_property(M,C,IndStart1,IndStart2,IndList,1,Expl0,ABox,Tab2,Tab).
 
-copy_to_same_inds_property(M,C,IndStart1,IndStart2,[_|IndList],2,Expl0,ABox,Tab0,Tab):-
-  copy_to_same_inds_property(M,C,IndStart1,IndStart2,IndList,1,Expl0,ABox,Tab0,Tab).
+copy_to_same_inds_property(M,C,IndStart1,IndStart2,[_|IndList],Which,Expl0,ABox,Tab0,Tab):- !,
+  copy_to_same_inds_property(M,C,IndStart1,IndStart2,IndList,Which,Expl0,ABox,Tab0,Tab).
 
 /* ************* */
 
@@ -3247,6 +3247,9 @@ set_abox(Tab0,ABox,Tab):-
 
 get_sameind(Tab,SameInd):-
   SameInd = Tab.sameind.
+
+get_sameind(Tab,Ind,SameInd):-
+  SameInd = Tab.sameind.get(Ind,[]).
 
 set_sameind(Tab0,SameInd,Tab):-
   Tab = Tab0.put(sameind,SameInd).
