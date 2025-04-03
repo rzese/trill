@@ -896,7 +896,7 @@ reset_query:-
 % adds the query into the ABox
 add_q(M,Tableau0,Query,Tableau):-
   query_empty_expl(M,Expl),
-  add_to_tableau(Tableau0,(Query,Expl),Tableau1),
+  add_to_tableau(M,(Query,Expl),Tableau0,Tableau1),
   create_tabs([(Query,Expl)],Tableau1,Tableau).
 
 
@@ -2585,10 +2585,8 @@ prepare_nom_list(M,[H|T],[(classAssertion('http://www.w3.org/2002/07/owl#Thing',
 merge_all_individuals(_,[],Tab,Tab):-!.
 
 merge_all_individuals(M,[(sameIndividual(H),Expl)|T],Tab0,Tab):-
-  get_abox(Tab0,ABox0),
-  find_same(H,ABox0,L,ExplL),
-  dif(L,[]),!,
-  merge_all1(M,H,Expl,L,Tab0,Tab1),
+  merge_all_individuals_int(M,H,Expl,H,Tab0,Tab1),
+  /*
   flatten([H,L],HL0),
   sort(HL0,HL),
   list_as_sameIndividual(HL,SI), %TODO
@@ -2598,8 +2596,10 @@ merge_all_individuals(M,[(sameIndividual(H),Expl)|T],Tab0,Tab):-
   add_to_tableau(Tab1,(SI,ExplT),Tab2),
   remove_from_tableau(Tab2,(sameIndividual(L),ExplL),Tab3),
   retract_sameIndividual(L),
-  merge_all_individuals(M,T,Tab3,Tab).
+  merge_all_individuals(M,T,Tab3,Tab).*/
+  merge_all_individuals(M,T,Tab1,Tab).
 
+/*
 merge_all_individuals(M,[(sameIndividual(H),Expl)|T],Tab0,Tab):-
   %get_abox(Tab0,ABox0),
   %find_same(H,ABox0,L,_),
@@ -2607,6 +2607,22 @@ merge_all_individuals(M,[(sameIndividual(H),Expl)|T],Tab0,Tab):-
   merge_all2(M,H,Expl,Tab0,Tab1),
   add_to_tableau(Tab1,(sameIndividual(H),Expl),Tab2),
   merge_all_individuals(M,T,Tab2,Tab).
+*/
+
+merge_all_individuals_int(_M,[],_Expl,_All,Tab,Tab):-!.
+
+merge_all_individuals_int(M,[H|T],Expl,All,Tab0,Tab):-
+  merge_two_inds(M,H,Expl,All,Tab0,Tab1),
+  merge_all_individuals_int(M,T,Expl,All,Tab1,Tab).
+
+merge_two_inds(_M,_H,_Expl,[],Tab,Tab):-!.
+
+merge_two_inds(M,H,Expl,[H|TAll],Tab0,Tab):-!,
+  merge_two_inds(M,H,Expl,TAll,Tab0,Tab).
+
+merge_two_inds(M,H,Expl,[IAll|TAll],Tab0,Tab):-!,
+  merge(M,H,IAll,Expl,Tab0,Tab1),
+  merge_two_inds(M,H,Expl,TAll,Tab1,Tab).
 
 merge_all1(_M,[],_,_,Tab,Tab).
 
@@ -3341,10 +3357,11 @@ new_abox([]).
 
  
 /* add El to ABox */
-add_to_tableau(Tableau0,El,Tableau):-
-  get_abox(Tableau0,ABox0),
-  add_to_abox(ABox0,El,ABox),
-  set_abox(Tableau0,ABox,Tableau).
+add_to_tableau(M,El,Tableau0,Tableau):-
+  add_all_to_abox_and_clashes(M,[El],Tableau0,Tableau).
+
+add_all_to_tableau(M,L,Tableau0,Tableau):-
+  add_all_to_abox_and_clashes(M,L,Tableau0,Tableau).
 
 remove_from_tableau(Tableau0,El,Tableau):-
   get_abox(Tableau0,ABox0),
@@ -3389,7 +3406,7 @@ add_to_abox(ABox,El,[El|ABox]).
 remove_from_abox(ABox0,El,ABox):-
   delete(ABox0,El,ABox).
 
-add_to_sameind(SameInd0,LI,SameInd):-%gtrace,
+add_to_sameind(SameInd0,LI,SameInd):-
   findall(I1-L,(member(I1,LI),findall(I2,(member(I2,LI),dif(I1,I2)),L)),ToAdd),
   add_to_sameind_int(SameInd0,ToAdd,SameInd).
 
@@ -3417,59 +3434,43 @@ add_to_clashes(Clashes,El,[El|Clashes]).
 remove_from_abox(Clashes0,El,Clashes):-
   delete(Clashes0,El,Clashes).
 
-/*
-  add_all_to_tableau(M,L1,L2,LO).
-  add in L2 all item of L1
-*/
-add_all_to_tableau(M,L,Tableau0,Tableau):-
-  get_abox(Tableau0,ABox0),
-  get_clashes(Tableau0,Clashes0),
-  get_tabs(Tableau0,Tabs0),
-  get_sameind(Tableau0,SameInd0),
-  add_all_to_abox_and_clashes(M,L,Tableau0,ABox0,ABox,Clashes0,Clashes,Tabs0,Tabs,SameInd0,SameInd),
-  set_abox(Tableau0,ABox,Tableau1),
-  set_clashes(Tableau1,Clashes,Tableau2),
-  set_tabs(Tableau2,Tabs,Tableau3),
-  set_sameind(Tableau3,SameInd,Tableau).
 
-add_all_to_abox_and_clashes(_,[],_,A,A,C,C,T,T,S,S):-!.
+add_all_to_abox_and_clashes(_,[],T,T):-!.
 
-add_all_to_abox_and_clashes(M,[(classAssertion(Class,I),Expl)|Tail],Tableau,A0,A,C0,C,(T0,RBN,RBR),T,SameInd0,SameInd):-
-  add_to_abox(A0,(classAssertion(Class,I),Expl),A1),
-  init_tableau(A1,TabOnlyABox),
-  check_clash_and_add_to_clashes(M,Class-I,TabOnlyABox,C0,C1),!,
+add_all_to_abox_and_clashes(M,[(classAssertion(Class,I),Expl)|Tail],Tableau0,Tableau):-
+  modify_ABox(M,Tableau0,Class,I,Expl,Tableau1),
+  get_tabs(Tableau1,(T0,RBN,RBR)),
   add_vertices(T0,[I],T1),
-  add_all_to_abox_and_clashes(M,Tail,Tableau,A1,A,C1,C,(T1,RBN,RBR),T,SameInd0,SameInd).
+  set_tabs(Tableau1,(T1,RBN,RBR),Tableau2),
+  add_all_to_abox_and_clashes(M,Tail,Tableau2,Tableau).
 
-add_all_to_abox_and_clashes(M,[(sameIndividual(LI),Expl)|Tail],Tableau,A0,A,C0,C,(T0,RBN,RBR),T,SameInd0,SameInd):-
-  add_to_abox(A0,(sameIndividual(LI),Expl),A1),
-  init_tableau(A1,TabOnlyABox),
-  check_clash_and_add_to_clashes(M,sameIndividual(LI),TabOnlyABox,C0,C1),!,
+add_all_to_abox_and_clashes(M,[(sameIndividual(LI),Expl)|Tail],Tableau0,Tableau):-
+  modify_ABox(M,Tableau0,sameIndividual(LI),Expl,Tableau1),
+  get_tabs(Tableau1,(T0,RBN,RBR)),
   add_vertices(T0,LI,T1),
-  add_to_sameind(SameInd0,LI,SameInd1),
-  add_all_to_abox_and_clashes(M,Tail,Tableau,A1,A,C1,C,(T1,RBN,RBR),T,SameInd1,SameInd).
+  set_tabs(Tableau1,(T1,RBN,RBR),Tableau2),
+  get_sameind(Tableau2,SameInd0),
+  add_to_sameind(SameInd0,LI,SameInd),
+  set_sameind(Tableau2,SameInd,Tableau3),
+  add_all_to_abox_and_clashes(M,Tail,Tableau3,Tableau).
 
-add_all_to_abox_and_clashes(M,[(differentIndividuals(LI),Expl)|Tail],Tableau,A0,A,C0,C,(T0,RBN,RBR),T,SameInd0,SameInd):-
-  add_to_abox(A0,(differentIndividuals(LI),Expl),A1),
-  init_tableau(A1,TabOnlyABox),
-  check_clash_and_add_to_clashes(M,differentIndividuals(LI),TabOnlyABox,C0,C1),!,
+add_all_to_abox_and_clashes(M,[(differentIndividuals(LI),Expl)|Tail],Tableau0,Tableau):-
+  modify_ABox(M,Tableau0,differentIndividuals(LI),Expl,Tableau1),
+  get_tabs(Tableau1,(T0,RBN,RBR)),
   add_vertices(T0,LI,T1),
-  add_all_to_abox_and_clashes(M,Tail,Tableau,A1,A,C1,C,(T1,RBN,RBR),T,SameInd0,SameInd).
+  set_tabs(Tableau1,(T1,RBN,RBR),Tableau2),
+  add_all_to_abox_and_clashes(M,Tail,Tableau2,Tableau).
 
-add_all_to_abox_and_clashes(M,[(propertyAssertion(P,S,O),Expl)|Tail],Tableau,A0,A,C0,C,T0,T,SameInd0,SameInd):-!,
-  add_to_abox(A0,(propertyAssertion(P,S,O),Expl),A1),
-  add_edge_int(P,S,O,T0,T1),
-  add_all_to_abox_and_clashes(M,Tail,Tableau,A1,A,C0,C,T1,T,SameInd0,SameInd).
+add_all_to_abox_and_clashes(M,[(propertyAssertion(P,S,O),Expl)|Tail],Tableau0,Tableau):-!,
+  modify_ABox(M,Tableau0,P,S,O,Expl,Tableau1),
+  add_edge(P,S,O,Tableau1,Tableau2),
+  add_all_to_abox_and_clashes(M,Tail,Tableau2,Tableau).
 
-add_all_to_abox_and_clashes(M,[H|Tail],Tableau,A0,A,C0,C,T0,T,SameInd0,SameInd):-!,
+add_all_to_abox_and_clashes(M,[H|Tail],Tableau0,Tableau):-!,
+  get_abox(Tableau0,A0),
   add_to_abox(A0,H,A1),
-  add_all_to_abox_and_clashes(M,Tail,Tableau,A1,A,C0,C,T0,T,SameInd0,SameInd).
-
-add_all_to_abox([],A,A).
-
-add_all_to_abox([H|T],A0,A):-
-  add_to_abox(A0,H,A1),
-  add_all_to_abox(T,A1,A).
+  set_abox(Tableau0,A1,Tableau1),
+  add_all_to_abox_and_clashes(M,Tail,Tableau1,Tableau).
 
 /* ************** */
 
@@ -3742,6 +3743,13 @@ merge(M,sameIndividual(L),Y,Expl,Tableau0,Tableau):-
 merge(M,X,Y,Expl,Tableau0,Tableau):-
   !,
   get_tabs(Tableau0,Tabs0),
+  merge_tabs(X,Y,Tabs0,Tabs1),
+  set_tabs(Tableau0,Tabs1,Tableau1),
+  merge_abox(M,X,Y,Expl,Tableau1,Tableau).
+
+merge_old(M,X,Y,Expl,Tableau0,Tableau):-
+  !,
+  get_tabs(Tableau0,Tabs0),
   merge_tabs(X,Y,Tabs0,Tabs),
   get_abox(Tableau0,ABox0),
   flatten([X,Y],L0),
@@ -3771,6 +3779,11 @@ merge_tabs(X,Y,(T0,RBN0,RBR0),(T,RBN,RBR)):-
   (neighbours(X,TT,LPX0)*->assign(LPX0,LPX);assign([],LPX)),
   (neighbours(Y,TT,LPY0)*->assign(LPY0,LPY);assign([],LPY)),
   % list_as_sameIndividual([X,Y],SI), %TODO
+  set_predecessor(Y,X,LPX,(T0,RBN0,RBR0),(T1,RBN1,RBR1)),!,
+  set_successor(Y,X,LSX,(T1,RBN1,RBR1),(T2,RBN2,RBR2)),!,
+  set_predecessor(X,Y,LPY,(T2,RBN2,RBR2),(T3,RBN3,RBR3)),!,
+  set_successor(X,Y,LSY,(T3,RBN3,RBR3),(T,RBN,RBR)),!.
+  /*
   flatten([X,Y],L0),
   sort(L0,SI),
   set_predecessor(SI,X,LPX,(T0,RBN0,RBR0),(T1,RBN1,RBR1)),!,
@@ -3778,6 +3791,7 @@ merge_tabs(X,Y,(T0,RBN0,RBR0),(T,RBN,RBR)):-
   set_predecessor(SI,Y,LPY,(T2,RBN2,RBR2),(T3,RBN3,RBR3)),!,
   set_successor(SI,Y,LSY,(T3,RBN3,RBR3),(T4,RBN4,RBR4)),!,
   remove_nodes(X,Y,(T4,RBN4,RBR4),(T,RBN,RBR)).
+*/
 
 remove_nodes(X,Y,Tabs0,Tabs):-
   remove_node(X,Tabs0,Tabs1),
@@ -3848,28 +3862,31 @@ set_successor1(NN,H,[R|L],(T0,RBN0,RBR0),(T,RBN,RBR)):-
 */
 
 % TODO update
-merge_abox(_M,_L,_,_,[],[],[]).
+merge_abox(M,X,Y,Expl0,Tab0,Tab):-
+  get_abox(Tab0,ABox0),
+  merge_abox_int(M,X,Y,Expl0,ABox0,NAxABox),!,
+  add_all_to_abox_and_clashes(M,NAxABox,Tab0,Tab).
 
-merge_abox(M,L,SI,Expl0,[(classAssertion(C,Ind),ExplT)|T],[(classAssertion(C,SI),Expl)|ABox],[C-SI|CTC]):-
-  member(Ind,L),!,
+
+merge_abox_int(_M,_L,_,_,[],[],[]).
+
+merge_abox_int(M,X,Y,Expl0,[(classAssertion(C,X),ExplT)|T],[(classAssertion(C,Y),Expl)|NAxABox]):- !,
   and_f(M,Expl0,ExplT,Expl),
   %and_f_ax(M,sameIndividual(L),Expl1,Expl),
-  merge_abox(M,L,SI,Expl0,T,ABox,CTC).
+  merge_abox_int(M,X,Y,Expl0,T,NAxABox).
 
-merge_abox(M,L,SI,Expl0,[(propertyAssertion(P,Ind1,Ind2),ExplT)|T],[(propertyAssertion(P,SI,Ind2),Expl)|ABox],CTC):-
-  member(Ind1,L),!,
+merge_abox_int(M,X,Y,Expl0,[(propertyAssertion(P,X,Ind2),ExplT)|T],[(propertyAssertion(P,Y,Ind2),Expl)|NAxABox]):- !,
   and_f(M,Expl0,ExplT,Expl),
   %and_f_ax(M,sameIndividual(L),Expl1,Expl),
-  merge_abox(M,L,SI,Expl0,T,ABox,CTC).
+  merge_abox_int(M,X,Y,Expl0,T,NAxABox).
 
-merge_abox(M,L,SI,Expl0,[(propertyAssertion(P,Ind1,Ind2),ExplT)|T],[(propertyAssertion(P,Ind1,SI),Expl)|ABox],CTC):-
-  member(Ind2,L),!,
+merge_abox_int(M,X,Y,Expl0,[(propertyAssertion(P,Ind1,X),ExplT)|T],[(propertyAssertion(P,Ind1,Y),Expl)|NAxABox]):- !,
   and_f(M,Expl0,ExplT,Expl),
   %and_f_ax(M,sameIndividual(L),Expl1,Expl),
-  merge_abox(M,L,SI,Expl0,T,ABox,CTC).
+  merge_abox_int(M,X,Y,Expl0,T,NAxABox).
 
-merge_abox(M,L,SI,Expl0,[H|T],[H|ABox],CTC):-
-  merge_abox(M,L,SI,Expl0,T,ABox,CTC).
+merge_abox_int(M,X,Y,Expl0,[_H|T],NAxABox):-
+  merge_abox_int(M,X,Y,Expl0,T,NAxABox).
 
 
 /*
@@ -3889,7 +3906,7 @@ check_merged_classes(M,[_ToCheck|TC],Tab,NewClashes):-
  update clashes ofter merge
  substitute ind in clashes with sameIndividual
  */
-
+/*
 update_clashes_after_merge(M,L,SI,Tableau,Clashes0,Clashes):-
   update_clashes_after_merge(M,L,SI,Tableau,Clashes0,Clashes,0).
 
@@ -3917,7 +3934,7 @@ update_clashes_after_merge(M,L,SI,Tableau,[C-sameIndividual(LOld)|TC0],[C-SI|TC]
 
 update_clashes_after_merge(M,L,SI,Tableau,[Clash|TC0],[Clash|TC],UpdatedSI):-
   update_clashes_after_merge(M,L,SI,Tableau,TC0,TC,UpdatedSI).
-
+*/
 
 
 
@@ -3925,27 +3942,21 @@ update_clashes_after_merge(M,L,SI,Tableau,[Clash|TC0],[Clash|TC],UpdatedSI):-
  update expansion queue ofter merge
  substitute ind in expansion queue with sameIndividual
  */
-update_expansion_queue_after_merge(L,SI,[Curr0,ExpQD0,ExpQND0],[Curr,ExpQD,ExpQND]):-
-  update_expansion_queue_after_merge_int(L,SI,Curr0,Curr),
-  update_expansion_queue_after_merge_int(L,SI,ExpQD0,ExpQD),
-  update_expansion_queue_after_merge_int(L,SI,ExpQND0,ExpQND).
+update_expansion_queue_after_merge(AxForExpQ,ExpQ0,ExpQ):-
+  update_expansion_queue_after_merge_int(AxForExpQ,ClassAssForExpQ,PropAssForExpQ),
+  add_classes_expqueue(ClassAssForExpQ,ExpQ0,ExpQ1),
+  add_prop_expqueue(PropAssForExpQ,ExpQ1,ExpQ).
 
-update_expansion_queue_after_merge_int(_,_,[],[]).
+update_expansion_queue_after_merge_int([],[],[]).
 
-update_expansion_queue_after_merge_int(L,SI,[[C,I]|TC0],[[C,IN]|TC]):-
-  substitute_individual(L,I,SI,IN),
-  update_expansion_queue_after_merge_int(L,SI,TC0,TC).
+update_expansion_queue_after_merge_int([(classAssertion(C,I),Expl)|AxForExpQ],[(classAssertion(C,I),Expl)|ClassAssForExpQ],PropAssForExpQ):- !,
+  update_expansion_queue_after_merge_int(AxForExpQ,ClassAssForExpQ,PropAssForExpQ).
 
-update_expansion_queue_after_merge_int(L,SI,[[P,S,O]|TC0],[[P,SN,ON]|TC]):-
-  substitute_individual(L,S,SI,SN),
-  substitute_individual(L,O,SI,ON),
-  update_expansion_queue_after_merge_int(L,SI,TC0,TC).
+update_expansion_queue_after_merge_int([(propertyAssertion(P,S,O),Expl)|AxForExpQ],ClassAssForExpQ,[(propertyAssertion(P,S,O),Expl)|PropAssForExpQ]):- !,
+  update_expansion_queue_after_merge_int(AxForExpQ,ClassAssForExpQ,PropAssForExpQ).
 
-substitute_individual(L,sameIndividual(LSI),SI,SI):-
-  memberchk(I,L),
-  memberchk(I,LSI),!.
-
-substitute_individual(_,I,_,I):-!.
+update_expansion_queue_after_merge_int([_|AxForExpQ],ClassAssForExpQ,PropAssForExpQ):- !,
+  update_expansion_queue_after_merge_int(AxForExpQ,ClassAssForExpQ,PropAssForExpQ).
 
 % ====================================================
 % NEW STUFF
@@ -4106,7 +4117,7 @@ update_tabs_int(M,classAssertion(C,I),[Tab|TabsL]):-
   get_axioms_of_individuals(M,[I],LCA,LPA,LNA,LDIA,LSIA),
   append([[(classAssertion(C,I),[[classAssertion(C,I)]-[]])],LCA,LPA,LNA,LDIA,LSIA],AddAllList),
   add_all_to_tableau(M,AddAllList,Tab,NewTab0),
-  merge_all_individuals(M,LSIA,NewTab0,NewTab1),
+  merge_all_individuals(M,LSIA,NewTab0,NewTab1), % TODO check se serve
   add_owlThing_list(M,NewTab1,NewTab2),
   get_expansion_queue(NewTab2,EQ0),
   add_classes_expqueue(LCA,EQ0,EQ1),
