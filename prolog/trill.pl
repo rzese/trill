@@ -326,6 +326,11 @@ find_explanations(M,QueryType,QueryArgs,Expl):-
   find_n_explanations(M,QueryType,QueryArgs,Expl,MonitorNExpl),
   check_time_limit_monitor(M,MonitorTimeLimit).
 
+find_single_explanation(M,it,['inconsistent','kb'],Expl):-!,
+  build_abox(M,Tableau,it,['inconsistent','kb']), % will expand the KB without the query
+  set_up_tableau(M),
+  set_next_from_expansion_queue(Tableau,_EA,Tableau1),
+  get_explanation(M,Tableau1,Expl).
 
 find_single_explanation(M,QueryType,QueryArgs,Expl):-
   build_abox(M,Tableau,QueryType,QueryArgs), % will expand the KB without the query
@@ -392,7 +397,7 @@ get_open_query_monitor(M,QueryType,QueryArgs):-
 check_open_query_monitor_status(M,QueryType,QueryArgs):-
   M:query_option(active_query,[QueryType,QueryArgs]),!.
 
-check_open_query_monitor(M):-
+reset_open_query_monitor(M):-
   retractall(M:query_option(active_query,_)).
 /* *************** */
 
@@ -4182,8 +4187,9 @@ update_tabs_int(M,transitiveProperty(P),[Tab|TabsL]):-
   update_tabs_int(M,transitiveProperty(P),TabsL).
 
 update_tabs_int(M,sameIndividual(L),[Tab|TabsL]):-
-  add_all_to_tableau(M,[(sameIndividual(L),[[sameIndividual(L)]-[]])],Tab,Tab0),
-  merge_all_individuals(M,[(sameIndividual(L),[[sameIndividual(L)]-[]])],Tab0,NewTab), % TODO prende individui in L, per ogni coppia fa merge dei collegamenti aggiungendo a abox. Questo dovrà aggiungere item nella expansion q (indivduo in L-classe oppure individuo in L-altro individuo-property). Poi servirà unfold che prende item da expansion q e cercando nei collegamenti fa merge.
+  get_axioms_of_individuals(M,L,LCA,LPA,LNA,LDIA,LSIA),
+  append([[(classAssertion(C,I),[[classAssertion(C,I)]-[]])],LCA,LPA,LNA,LDIA,LSIA],AddAllList),
+  add_all_to_tableau(M,[(sameIndividual(L),[[sameIndividual(L)]-[]])|AddAllList],Tab,NewTab),
   assert(M:tab_end(NewTab)),
   update_tabs_int(M,sameIndividual(L),TabsL).
 
@@ -4201,8 +4207,7 @@ update_tabs_int(M,classAssertion(C,I),[Tab|TabsL]):-
   get_axioms_of_individuals(M,[I],LCA,LPA,LNA,LDIA,LSIA),
   append([[(classAssertion(C,I),[[classAssertion(C,I)]-[]])],LCA,LPA,LNA,LDIA,LSIA],AddAllList),
   add_all_to_tableau(M,AddAllList,Tab,NewTab0),
-  merge_all_individuals(M,LSIA,NewTab0,NewTab1), % TODO check se serve
-  add_owlThing_list(M,NewTab1,NewTab2),
+  add_owlThing_list(M,NewTab0,NewTab2),
   get_expansion_queue(NewTab2,EQ0),
   add_classes_expqueue(LCA,EQ0,EQ1),
   add_prop_expqueue(LPA,EQ1,EQ),
@@ -4214,8 +4219,7 @@ update_tabs_int(M,propertyAssertion(P,S,O),[Tab|TabsL]):-
   get_axioms_of_individuals(M,[S,O],LCA,LPA,LNA,LDIA,LSIA),
   append([[(propertyAssertion(P,S,O),[[propertyAssertion(P,S,O)]-[]])],LCA,LPA,LNA,LDIA,LSIA],AddAllList),
   add_all_to_tableau(M,AddAllList,Tab,NewTab0),
-  merge_all_individuals(M,LSIA,NewTab0,NewTab1),
-  add_owlThing_list(M,NewTab1,NewTab2),
+  add_owlThing_list(M,NewTab0,NewTab2),
   get_expansion_queue(NewTab2,EQ0),
   add_classes_expqueue(LCA,EQ0,EQ1),
   add_prop_expqueue(LPA,EQ1,EQ),

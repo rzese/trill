@@ -3528,7 +3528,7 @@ trill:add_axiom(M:Ax):-
   trill:update_tabs(M,Ax).
 
 :- multifile trill:add_axioms/1.
-trill:add_axioms(_:[]).
+trill:add_axioms(_:[]):-!.
 
 trill:add_axioms(M:[H|T]) :-
   trill:add_axiom(M:H),

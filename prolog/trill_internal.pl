@@ -133,7 +133,8 @@ find_expls(M,[Clash|_],Tab,E):-   % QueryArgs
   consistency_check(CPs1,[],Q),
   %findall(Exp,M:exp_found([C,I],Exp),Expl),
   %not_already_found(M,Expl,[C,I],E),
-  ( dif(Q,['inconsistent','kb']) -> true ; print_message(warning,inconsistent_inc_expl)),
+  ( dif(Q,['inconsistent','kb']) -> true ;  
+    ( check_open_query_monitor_status(M,it,['inconsistent','kb']) -> true ; print_message(warning,inconsistent)) ),
   \+ M:exp_found(Q,E),
   assert(M:exp_found(Q,E)). % QueryArgs
 
@@ -195,7 +196,8 @@ combine_expls_from_nondet_rules(M,cp(_,_,_,_,_,Expl),E):-
       fail % to force recursion
     ) ;
     (
-      ( dif(Q,['inconsistent','kb']) -> true ; print_message(warning,inconsistent)),
+      ( dif(Q,['inconsistent','kb']) -> true ; 
+       ( check_open_query_monitor_status(M,it,['inconsistent','kb']) -> true ; print_message(warning,inconsistent)) ),
       \+ M:exp_found(Q,E)
     )
   ).
