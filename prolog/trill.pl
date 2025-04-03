@@ -901,7 +901,7 @@ add_q(M,Tableau0,Query,Tableau):-
 
 
 % initialize an empty explanation for the query with the query placeholder 'qp' in teh choicepoint list
-query_empty_expl(M,Expl):-%gtrace,
+query_empty_expl(M,Expl):-
   empty_expl(M,EExpl),
   add_choice_point(M,qp,EExpl,Expl).
 
@@ -1309,7 +1309,7 @@ expand_queue(_M,Tab,Tab,Expl):-
   dif(Expl,[]).
 
 expand_queue(M,Tab,_,_):-
-  test_end_expand_queue(M,Tab),!,%gtrace,
+  test_end_expand_queue(M,Tab),!,
   assert(M:tab_end(Tab)),
   fail.
 
@@ -1518,10 +1518,10 @@ scan_and_list(M,[_C|T],Ind,Expl,Tab0,Tab,Mod):-
   or_rule
   ===============
 */
-or_rule(M,Tab0,[unionOf(LC),Ind],L):- %gtrace,
+or_rule(M,Tab0,[unionOf(LC),Ind],L):- 
   get_abox(Tab0,ABox),
   findClassAssertion(unionOf(LC),Ind,Expl,ABox),
-  \+ indirectly_blocked(Ind,Tab0), %gtrace,
+  \+ indirectly_blocked(Ind,Tab0), 
   %not_ind_intersected_union(Ind,LC,ABox),
   % length(LC,NClasses),
   get_choice_point_id(M,ID),
@@ -2136,7 +2136,7 @@ max_rule(M,Tab0,[maxCardinality(N,S),Ind],L):-
   get_choice_point_id(M,ID),
   scan_max_list(M,maxCardinality(N,S),S,'http://www.w3.org/2002/07/owl#Thing',SN,ID,Ind,Expl0,Tab0,ABox,L),!. 
 
-max_rule(M,Tab0,[maxCardinality(N,S,C),Ind],L):-%gtrace,
+max_rule(M,Tab0,[maxCardinality(N,S,C),Ind],L):-
   get_abox(Tab0,ABox),
   findClassAssertion(maxCardinality(N,S,C),Ind,Expl0,ABox),
   \+ indirectly_blocked(Ind,Tab0),
@@ -2144,7 +2144,7 @@ max_rule(M,Tab0,[maxCardinality(N,S,C),Ind],L):-%gtrace,
   individual_class_C(SN,C,ABox,SNC),
   length(SNC,LSS),
   LSS @> N,
-  get_choice_point_id(M,ID),%gtrace,
+  get_choice_point_id(M,ID),
   scan_max_list(M,maxCardinality(N,S,C),S,C,SNC,ID,Ind,Expl0,Tab0,ABox,L),!. % last variable whould be equals to ID
 
 %---------------------
@@ -2167,7 +2167,7 @@ max_rule(M,Tab0,[exactCardinality(N,S,C),Ind],L):-
   individual_class_C(SN,C,ABox,SNC),
   length(SNC,LSS),
   LSS @> N,
-  get_choice_point_id(M,ID),%gtrace,
+  get_choice_point_id(M,ID),
   scan_max_list(M,exactCardinality(N,S,C),S,C,SNC,ID,Ind,Expl0,Tab0,ABox,L),!. % last variable whould be equals to ID
 
 max_rule(M,Tab0,[S,Ind,_],L):-
@@ -2188,7 +2188,7 @@ max_rule(M,Tab0,[S,Ind,_],L):-
   individual_class_C(SN,C,ABox,SNC),
   length(SNC,LSS),
   LSS @> N,
-  get_choice_point_id(M,ID),%gtrace,
+  get_choice_point_id(M,ID),
   scan_max_list(M,exactCardinality(N,S,C),S,C,SNC,ID,Ind,Expl0,Tab0,ABox,L),!. % last variable whould be equals to ID
 
 %---------------------
@@ -2241,7 +2241,8 @@ create_list_for_max_rule(M,[YI-YJ|Ind_couples],N0,CP,Ind,S,C,Expl0,Tab0,ABox,[Ta
     )
   ),
   flatten([YI,YJ],LI),
-  merge_all_individuals(M,[(sameIndividual(LI),ExplT)],Tab0,Tab),
+  add_all_to_tableau(M,[(sameIndividual(LI),ExplT)],Tab0,Tab1), % TODO capire perchè non va
+  merge_all_individuals(M,[(sameIndividual(LI),ExplT)],Tab1,Tab),
   create_list_for_max_rule(M,Ind_couples,N,CP,Ind,S,C,Expl0,Tab0,ABox,Tab_list).
 
 /*
@@ -2285,7 +2286,7 @@ ch_rule(M,Tab0,[maxCardinality(N,S,C),Ind1],L):-
   findClassAssertion(maxCardinality(N,S,C),Ind1,Expl1,ABox),
   absent_c_not_c(Ind2,C,ABox),
   and_f(M,Expl1,Expl2,Expl),
-  get_choice_point_id(M,ID),%gtrace,
+  get_choice_point_id(M,ID),
   neg_class(C,NC),
   scan_or_list(M,[C,NC],0,ID,Ind2,Expl,Tab0,L),
   dif(L,[]),
@@ -2298,7 +2299,7 @@ ch_rule(M,Tab0,[exactCardinality(N,S,C),Ind1],L):-
   findClassAssertion(exactCardinality(N,S,C),Ind1,Expl1,ABox),
   absent_c_not_c(Ind2,C,ABox),
   and_f(M,Expl1,Expl2,Expl),
-  get_choice_point_id(M,ID),%gtrace,
+  get_choice_point_id(M,ID),
   neg_class(C,NC),
   scan_or_list(M,[C,NC],0,ID,Ind2,Expl,Tab0,L),
   dif(L,[]),
@@ -2311,7 +2312,7 @@ ch_rule(M,Tab0,[S,Ind1,Ind2],L):-
   findPropertyAssertion(S,Ind1,Ind2,Expl2,ABox),
   absent_c_not_c(Ind2,C,ABox),
   and_f(M,Expl1,Expl2,Expl),
-  get_choice_point_id(M,ID),%gtrace,
+  get_choice_point_id(M,ID),
   neg_class(C,NC),
   scan_or_list(M,[C,NC],0,ID,Ind2,Expl,Tab0,L),
   dif(L,[]),
@@ -2324,7 +2325,7 @@ ch_rule(M,Tab0,[S,Ind1,Ind2],L):-
   findPropertyAssertion(S,Ind1,Ind2,Expl2,ABox),
   absent_c_not_c(Ind2,C,ABox),
   and_f(M,Expl1,Expl2,Expl),
-  get_choice_point_id(M,ID),%gtrace,
+  get_choice_point_id(M,ID),
   neg_class(C,NC),
   scan_or_list(M,[C,NC],0,ID,Ind2,Expl,Tab0,L),
   dif(L,[]),
@@ -2630,15 +2631,16 @@ merge_all2(M,[X,Y|T],Expl,Tab0,Tab):-
   creation of the query anon individual
 
 */
-query_ind(trillan(0)).
+query_ind('trillan_0').
 
 /*
   creation of a new individual
 
 */
-new_ind(M,trillan(I)):-
+new_ind(M,TrillanI):-
   retract(M:trillan_idx(I)),
   I1 is I+1,
+  atom_concat('trillan_',I,TrillanI),
   assert(M:trillan_idx(I1)).
 
 /*
@@ -2783,7 +2785,7 @@ add_all_n([H|T],A,AN):-
 /*
   find all S neighbours (S is a role)
 */
-s_neighbours(M,Ind1,S,Tab,SN):- %gtrace,
+s_neighbours(M,Ind1,S,Tab,SN):- 
   get_tabs(Tab,(_,_,RBR)),
   rb_lookup(S,VN,RBR),!,
   s_neighbours1(Ind1,VN,SN0),
@@ -3079,7 +3081,7 @@ prob_number(ProbAT,ProbA):-
 prob_number(ProbAT,ProbA):-
   atom_number(ProbAT,ProbA).
 
-compute_prob_ax(M,Ax,Prob):-%gtrace,
+compute_prob_ax(M,Ax,Prob):-
   findall(ProbA,(disponte_iri(DisponteIri),M:annotationAssertion(DisponteIri,Ax,literal(ProbAT)),prob_number(ProbAT,ProbA)),Probs),
   compute_prob_ax1(Probs,Prob).
 
@@ -3253,7 +3255,7 @@ new_tableau(tableau{
                 tabs:Tabs, 
                 clashes:Clashes, 
                 expq:ExpansionQueue,
-                sameind:[]
+                sameind:sameind{}
             }):-
   new_abox(ABox),
   new_tabs(Tabs),
@@ -3271,7 +3273,7 @@ init_tableau(ABox,Tabs,tableau{
                             tabs:Tabs,
                             clashes:Clashes,
                             expq:ExpansionQueue,
-                            sameind:[]
+                            sameind:sameind{}
                         }):-
   empty_clashes(Clashes),
   empty_expansion_queue(ExpansionQueue).
@@ -3286,7 +3288,7 @@ init_tableau(ABox,Tabs,ExpansionQueue,tableau{
                                             tabs:Tabs,
                                             clashes:Clashes,
                                             expq:ExpansionQueue,
-                                            sameind:[]
+                                            sameind:sameind{}
                                       }):-
   empty_clashes(Clashes).
 
@@ -3387,18 +3389,19 @@ add_to_abox(ABox,El,[El|ABox]).
 remove_from_abox(ABox0,El,ABox):-
   delete(ABox0,El,ABox).
 
-add_to_sameind(SameInd0,LI,SameInd):-
-  findall(I1-I2,(member(I1,LI),member(I2,LI),dif(I1,I2)),ToAdd),
+add_to_sameind(SameInd0,LI,SameInd):-%gtrace,
+  findall(I1-L,(member(I1,LI),findall(I2,(member(I2,LI),dif(I1,I2)),L)),ToAdd),
   add_to_sameind_int(SameInd0,ToAdd,SameInd).
 
 add_to_sameind_int(SameInd0,[],SameInd0):-!.
 
-add_to_sameind_int(SameInd0,[H|TToAdd],SameInd):-
-  member(H,SameInd0),!,
-  add_to_sameind_int(SameInd0,TToAdd,SameInd).
+add_to_sameind_int(SameInd0,[H-L0|TToAdd],SameInd):-
+  L1 = SameInd0.get(H,[]),
+  append(L0,L1,L2),
+  sort(L2,L),
+  SameInd1 = SameInd0.put(H,L),
+  add_to_sameind_int(SameInd1,TToAdd,SameInd).
 
-add_to_sameind_int(SameInd0,[H|TToAdd],[H|SameInd]):-!,
-  add_to_sameind_int(SameInd0,TToAdd,SameInd).
 
 
 check_clash_and_add_to_clashes(M,El,Tableau0,C0,C1):-
@@ -4084,7 +4087,8 @@ update_tabs_int(M,transitiveProperty(P),[Tab|TabsL]):-
   update_tabs_int(M,transitiveProperty(P),TabsL).
 
 update_tabs_int(M,sameIndividual(L),[Tab|TabsL]):-
-  merge_all_individuals(M,[(sameIndividual(L),[[sameIndividual(L)]-[]])],Tab,NewTab),
+  add_all_to_tableau(M,[(sameIndividual(L),[[sameIndividual(L)]-[]])],Tab,Tab0),
+  merge_all_individuals(M,[(sameIndividual(L),[[sameIndividual(L)]-[]])],Tab0,NewTab), % TODO prende individui in L, per ogni coppia fa merge dei collegamenti aggiungendo a abox. Questo dovrà aggiungere item nella expansion q (indivduo in L-classe oppure individuo in L-altro individuo-property). Poi servirà unfold che prende item da expansion q e cercando nei collegamenti fa merge.
   assert(M:tab_end(NewTab)),
   update_tabs_int(M,sameIndividual(L),TabsL).
 
@@ -4100,7 +4104,7 @@ update_tabs_int(M,differentIndividuals(L),[Tab|TabsL]):-
 
 update_tabs_int(M,classAssertion(C,I),[Tab|TabsL]):-
   get_axioms_of_individuals(M,[I],LCA,LPA,LNA,LDIA,LSIA),
-  append([[(classAssertion(C,I),[[classAssertion(C,I)]-[]])],LCA,LPA,LNA,LDIA],AddAllList),
+  append([[(classAssertion(C,I),[[classAssertion(C,I)]-[]])],LCA,LPA,LNA,LDIA,LSIA],AddAllList),
   add_all_to_tableau(M,AddAllList,Tab,NewTab0),
   merge_all_individuals(M,LSIA,NewTab0,NewTab1),
   add_owlThing_list(M,NewTab1,NewTab2),
@@ -4113,7 +4117,7 @@ update_tabs_int(M,classAssertion(C,I),[Tab|TabsL]):-
 
 update_tabs_int(M,propertyAssertion(P,S,O),[Tab|TabsL]):-
   get_axioms_of_individuals(M,[S,O],LCA,LPA,LNA,LDIA,LSIA),
-  append([[(propertyAssertion(P,S,O),[[propertyAssertion(P,S,O)]-[]])],LCA,LPA,LNA,LDIA],AddAllList),
+  append([[(propertyAssertion(P,S,O),[[propertyAssertion(P,S,O)]-[]])],LCA,LPA,LNA,LDIA,LSIA],AddAllList),
   add_all_to_tableau(M,AddAllList,Tab,NewTab0),
   merge_all_individuals(M,LSIA,NewTab0,NewTab1),
   add_owlThing_list(M,NewTab1,NewTab2),
