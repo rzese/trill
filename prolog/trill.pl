@@ -233,6 +233,9 @@ prolog:message(iri_not_exists(IRIs)) -->
 prolog:message(inconsistent) -->
   [ 'Inconsistent ABox' ].
 
+prolog:message(inconsistent_inc_expl) -->
+  [ 'Inconsistent ABox. Justification for the inconsistency:' ].
+
 prolog:message(consistent) -->
   [ 'Consistent ABox' ].
 
@@ -3437,33 +3440,48 @@ remove_from_abox(Clashes0,El,Clashes):-
 
 add_all_to_abox_and_clashes(_,[],T,T):-!.
 
-add_all_to_abox_and_clashes(M,[(classAssertion(Class,I),Expl)|Tail],Tableau0,Tableau):-
-  modify_ABox(M,Tableau0,Class,I,Expl,Tableau1),
-  get_tabs(Tableau1,(T0,RBN,RBR)),
-  add_vertices(T0,[I],T1),
-  set_tabs(Tableau1,(T1,RBN,RBR),Tableau2),
+add_all_to_abox_and_clashes(M,[(classAssertion(Class,I),Expl)|Tail],Tableau0,Tableau):-!,
+  ( modify_ABox(M,Tableau0,Class,I,Expl,Tableau1) ->
+    ( get_tabs(Tableau1,(T0,RBN,RBR)),
+      add_vertices(T0,[I],T1),
+      set_tabs(Tableau1,(T1,RBN,RBR),Tableau2)
+    )
+    ;
+    ( Tableau2 = Tableau0 )
+  ),
   add_all_to_abox_and_clashes(M,Tail,Tableau2,Tableau).
 
-add_all_to_abox_and_clashes(M,[(sameIndividual(LI),Expl)|Tail],Tableau0,Tableau):-
-  modify_ABox(M,Tableau0,sameIndividual(LI),Expl,Tableau1),
-  get_tabs(Tableau1,(T0,RBN,RBR)),
-  add_vertices(T0,LI,T1),
-  set_tabs(Tableau1,(T1,RBN,RBR),Tableau2),
-  get_sameind(Tableau2,SameInd0),
-  add_to_sameind(SameInd0,LI,SameInd),
-  set_sameind(Tableau2,SameInd,Tableau3),
+add_all_to_abox_and_clashes(M,[(sameIndividual(LI),Expl)|Tail],Tableau0,Tableau):-!,
+  ( modify_ABox(M,Tableau0,sameIndividual(LI),Expl,Tableau1) ->
+    ( get_tabs(Tableau1,(T0,RBN,RBR)),
+      add_vertices(T0,LI,T1),
+      set_tabs(Tableau1,(T1,RBN,RBR),Tableau2),
+      get_sameind(Tableau2,SameInd0),
+      add_to_sameind(SameInd0,LI,SameInd),
+      set_sameind(Tableau2,SameInd,Tableau3)
+    )
+    ;
+    ( Tableau3 = Tableau0 )
+  ),
   add_all_to_abox_and_clashes(M,Tail,Tableau3,Tableau).
 
-add_all_to_abox_and_clashes(M,[(differentIndividuals(LI),Expl)|Tail],Tableau0,Tableau):-
-  modify_ABox(M,Tableau0,differentIndividuals(LI),Expl,Tableau1),
-  get_tabs(Tableau1,(T0,RBN,RBR)),
-  add_vertices(T0,LI,T1),
-  set_tabs(Tableau1,(T1,RBN,RBR),Tableau2),
+add_all_to_abox_and_clashes(M,[(differentIndividuals(LI),Expl)|Tail],Tableau0,Tableau):-!,
+  ( modify_ABox(M,Tableau0,differentIndividuals(LI),Expl,Tableau1) ->
+    ( get_tabs(Tableau1,(T0,RBN,RBR)),
+      add_vertices(T0,LI,T1),
+      set_tabs(Tableau1,(T1,RBN,RBR),Tableau2)
+    )
+    ;
+    ( Tableau2 = Tableau0 )
+  ),
   add_all_to_abox_and_clashes(M,Tail,Tableau2,Tableau).
 
 add_all_to_abox_and_clashes(M,[(propertyAssertion(P,S,O),Expl)|Tail],Tableau0,Tableau):-!,
-  modify_ABox(M,Tableau0,P,S,O,Expl,Tableau1),
-  add_edge(P,S,O,Tableau1,Tableau2),
+  ( modify_ABox(M,Tableau0,P,S,O,Expl,Tableau1) ->
+    ( add_edge(P,S,O,Tableau1,Tableau2) )
+    ;
+    ( Tableau2 = Tableau0 )
+  ),
   add_all_to_abox_and_clashes(M,Tail,Tableau2,Tableau).
 
 add_all_to_abox_and_clashes(M,[H|Tail],Tableau0,Tableau):-!,
@@ -3868,7 +3886,7 @@ merge_abox(M,X,Y,Expl0,Tab0,Tab):-
   add_all_to_abox_and_clashes(M,NAxABox,Tab0,Tab).
 
 
-merge_abox_int(_M,_L,_,_,[],[],[]).
+merge_abox_int(_M,_X,_Y,_Expl,[],[]).
 
 merge_abox_int(M,X,Y,Expl0,[(classAssertion(C,X),ExplT)|T],[(classAssertion(C,Y),Expl)|NAxABox]):- !,
   and_f(M,Expl0,ExplT,Expl),

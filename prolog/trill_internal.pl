@@ -133,7 +133,7 @@ find_expls(M,[Clash|_],Tab,E):-   % QueryArgs
   consistency_check(CPs1,[],Q),
   %findall(Exp,M:exp_found([C,I],Exp),Expl),
   %not_already_found(M,Expl,[C,I],E),
-  ( dif(Q,['inconsistent','kb']) -> true ; print_message(warning,inconsistent)),
+  ( dif(Q,['inconsistent','kb']) -> true ; print_message(warning,inconsistent_inc_expl)),
   \+ M:exp_found(Q,E),
   assert(M:exp_found(Q,E)). % QueryArgs
 
@@ -676,7 +676,7 @@ build_abox(M,Tableau,QueryType,QueryArgs):-
   init_tableau(ABox0,Tabs0,ExpansionQueue,Tableau0),
   %append([LCA,LPA,LDIA],CreateTabsList),
   %create_tabs(CreateTabsList,Tableau0,Tableau1),
-  append([LCA,LPA,LNA,LDIA,LSIA],AddAllList),%gtrace,
+  append([LCA,LPA,LNA,LDIA,LSIA],AddAllList),
   add_all_to_tableau(M,AddAllList,Tableau0,Tableau2),
   merge_all_individuals(M,LSIA,Tableau2,Tableau3),
   add_owlThing_list(M,Tableau3,Tableau),
