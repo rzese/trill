@@ -2,10 +2,10 @@
 
 :- trill.
 
-%classAssertion(t,a).
+classAssertion(t,a).
 %classAssertion(complementOf(t),a).
-classAssertion(k,a).
-subClassOf(k,t).
+%classAssertion(k,a).
+%subClassOf(k,t).
 
 %propertyAssertion(r,a,z).
 %propertyAssertion(s,a,b).

@@ -1966,7 +1966,8 @@ unfold_rule(M,Tab0,[C,Ind],Tab):-
   findClassAssertion(C,Ind,Expl,ABox),
   get_sameind(Tab0,SameInd),
   IndList = SameInd.get(Ind,[]),
-  copy_to_same_inds_class(M,C,Ind,IndList,Expl,ABox,Tab0,Tab).
+  copy_to_same_inds_class(M,C,Ind,IndList,Expl,ABox,Tab0,Tab),
+  dif(Tab0,Tab).
 
 % sub properties
 unfold_rule(M,Tab0,[C,Ind1,Ind2],Tab):-
@@ -1976,7 +1977,8 @@ unfold_rule(M,Tab0,[C,Ind1,Ind2],Tab):-
   IndList1 = SameInd.get(Ind1,[]),
   IndList2 = SameInd.get(Ind2,[]),
   copy_to_same_inds_property(M,C,Ind1,Ind2,IndList1,1,Expl,ABox,Tab0,Tab1),
-  copy_to_same_inds_property(M,C,Ind1,Ind2,IndList2,2,Expl,ABox,Tab1,Tab).
+  copy_to_same_inds_property(M,C,Ind1,Ind2,IndList2,2,Expl,ABox,Tab1,Tab),
+  dif(Tab0,Tab).
 
 %-----------------
 copy_to_same_inds_class(_,_,_,[],_,_,Tab,Tab):-!.
