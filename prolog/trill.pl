@@ -414,15 +414,15 @@ set_up_tableau(M):-
 add_q(M,io,Tableau0,[ClassEx,IndEx],Tableau):- !,
   neg_class(ClassEx,NClassEx),
   add_q(M,Tableau0,classAssertion(NClassEx,IndEx),Tableau1),
-  add_clash_to_tableau(M,Tableau1,NClassEx-IndEx,Tableau2),
-  update_expansion_queue_in_tableau(M,NClassEx,IndEx,Tableau2,Tableau).
+  %add_clash_to_tableau(M,Tableau1,NClassEx-IndEx,Tableau2),
+  update_expansion_queue_in_tableau(M,NClassEx,IndEx,Tableau1,Tableau).
 
 % property_value
 add_q(M,pv,Tableau0,[PropEx,Ind1Ex,Ind2Ex],Tableau):-!,
   neg_class(PropEx,NPropEx), %use of neg_class to negate property
   add_q(M,Tableau0,propertyAssertion(NPropEx,Ind1Ex,Ind2Ex),Tableau1),
-  add_clash_to_tableau(M,Tableau1,NPropEx-Ind1Ex-Ind2Ex,Tableau2),
-  update_expansion_queue_in_tableau(M,NPropEx,Ind1Ex,Ind2Ex,Tableau2,Tableau).
+  %add_clash_to_tableau(M,Tableau1,NPropEx-Ind1Ex-Ind2Ex,Tableau2),
+  update_expansion_queue_in_tableau(M,NPropEx,Ind1Ex,Ind2Ex,Tableau1,Tableau).
 
 
 % sub_class
@@ -432,16 +432,16 @@ add_q(M,sc,Tableau0,[SubClassEx,SupClassEx],Tableau):- !,
   add_q(M,Tableau0,classAssertion(intersectionOf([SubClassEx,NSupClassEx]),QInd),Tableau1),
   utility_translation:add_kb_atoms(M,class,[intersectionOf([SubClassEx,NSupClassEx])]), % This is necessary to correctly prune expansion rules
   add_owlThing_ind(M,Tableau1,QInd,Tableau2),
-  add_clash_to_tableau(M,Tableau2,intersectionOf([SubClassEx,NSupClassEx])-QInd,Tableau3),
-  update_expansion_queue_in_tableau(M,intersectionOf([SubClassEx,NSupClassEx]),QInd,Tableau3,Tableau).
+  %add_clash_to_tableau(M,Tableau2,intersectionOf([SubClassEx,NSupClassEx])-QInd,Tableau3),
+  update_expansion_queue_in_tableau(M,intersectionOf([SubClassEx,NSupClassEx]),QInd,Tableau2,Tableau).
 
 % unsat
 add_q(M,un,Tableau0,['unsat',ClassEx],Tableau):- !,
   query_ind(QInd),
   add_q(M,Tableau0,classAssertion(ClassEx,QInd),Tableau1),
   add_owlThing_ind(M,Tableau1,QInd,Tableau2),
-  add_clash_to_tableau(M,Tableau2,ClassEx-QInd,Tableau3),
-  update_expansion_queue_in_tableau(M,ClassEx,QInd,Tableau3,Tableau).
+  %add_clash_to_tableau(M,Tableau2,ClassEx-QInd,Tableau3),
+  update_expansion_queue_in_tableau(M,ClassEx,QInd,Tableau2,Tableau).
 
 % inconsistent_theory
 add_q(_,it,Tableau,['inconsistent','kb'],Tableau):- !. % Do nothing
@@ -454,10 +454,12 @@ add_q(_,it,Tableau,['inconsistent','kb'],Tableau):- !. % Do nothing
 gather_connected_individuals(M,Ind,ConnectedInds):-
   find_successors(M,Ind,SuccInds),
   find_predecessors(M,Ind,PredInds),
-  append(SuccInds,PredInds,ConnectedInds).
+  find_same_individual(M,Ind,SameInd),
+  append([SuccInds,PredInds,SameInd],ConnectedInds).
 
 find_successors(M,Ind,List) :- findall(ConnectedInd, (M:propertyAssertion(_,Ind,ConnectedInd)), List).
 find_predecessors(M,Ind,List) :- findall(ConnectedInd, (M:propertyAssertion(_,ConnectedInd,Ind)), List).
+find_same_individual(M,Ind,List) :- findall(LI, (M:sameIndividual(LI),member(Ind,LI)), List0),flatten(List0,List).
 
 intersect([H|_], List) :- member(H, List), !.
 intersect([_|T], List) :- intersect(T, List).
@@ -1953,6 +1955,65 @@ find_inverse_property(M,C,C,symmetricProperty(C)):-
 %transitiveProperties
 find_transitive_property(M,C,transitiveProperty(C)):-
   M:transitiveProperty(C).
+
+
+% ------------------------
+%  unfold_rule to unfold sameIndividual
+% ------------------------
+% sub classes
+unfold_rule(M,Tab0,[C,Ind],Tab):-
+  get_abox(Tab0,ABox),
+  findClassAssertion(C,Ind,Expl,ABox),
+  get_sameind(Tab0,SameInd),
+  IndList = SameInd.get(Ind,[]),
+  copy_to_same_inds_class(M,C,Ind,IndList,Expl,ABox,Tab0,Tab).
+
+% sub properties
+unfold_rule(M,Tab0,[C,Ind1,Ind2],Tab):-
+  get_abox(Tab0,ABox),
+  findPropertyAssertion(C,Ind1,Ind2,Expl,ABox),
+  get_sameind(Tab0,SameInd),
+  IndList1 = SameInd.get(Ind1,[]),
+  IndList2 = SameInd.get(Ind2,[]),
+  copy_to_same_inds_property(M,C,Ind1,Ind2,IndList1,1,Expl,ABox,Tab0,Tab1),
+  copy_to_same_inds_property(M,C,Ind1,Ind2,IndList2,2,Expl,ABox,Tab1,Tab).
+
+%-----------------
+copy_to_same_inds_class(_,_,_,[],_,_,Tab,Tab):-!.
+
+copy_to_same_inds_class(M,C,IndStart,[Ind|IndList],Expl0,ABox,Tab0,Tab):-
+  findSameIndividual([IndStart,Ind],(_,Expl1),ABox),
+  and_f(M,Expl0,Expl1,Expl),
+  modify_ABox(M,Tab0,C,Ind,Expl,Tab1),!,
+  add_nominal(M,C,Ind,Tab1,Tab2),
+  copy_to_same_inds_class(M,C,IndStart,IndList,Expl0,ABox,Tab2,Tab).
+
+copy_to_same_inds_class(M,C,IndStart,[_|IndList],Expl0,ABox,Tab0,Tab):-
+  copy_to_same_inds_class(M,C,IndStart,IndList,Expl0,ABox,Tab0,Tab).
+
+%-----------------
+copy_to_same_inds_property(_,_,_,_,[],_,_,_,Tab,Tab):-!.
+
+copy_to_same_inds_property(M,C,IndStart1,IndStart2,[Ind|IndList],1,Expl0,ABox,Tab0,Tab):-
+  findSameIndividual([IndStart1,Ind],(_,Expl1),ABox),
+  and_f(M,Expl0,Expl1,Expl),
+  modify_ABox(M,Tab0,C,Ind,IndStart2,Expl,Tab1),!,
+  add_nominal(M,C,Ind,Tab1,Tab2),
+  copy_to_same_inds_property(M,C,IndStart1,IndStart2,IndList,1,Expl0,ABox,Tab2,Tab).
+
+copy_to_same_inds_property(M,C,IndStart1,IndStart2,[_|IndList],1,Expl0,ABox,Tab0,Tab):-
+  copy_to_same_inds_property(M,C,IndStart1,IndStart2,IndList,1,Expl0,ABox,Tab0,Tab).
+
+copy_to_same_inds_property(M,C,IndStart1,IndStart2,[Ind|IndList],2,Expl0,ABox,Tab0,Tab):-
+  findSameIndividual([IndStart2,Ind],(_,Expl1),ABox),
+  and_f(M,Expl0,Expl1,Expl),
+  modify_ABox(M,Tab0,C,IndStart1,Ind,Expl,Tab1),!,
+  add_nominal(M,C,Ind,Tab1,Tab2),
+  copy_to_same_inds_property(M,C,IndStart1,IndStart2,IndList,1,Expl0,ABox,Tab2,Tab).
+
+copy_to_same_inds_property(M,C,IndStart1,IndStart2,[_|IndList],2,Expl0,ABox,Tab0,Tab):-
+  copy_to_same_inds_property(M,C,IndStart1,IndStart2,IndList,1,Expl0,ABox,Tab0,Tab).
+
 /* ************* */
 
 /*

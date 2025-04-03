@@ -476,11 +476,11 @@ modify_ABox(_,Tab,sameIndividual(LF),_Expl1,Tab):-
 
 modify_ABox(M,Tab0,sameIndividual(LF),Expl1,Tab):-
   get_abox(Tab0,ABox0),
-  ( find((sameIndividual(L),Expl0),ABox0) ->
-  	( sort(L,LS),
-  	  sort(LF,LFS),
-  	  LS = LFS,!,
-  	  absent(Expl0,Expl1,Expl),
+  ( ( find((sameIndividual(L),Expl0),ABox0),
+      sort(L,LS),
+      sort(LF,LFS),
+      LS = LFS) ->
+  	( absent(Expl0,Expl1,Expl),
       remove_from_abox(ABox0,[(sameIndividual(L),Expl0)],ABox)
   	)
   ;
