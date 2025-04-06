@@ -284,6 +284,8 @@ initial_expl(_M,[]-[]):-!.
 
 empty_expl(_M,[]-[]):-!.
 
+delete_qp(Expl,_,Expl):-!. % TODO probalby to fix
+
 and_f_ax(M,Axiom,F0,F):-
   and_f(M,*([Axiom])-[],F0,F),!.
 

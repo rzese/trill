@@ -274,6 +274,8 @@ empty_expl(M,BDD-[]):-
   get_bdd_environment(M,Env),
   one(Env,BDD).
 
+delete_qp(Expl,_,Expl):-!. % TODO probalby to fix
+
 and_f_ax(M,Axiom,BDD0,BDD):-
   get_bdd_environment(M,Env),
   bdd_and(M,Env,[Axiom],BDDAxiom),

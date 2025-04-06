@@ -725,6 +725,9 @@ initial_expl(_M,[[]-[]]):-!.
 
 empty_expl(_M,[[]-[]]):-!.
 
+delete_qp(Expl0,[QPExpl],Expl):-
+  delete(Expl0,QPExpl,Expl).
+
 and_f_ax(M,Axiom,F0,F):-
   and_f(M,[[Axiom]-[]],F0,F).
 

@@ -915,6 +915,11 @@ query_empty_expl(M,Expl):-
   empty_expl(M,EExpl),
   add_choice_point(M,qp,EExpl,Expl).
 
+remove_query_empty_expl(M,Expl0,Expl):-
+  query_empty_expl(M,QPExpl),!,
+  delete_qp(Expl0,QPExpl,Expl),
+  dif(Expl,[]).
+
 
 % expands query arguments using prefixes and checks their existence in the kb
 % returns the non-present arguments
@@ -1969,7 +1974,7 @@ find_transitive_property(M,C,transitiveProperty(C)):-
 unfold_rule(M,Tab0,[C,Ind],Tab):-
   get_abox(Tab0,ABox),
   findClassAssertion(C,Ind,Expl0,ABox),
-  delete(Expl0,[]-[qp],Expl), dif(Expl,[]),
+  remove_query_empty_expl(M,Expl0,Expl),
   get_sameind(Tab0,Ind,IndList),
   copy_to_same_inds_class(M,C,Ind,IndList,Expl,ABox,Tab0,Tab),
   dif(Tab0,Tab).
@@ -1978,7 +1983,7 @@ unfold_rule(M,Tab0,[C,Ind],Tab):-
 unfold_rule(M,Tab0,[C,Ind1,Ind2],Tab):-
   get_abox(Tab0,ABox),
   findPropertyAssertion(C,Ind1,Ind2,Expl0,ABox),
-  delete(Expl0,[]-[qp],Expl), dif(Expl,[]),
+  remove_query_empty_expl(M,Expl0,Expl),
   get_sameind(Tab0,Ind1,IndList1),
   get_sameind(Tab0,Ind2,IndList2),
   copy_to_same_inds_property(M,C,Ind1,Ind2,IndList1,1,Expl,ABox,Tab0,Tab1),
