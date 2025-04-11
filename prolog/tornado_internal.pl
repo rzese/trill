@@ -107,7 +107,8 @@ find_expls_from_tab_list(M,[Tab|T],E):-
   findall(E0,(member(Clash,Clashes),clash(M,Clash,Tab,E0)),Expls0),!,
   % this predicate checks if there are inconsistencies in the KB, i.e., explanations without query placeholder qp
   consistency_check(M,Expls0,Q),
-  ( dif(Q,['inconsistent','kb']) -> true ; print_message(warning,inconsistent)),
+  ( dif(Q,['inconsistent','kb']) -> true ;  
+     ( check_open_query_monitor_status(M,it,['inconsistent','kb']) -> true ; print_message(warning,inconsistent)) ),
   or_all_f(M,Expls0,Expls1),
   find_expls_from_tab_list(M,T,E1),
   and_f(M,Expls1,E1,E).
@@ -229,8 +230,22 @@ build_abox(M,Tableau,QueryType,QueryArgs):-
   retractall(na(_,_)),
   retractall(rule_n(_)),
   assert(rule_n(0)),
-  get_bdd_environment(M,Env),
   collect_individuals(M,QueryType,QueryArgs,ConnectedInds),
+  get_axioms_of_individuals(M,ConnectedInds,LCA,LPA,LNA,LDIA,LSIA),
+  new_abox(ABox0),
+  new_tabs(Tabs0),
+  init_expansion_queue(LCA,LPA,ExpansionQueue),
+  init_tableau(ABox0,Tabs0,ExpansionQueue,Tableau0),
+  %append([LCA,LDIA,LPA],CreateTabsList),
+  %create_tabs(CreateTabsList,Tableau0,Tableau1),
+  append([LCA,LPA,LNA,LDIA,LSIA],AddAllList),
+  add_all_to_tableau(M,AddAllList,Tableau0,Tableau2),
+  merge_all_individuals(M,LSIA,Tableau2,Tableau3),
+  add_owlThing_list(M,Tableau3,Tableau),
+  !.
+
+get_axioms_of_individuals(M,ConnectedInds,LCA,LPA,LNA,LDIA,LSIA):-
+  get_bdd_environment(M,Env),
   ( dif(ConnectedInds,[]) ->
     ( findall((classAssertion(Class,Individual),BDDCA-[]),(member(Individual,ConnectedInds),M:classAssertion(Class,Individual),bdd_and(M,Env,[classAssertion(Class,Individual)],BDDCA)),LCA),
       findall((propertyAssertion(Property,Subject, Object),BDDPA-[]),(member(Subject,ConnectedInds),M:propertyAssertion(Property,Subject, Object),dif('http://www.w3.org/2000/01/rdf-schema#comment',Property),bdd_and(M,Env,[propertyAssertion(Property,Subject, Object)],BDDPA)),LPA),
@@ -247,18 +262,7 @@ build_abox(M,Tableau,QueryType,QueryArgs):-
       findall((differentIndividuals(Ld),BDDDIA-[]),(M:differentIndividuals(Ld),bdd_and(M,Env,[differentIndividuals(Ld)],BDDDIA)),LDIA),
       findall((sameIndividual(L),BDDSIA-[]),(M:sameIndividual(L),bdd_and(M,Env,[sameIndividual(L)],BDDSIA)),LSIA)
     )
-  ),
-  new_abox(ABox0),
-  new_tabs(Tabs0),
-  init_expansion_queue(LCA,LPA,ExpansionQueue),
-  init_tableau(ABox0,Tabs0,ExpansionQueue,Tableau0),
-  append([LCA,LDIA,LPA],CreateTabsList),
-  create_tabs(CreateTabsList,Tableau0,Tableau1),
-  append([LCA,LPA,LNA,LDIA],AddAllList),
-  add_all_to_tableau(M,AddAllList,Tableau1,Tableau2),
-  merge_all_individuals(M,LSIA,Tableau2,Tableau3),
-  add_owlThing_list(M,Tableau3,Tableau),
-  !.
+  ).
 
 /**********************
 
