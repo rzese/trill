@@ -4080,32 +4080,32 @@ update_tabs_int(M,subClassOf(C1,_),[Tab|TabsL]):-
   update_tabs_int(M,subClassOf(C1,_),TabsL).
 
   
-update_tabs_int(M,equivalentClasses([CL]),[Tab|TabsL]):-
+update_tabs_int(M,equivalentClasses(CL),[Tab|TabsL]):-
   get_abox(Tab,ABox),
   findall((classAssertion(C1,I),_),(member(C1,CL),findClassAssertion(C1,I,_,ABox)),LCA), % maybe it is sufficient to find one
   get_expansion_queue(Tab,EQ0),
   add_classes_expqueue(LCA,EQ0,EQ),
   set_expansion_queue(Tab,EQ,NewTab),
   assert(M:tab_end(NewTab)),
-  update_tabs_int(M,equivalentClasses([CL]),TabsL).
+  update_tabs_int(M,equivalentClasses(CL),TabsL).
 
-update_tabs_int(M,disjointClasses([CL]),[Tab|TabsL]):-
+update_tabs_int(M,disjointClasses(CL),[Tab|TabsL]):-
   get_abox(Tab,ABox),
   findall((classAssertion(C1,I),_),(member(C1,CL),findClassAssertion(C1,I,_,ABox)),LCA), % maybe it is sufficient to find one
   get_expansion_queue(Tab,EQ0),
   add_classes_expqueue(LCA,EQ0,EQ),
   set_expansion_queue(Tab,EQ,NewTab),
   assert(M:tab_end(NewTab)),
-  update_tabs_int(M,disjointClasses([CL]),TabsL).
+  update_tabs_int(M,disjointClasses(CL),TabsL).
 
-update_tabs_int(M,disjointUnion(C,[CL]),[Tab|TabsL]):-
+update_tabs_int(M,disjointUnion(C,CL),[Tab|TabsL]):-
   get_abox(Tab,ABox),
   findall((classAssertion(C1,I),_),(member(C1,[C|CL]),findClassAssertion(C1,I,_,ABox)),LCA), % maybe it is sufficient to find one
   get_expansion_queue(Tab,EQ0),
   add_classes_expqueue(LCA,EQ0,EQ),
   set_expansion_queue(Tab,EQ,NewTab),
   assert(M:tab_end(NewTab)),
-  update_tabs_int(M,disjointUnion(C,[CL]),TabsL).
+  update_tabs_int(M,disjointUnion(C,CL),TabsL).
 
 update_tabs_int(M,subPropertyOf(P,_),[Tab|TabsL]):-
   get_abox(Tab,ABox),
