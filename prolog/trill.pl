@@ -1369,13 +1369,14 @@ continue_or_return_expl(M,Rules,Tab0,EA,Tab1,Clash,Tab,Expl):-!,
 
 continue(M,_Rules,Tab0,EA,Tab1,_Clash,Tab,Expl):-
   retract(M:tab_end(Tab1)),
-  pop_clashes(Tab1,_,Tab2),
-  ( test_end_apply_rule(M,Tab0,Tab2) ->
-      ( set_next_from_expansion_queue(Tab0,_EA1,Tab), 
-        Expl=[]
-      ) 
+  set_next_from_expansion_queue(Tab0,_EA1,Tab),
+  ( test_end_apply_rule(M,Tab0,Tab1) ->
+      Expl=[] 
       ;
-      apply_all_rules(M,Tab2,EA,Tab,Expl)
+      (
+        pop_clashes(Tab1,_,Tab2),
+        apply_all_rules(M,Tab2,EA,Tab,Expl)
+      )
   ).
 
 
@@ -1387,12 +1388,10 @@ apply_det_rules(M,[],Tab0,EA,Tab):-
   M:setting_trill(nondet_rules,Rules),
   apply_nondet_rules(M,Rules,Tab0,EA,Tab).
 
-apply_det_rules(M,[H|_],Tab0,EA,Tab):-
+apply_det_rules(M,[H|T],Tab0,EA,Tab):-
   %C=..[H,Tab,Tab1],
-  call(H,M,Tab0,EA,Tab),!.
-
-apply_det_rules(M,[_|T],Tab0,EA,Tab):-
-  apply_det_rules(M,T,Tab0,EA,Tab).
+  call(H,M,Tab0,EA,Tab1),!,
+  apply_det_rule(M,T,Tab1,EA,Tab).
 
 
 apply_nondet_rules(M,_,Tab,_,Tab):-
@@ -1400,14 +1399,12 @@ apply_nondet_rules(M,_,Tab,_,Tab):-
 
 apply_nondet_rules(_,[],Tab,_EA,Tab).
 
-apply_nondet_rules(M,[H|_],Tab0,EA,Tab):-
+apply_nondet_rules(M,[H|T],Tab0,EA,Tab):-
   %C=..[H,Tab,L],
   call(H,M,Tab0,EA,L),!,
-  member(Tab,L),
-  dif(Tab0,Tab).
-
-apply_nondet_rules(M,[_|T],Tab0,EA,Tab):-
-  apply_nondet_rules(M,T,Tab0,EA,Tab).
+  member(Tab1,L),
+  dif(Tab0,Tab1),
+  apply_nondet_rules(M,T,Tab1,EA,Tab).
 
 
 test_end_apply_rule(M,_,_):-
@@ -1635,16 +1632,24 @@ find_sub_sup_trans_role(M,R,S,Expl):-
   unfold_rule
   ===========
 */
-
 unfold_rule(M,Tab0,[C,Ind],Tab):-
+  unfold_rule_c1(M,Tab0,[C,Ind],Tab1),
+  unfold_rule_c2(M,Tab1,[C,Ind],Tab2),
+  unfold_rule_c3(M,Tab2,[C,Ind],Tab).
+
+unfold_rule(M,Tab0,[P,Ind1,Ind2],Tab):-
+  unfold_rule_p1(M,Tab0,[P,Ind1,Ind2],Tab1),
+  unfold_rule_p2(M,Tab1,[P,Ind1,Ind2],Tab2),
+  unfold_rule_p3(M,Tab2,[P,Ind1,Ind2],Tab3),
+  unfold_rule_p4(M,Tab3,[P,Ind1,Ind2],Tab).
+
+unfold_rule_c1(M,Tab0,[C,Ind],Tab):-
   get_abox(Tab0,ABox),
   findClassAssertion(C,Ind,Expl,ABox),
   % usare findall(D-AX,find_sub_sup_class(M,C,D,Ax),L) e iniziare ciclo per evitare di ripetere stessi test più volte
-  find_sub_sup_class(M,C,D,Ax),
-  and_f_ax(M,Ax,Expl,AxL),
-  modify_ABox(M,Tab0,D,Ind,AxL,Tab1),
-  add_nominal(M,D,Ind,Tab1,Tab).
-
+  find_superclasses(M,C,L),
+  scan_supclass_list(M,Tab0,Expl,L,Ind,Tab),!.
+  
 /* -- unfold_rule
       takes a class C1 in which Ind belongs, find a not atomic class C
       that contains C1 (C is seen as list of classes), controls if
@@ -1654,7 +1659,7 @@ unfold_rule(M,Tab0,[C,Ind],Tab):-
       correspond to the ce_rule
    --
 */
-unfold_rule(M,Tab0,[C1,Ind],Tab):-
+unfold_rule_c2(M,Tab0,[C1,Ind],Tab):-
   find_not_atomic(M,C1,C,L),
   get_abox(Tab0,ABox),
   ( C = unionOf(_) -> findClassAssertion(C1,Ind,Expl,ABox)
@@ -1668,7 +1673,7 @@ unfold_rule(M,Tab0,[C1,Ind],Tab):-
  *    control propertyRange e propertyDomain
  * --
  */
-unfold_rule(M,Tab0,[P,S,O],Tab):-
+unfold_rule_p1(M,Tab0,[P,S,O],Tab):-
   get_abox(Tab0,ABox),
   find_class_prop_range_domain(M,P,S,O,Ind,D,Expl,ABox),
   modify_ABox(M,Tab0,D,Ind,Expl,Tab1),
@@ -1679,13 +1684,30 @@ unfold_rule(M,Tab0,[P,S,O],Tab):-
  *    manage the negation
  * --
  */
-unfold_rule(M,Tab0,[complementOf(C),Ind],Tab):-
+unfold_rule_c3(M,Tab0,[complementOf(C),Ind],Tab):-
   get_abox(Tab0,ABox),
   findClassAssertion(complementOf(C),Ind,Expl,ABox),
   find_neg_class(C,D),
   and_f_ax(M,complementOf(C),Expl,AxL),
   modify_ABox(M,Tab0,D,Ind,AxL,Tab1),
   add_nominal(M,D,Ind,Tab1,Tab).
+
+% ----------------
+% scan_supclass_list
+scan_supclass_list(M,Tab0,Expl,L,Ind,Tab):-
+  scan_supclass_list(M,Tab0,Expl,L,Ind,Tab,1).
+
+scan_supclass_list(_,Tab,_,[],_,Tab,0):- !.
+
+scan_supclass_list(M,Tab0,Expl,[D-Ax|T],Ind,Tab,_):-
+  and_f_ax(M,Ax,Expl,AxL),
+  modify_ABox(M,Tab0,D,Ind,AxL,Tab1),!,
+  add_nominal(M,D,Ind,Tab1,Tab2),!,
+  scan_supclass_list(M,Tab2,Expl,T,Ind,Tab,0).
+
+scan_supclass_list(M,Tab0,Expl,[_|T],Ind,Tab,Check):-
+  scan_supclass_list(M,Tab0,Expl,T,Ind,Tab,Check).
+
 
 % ----------------
 % add_nominal
@@ -1707,6 +1729,21 @@ add_nominal(M,D,Ind,Tab0,Tab):-
     ;
   set_abox(Tab0,ABox0,Tab)
   ).
+
+% ----------------
+% find_superclasses looks in the Tab if the list of superclasses has been already found. If not creates the list class-expl
+%find_superclasses(_,Tab,C,Tab,L):-
+%  get_superclasses(Tab,C,L),!.
+
+%find_superclasses(M,Tab0,C,Tab1,L):-
+%  findall(D-Ax,find_sub_sup_class(M,C,D,Ax),L),
+%  set_superclasses(Tab0,C,L,Tab1).
+  
+:- table find_superclasses/3.
+
+find_superclasses(M,C,L):-
+  findall(D-Ax,find_sub_sup_class(M,C,D,Ax),L).
+
 
 % ----------------
 % unionOf, intersectionOf, subClassOf, negation, allValuesFrom, someValuesFrom, exactCardinality(min and max), maxCardinality, minCardinality
@@ -1893,7 +1930,7 @@ find_all(M,Ind,[H|T],ABox,ExplT):-
 %  unfold_rule to unfold roles
 % ------------------------
 % sub properties
-unfold_rule(M,Tab0,[C,Ind1,Ind2],Tab):-
+unfold_rule_p2(M,Tab0,[C,Ind1,Ind2],Tab):-
   get_abox(Tab0,ABox),
   findPropertyAssertion(C,Ind1,Ind2,Expl,ABox),
   find_sub_sup_property(M,C,D,Ax),
@@ -1903,7 +1940,7 @@ unfold_rule(M,Tab0,[C,Ind1,Ind2],Tab):-
   add_nominal(M,D,Ind2,Tab2,Tab).
 
 %inverseProperties
-unfold_rule(M,Tab0,[C,Ind1,Ind2],Tab):-
+unfold_rule_p3(M,Tab0,[C,Ind1,Ind2],Tab):-
   get_abox(Tab0,ABox),
   findPropertyAssertion(C,Ind1,Ind2,Expl,ABox),
   find_inverse_property(M,C,D,Ax),
@@ -1913,7 +1950,7 @@ unfold_rule(M,Tab0,[C,Ind1,Ind2],Tab):-
   add_nominal(M,D,Ind2,Tab2,Tab).
 
 %transitiveProperties
-unfold_rule(M,Tab0,[C,Ind1,Ind2],Tab):-
+unfold_rule_p4(M,Tab0,[C,Ind1,Ind2],Tab):-
   get_abox(Tab0,ABox),
   findPropertyAssertion(C,Ind1,Ind2,Expl,ABox),
   find_transitive_property(M,C,Ax),
@@ -3271,7 +3308,8 @@ init_tableau(ABox,Tabs,tableau{
                             tabs:Tabs,
                             clashes:Clashes,
                             expq:ExpansionQueue,
-                            sameind:[]
+                            sameind:[],
+                            superclasses:superclasses{}
                         }):-
   empty_clashes(Clashes),
   empty_expansion_queue(ExpansionQueue).
@@ -3286,7 +3324,8 @@ init_tableau(ABox,Tabs,ExpansionQueue,tableau{
                                             tabs:Tabs,
                                             clashes:Clashes,
                                             expq:ExpansionQueue,
-                                            sameind:[]
+                                            sameind:[],
+                                            superclasses:superclasses{}
                                       }):-
   empty_clashes(Clashes).
 
@@ -3699,8 +3738,18 @@ remove_edge_from_table(_P,S,O,T0,T1):-
 remove_node_from_table(S,T0,T1):-
   del_vertices(T0,[S],T1).
 
+% ===================================
+% SUPERCLASSES
+% ===================================
 
+get_superclasses(Tab,C,L):-
+  Superclasses = Tab.superclasses,
+  L = Superclasses.get(C).
 
+set_superclasses(Tab0,C,L,Tab):-
+  Superclasses0 = Tab0.superclasses,
+  Superclasses = Superclasses0.put(C,L),
+  Tab = Tab0.put(superclasses,Superclasses).
 
 
 % ===================================
@@ -3972,32 +4021,32 @@ update_tabs_int(M,subClassOf(C1,_),[Tab|TabsL]):-
   update_tabs_int(M,subClassOf(C1,_),TabsL).
 
   
-update_tabs_int(M,equivalentClasses([CL]),[Tab|TabsL]):-
+update_tabs_int(M,equivalentClasses(CL),[Tab|TabsL]):-
   get_abox(Tab,ABox),
   findall((classAssertion(C1,I),_),(member(C1,CL),findClassAssertion(C1,I,_,ABox)),LCA), % maybe it is sufficient to find one
   get_expansion_queue(Tab,EQ0),
   add_classes_expqueue(LCA,EQ0,EQ),
   set_expansion_queue(Tab,EQ,NewTab),
   assert(M:tab_end(NewTab)),
-  update_tabs_int(M,equivalentClasses([CL]),TabsL).
+  update_tabs_int(M,equivalentClasses(CL),TabsL).
 
-update_tabs_int(M,disjointClasses([CL]),[Tab|TabsL]):-
+update_tabs_int(M,disjointClasses(CL),[Tab|TabsL]):-
   get_abox(Tab,ABox),
   findall((classAssertion(C1,I),_),(member(C1,CL),findClassAssertion(C1,I,_,ABox)),LCA), % maybe it is sufficient to find one
   get_expansion_queue(Tab,EQ0),
   add_classes_expqueue(LCA,EQ0,EQ),
   set_expansion_queue(Tab,EQ,NewTab),
   assert(M:tab_end(NewTab)),
-  update_tabs_int(M,disjointClasses([CL]),TabsL).
+  update_tabs_int(M,disjointClasses(CL),TabsL).
 
-update_tabs_int(M,disjointUnion(C,[CL]),[Tab|TabsL]):-
+update_tabs_int(M,disjointUnion(C,CL),[Tab|TabsL]):-
   get_abox(Tab,ABox),
   findall((classAssertion(C1,I),_),(member(C1,[C|CL]),findClassAssertion(C1,I,_,ABox)),LCA), % maybe it is sufficient to find one
   get_expansion_queue(Tab,EQ0),
   add_classes_expqueue(LCA,EQ0,EQ),
   set_expansion_queue(Tab,EQ,NewTab),
   assert(M:tab_end(NewTab)),
-  update_tabs_int(M,disjointUnion(C,[CL]),TabsL).
+  update_tabs_int(M,disjointUnion(C,CL),TabsL).
 
 update_tabs_int(M,subPropertyOf(P,_),[Tab|TabsL]):-
   get_abox(Tab,ABox),

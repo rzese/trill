@@ -3523,9 +3523,15 @@ fix_duplicated_wrongly_classified_properties([_H|T],DP,KBA0,KBA):-
 trill:add_axiom(M:Ax):-
   assert(M:addKBName),
   %init_kb_atom(M),
-  create_and_assert_axioms(M,Ax),
+  create_and_assert_axioms(M,Ax),!,
   retractall(M:addKBName),
-  trill:update_tabs(M,Ax).
+  trill:update_tabs(M,Ax),!.
+
+prolog:message(axiom_not_added(Ax,M)) -->
+  [ 'Problems in adding axiom ~w ~w' -[Ax,M] ].
+
+trill:add_axiom(M:Ax):-
+  print_message(warning,axiom_not_added(Ax,M)).
 
 :- multifile trill:add_axioms/1.
 trill:add_axioms(_:[]).

@@ -676,7 +676,7 @@ build_abox(M,Tableau,QueryType,QueryArgs):-
   init_tableau(ABox0,Tabs0,ExpansionQueue,Tableau0),
   %append([LCA,LPA,LDIA],CreateTabsList),
   %create_tabs(CreateTabsList,Tableau0,Tableau1),
-  append([LCA,LPA,LNA,LDIA,LSIA],AddAllList),gtrace,
+  append([LCA,LPA,LNA,LDIA,LSIA],AddAllList),%gtrace,
   add_all_to_tableau(M,AddAllList,Tableau0,Tableau2),
   merge_all_individuals(M,LSIA,Tableau2,Tableau3),
   add_owlThing_list(M,Tableau3,Tableau),
