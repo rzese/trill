@@ -2260,7 +2260,7 @@ safe_s_neigh_C([H|T],S,C,Tab,ABox,[H|ST]):-
   ================
 */
 max_rule(M,Tab0,[maxCardinality(N,S),Ind],L):-
-  \+ indirectly_blocked(Ind,Tab0),!,
+  \+ indirectly_blocked(Ind,Tab0),
   get_abox(Tab0,ABox),
   findClassAssertion(maxCardinality(N,S),Ind,Expl0,ABox),!,
   s_neighbours(M,Ind,S,Tab0,SN),
@@ -2283,7 +2283,7 @@ max_rule(M,Tab0,[maxCardinality(N,S,C),Ind],L):-%gtrace,
 %---------------------
 
 max_rule(M,Tab0,[exactCardinality(N,S),Ind],L):-
-  \+ indirectly_blocked(Ind,Tab0),!,
+  \+ indirectly_blocked(Ind,Tab0),
   get_abox(Tab0,ABox),
   findClassAssertion(exactCardinality(N,S),Ind,Expl0,ABox),!,
   s_neighbours(M,Ind,S,Tab0,SN),
@@ -2293,7 +2293,7 @@ max_rule(M,Tab0,[exactCardinality(N,S),Ind],L):-
   scan_max_list(M,exactCardinality(N,S),S,'http://www.w3.org/2002/07/owl#Thing',SN,ID,Ind,Expl0,Tab0,ABox,L),!. 
 
 max_rule(M,Tab0,[exactCardinality(N,S,C),Ind],L):-
-  \+ indirectly_blocked(Ind,Tab0),!,
+  \+ indirectly_blocked(Ind,Tab0),
   get_abox(Tab0,ABox),
   findClassAssertion(exactCardinality(N,S,C),Ind,Expl0,ABox),!,
   s_neighbours(M,Ind,S,Tab0,SN),
@@ -2304,7 +2304,7 @@ max_rule(M,Tab0,[exactCardinality(N,S,C),Ind],L):-
   scan_max_list(M,exactCardinality(N,S,C),S,C,SNC,ID,Ind,Expl0,Tab0,ABox,L),!. % last variable whould be equals to ID
 
 max_rule(M,Tab0,[S,Ind,_],L):-
-  \+ indirectly_blocked(Ind,Tab0),!,
+  \+ indirectly_blocked(Ind,Tab0),
   get_abox(Tab0,ABox),
   findClassAssertion(exactCardinality(N,S),Ind,Expl0,ABox),!,
   s_neighbours(M,Ind,S,Tab0,SN),
@@ -2413,59 +2413,59 @@ individual_class_C([_H|T],C,ABox,T1):-
 */
 % TODO da sistemare
 ch_rule(M,Tab0,[maxCardinality(N,S,C),Ind1],L):-
-  \+ indirectly_blocked(Ind1,Tab0),!,
+  \+ indirectly_blocked(Ind1,Tab0),
   get_abox(Tab0,ABox),
   findClassAssertion(maxCardinality(N,S,C),Ind1,Expl1,ABox),!,
   findall(Ind2-Expl2,findPropertyAssertion(S,Ind1,Ind2,Expl2,ABox),LPropAss),
-  scan_ch_role_list(M,maxCardinality(N,S,C),Expl1,ABox,LPropAss,[Tab0],L),!.
+  scan_ch_role_list(M,maxCardinality(N,S,C),Expl1,ABox,LPropAss,0,[Tab0],L),!.
   
 ch_rule(M,Tab0,[exactCardinality(N,S,C),Ind1],L):-
-  \+ indirectly_blocked(Ind1,Tab0),!,
+  \+ indirectly_blocked(Ind1,Tab0),
   get_abox(Tab0,ABox),
   findClassAssertion(exactCardinality(N,S,C),Ind1,Expl1,ABox),!,
   findall(Ind2-Expl2,findPropertyAssertion(S,Ind1,Ind2,Expl2,ABox),LPropAss),
-  scan_ch_role_list(M,exactCardinality(N,S,C),Expl1,ABox,LPropAss,[Tab0],L),!.
+  scan_ch_role_list(M,exactCardinality(N,S,C),Expl1,ABox,LPropAss,0,[Tab0],L),!.
 
 ch_rule(M,Tab0,[S,Ind1,Ind2],L):-
-  \+ indirectly_blocked(Ind1,Tab0),!,
+  \+ indirectly_blocked(Ind1,Tab0),
   get_abox(Tab0,ABox),
   findPropertyAssertion(S,Ind1,Ind2,Expl2,ABox),!,
   findall(maxCardinality(N,S,C)-Expl1,findClassAssertion(maxCardinality(N,S,C),Ind1,Expl1,ABox),LClassAss),
-  scan_ch_class_list(M,Ind2,Expl2,ABox,LClassAss,[Tab0],L).
+  scan_ch_class_list(M,Ind2,Expl2,ABox,LClassAss,0,[Tab0],L).
 
 ch_rule(M,Tab0,[S,Ind1,Ind2],L):-
-  \+ indirectly_blocked(Ind1,Tab0),!,
+  \+ indirectly_blocked(Ind1,Tab0),
   get_abox(Tab0,ABox),
   findPropertyAssertion(S,Ind1,Ind2,Expl2,ABox),!,
   findall(exactCardinality(N,S,C)-Expl1,findClassAssertion(exactCardinality(N,S,C),Ind1,Expl1,ABox),LClassAss),
-  scan_ch_class_list(M,Ind2,Expl2,ABox,LClassAss,[Tab0],L).
+  scan_ch_class_list(M,Ind2,Expl2,ABox,LClassAss,0,[Tab0],L).
 
 %---------------------
 
-scan_ch_role_list(_,_,_,_,[],TabL,TabL):-!.
+scan_ch_role_list(_,_,_,_,[],1,TabL,TabL):-!.
 
-scan_ch_role_list(M,Class,Expl1,ABox,[Ind2-Expl2|T],Tab0L,TabL):-
+scan_ch_role_list(M,Class,Expl1,ABox,[Ind2-Expl2|T],_,Tab0L,TabL):-
   Class=..[_,_N,_S,C],
   absent_c_not_c(Ind2,C,ABox),!,
   and_f(M,Expl1,Expl2,Expl),
   scan_ch_list_int(M,C,Ind2,Expl,Class,Tab0L,Tab1L),!,
-  scan_ch_role_list(M,Class,Expl1,ABox,T,Tab1L,TabL).
+  scan_ch_role_list(M,Class,Expl1,ABox,T,1,Tab1L,TabL).
 
-scan_ch_role_list(M,Class,Expl1,ABox,[_|T],Tab0L,TabL):-
-  scan_ch_role_list(M,Class,Expl1,ABox,T,Tab0L,TabL).
+scan_ch_role_list(M,Class,Expl1,ABox,[_|T],Mod,Tab0L,TabL):-
+  scan_ch_role_list(M,Class,Expl1,ABox,T,Mod,Tab0L,TabL).
 
 
-scan_ch_class_list(_M,_Ind2,_,_,[],TabL,TabL):-!.
+scan_ch_class_list(_M,_Ind2,_,_,[],1,TabL,TabL):-!.
 
-scan_ch_class_list(M,Ind2,Expl2,ABox,[Class-Expl1|T],Tab0L,TabL):-
+scan_ch_class_list(M,Ind2,Expl2,ABox,[Class-Expl1|T],_,Tab0L,TabL):-
   Class=..[_,_N,_S,C],
   absent_c_not_c(Ind2,C,ABox),!,
   and_f(M,Expl1,Expl2,Expl),
   scan_ch_list_int(M,C,Ind2,Expl,Class,Tab0L,Tab1L),!,
-  scan_ch_class_list(M,Ind2,Expl2,ABox,T,Tab1L,TabL).
+  scan_ch_class_list(M,Ind2,Expl2,ABox,T,1,Tab1L,TabL).
 
-scan_ch_class_list(M,Ind2,Expl2,ABox,[_|T],Tab0L,TabL):-
-  scan_ch_class_list(M,Ind2,Expl2,ABox,T,Tab0L,TabL).
+scan_ch_class_list(M,Ind2,Expl2,ABox,[_|T],Mod,Tab0L,TabL):-
+  scan_ch_class_list(M,Ind2,Expl2,ABox,T,Mod,Tab0L,TabL).
 
 
 scan_ch_list_int(_M,_C,_,_,_,[],[]):-!.
