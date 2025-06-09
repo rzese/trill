@@ -2416,55 +2416,73 @@ ch_rule(M,Tab0,[maxCardinality(N,S,C),Ind1],L):-
   \+ indirectly_blocked(Ind1,Tab0),!,
   get_abox(Tab0,ABox),
   findClassAssertion(maxCardinality(N,S,C),Ind1,Expl1,ABox),!,
-  findPropertyAssertion(S,Ind1,Ind2,Expl2,ABox),
-  absent_c_not_c(Ind2,C,ABox),
-  and_f(M,Expl1,Expl2,Expl),
-  get_choice_point_id(M,ID),%gtrace,
-  neg_class(C,NC),
-  scan_or_list(M,[C,NC],0,ID,Ind2,Expl,Tab0,L),
-  dif(L,[]),
-  create_choice_point(M,Ind2,ch,maxCardinality(N,S,C),[C,NC],_),!. % last variable whould be equals to ID
-
+  findall(Ind2-Expl2,findPropertyAssertion(S,Ind1,Ind2,Expl2,ABox),LPropAss),
+  scan_ch_role_list(M,maxCardinality(N,S,C),Expl1,ABox,LPropAss,[Tab0],L),!.
+  
 ch_rule(M,Tab0,[exactCardinality(N,S,C),Ind1],L):-
-  \+ indirectly_blocked(Ind1,Tab0),
+  \+ indirectly_blocked(Ind1,Tab0),!,
   get_abox(Tab0,ABox),
   findClassAssertion(exactCardinality(N,S,C),Ind1,Expl1,ABox),!,
-  findPropertyAssertion(S,Ind1,Ind2,Expl2,ABox),
-  absent_c_not_c(Ind2,C,ABox),
-  and_f(M,Expl1,Expl2,Expl),
-  get_choice_point_id(M,ID),%gtrace,
-  neg_class(C,NC),
-  scan_or_list(M,[C,NC],0,ID,Ind2,Expl,Tab0,L),
-  dif(L,[]),
-  create_choice_point(M,Ind2,ch,exactCardinality(N,S,C),[C,NC],_),!. % last variable whould be equals to ID
-
-ch_rule(M,Tab0,[S,Ind1,Ind2],L):-
-  \+ indirectly_blocked(Ind1,Tab0),
-  get_abox(Tab0,ABox),
-  findPropertyAssertion(S,Ind1,Ind2,Expl2,ABox),!,
-  findClassAssertion(maxCardinality(N,S,C),Ind1,Expl1,ABox),
-  absent_c_not_c(Ind2,C,ABox),
-  and_f(M,Expl1,Expl2,Expl),
-  get_choice_point_id(M,ID),%gtrace,
-  neg_class(C,NC),
-  scan_or_list(M,[C,NC],0,ID,Ind2,Expl,Tab0,L),
-  dif(L,[]),
-  create_choice_point(M,Ind2,ch,maxCardinality(N,S,C),[C,NC],_),!. % last variable whould be equals to ID
+  findall(Ind2-Expl2,findPropertyAssertion(S,Ind1,Ind2,Expl2,ABox),LPropAss),
+  scan_ch_role_list(M,exactCardinality(N,S,C),Expl1,ABox,LPropAss,[Tab0],L),!.
 
 ch_rule(M,Tab0,[S,Ind1,Ind2],L):-
   \+ indirectly_blocked(Ind1,Tab0),!,
   get_abox(Tab0,ABox),
   findPropertyAssertion(S,Ind1,Ind2,Expl2,ABox),!,
-  findClassAssertion(exactCardinality(N,S,C),Ind1,Expl1,ABox),
-  absent_c_not_c(Ind2,C,ABox),
-  and_f(M,Expl1,Expl2,Expl),
-  get_choice_point_id(M,ID),%gtrace,
-  neg_class(C,NC),
-  scan_or_list(M,[C,NC],0,ID,Ind2,Expl,Tab0,L),
-  dif(L,[]),
-  create_choice_point(M,Ind2,ch,exactCardinality(N,S,C),[C,NC],_),!. % last variable whould be equals to ID
+  findall(maxCardinality(N,S,C)-Expl1,findClassAssertion(maxCardinality(N,S,C),Ind1,Expl1,ABox),LClassAss),
+  scan_ch_class_list(M,Ind2,Expl2,ABox,LClassAss,[Tab0],L).
+
+ch_rule(M,Tab0,[S,Ind1,Ind2],L):-
+  \+ indirectly_blocked(Ind1,Tab0),!,
+  get_abox(Tab0,ABox),
+  findPropertyAssertion(S,Ind1,Ind2,Expl2,ABox),!,
+  findall(exactCardinality(N,S,C)-Expl1,findClassAssertion(exactCardinality(N,S,C),Ind1,Expl1,ABox),LClassAss),
+  scan_ch_class_list(M,Ind2,Expl2,ABox,LClassAss,[Tab0],L).
 
 %---------------------
+
+scan_ch_role_list(_,_,_,_,[],TabL,TabL):-!.
+
+scan_ch_role_list(M,Class,Expl1,ABox,[Ind2-Expl2|T],Tab0L,TabL):-
+  Class=..[_,_N,_S,C],
+  absent_c_not_c(Ind2,C,ABox),!,
+  and_f(M,Expl1,Expl2,Expl),
+  scan_ch_list_int(M,C,Ind2,Expl,Class,Tab0L,Tab1L),!,
+  scan_ch_role_list(M,Class,Expl1,ABox,T,Tab1L,TabL).
+
+scan_ch_role_list(M,Class,Expl1,ABox,[_|T],Tab0L,TabL):-
+  scan_ch_role_list(M,Class,Expl1,ABox,T,Tab0L,TabL).
+
+
+scan_ch_class_list(_M,_Ind2,_,_,[],TabL,TabL):-!.
+
+scan_ch_class_list(M,Ind2,Expl2,ABox,[Class-Expl1|T],Tab0L,TabL):-
+  Class=..[_,_N,_S,C],
+  absent_c_not_c(Ind2,C,ABox),!,
+  and_f(M,Expl1,Expl2,Expl),
+  scan_ch_list_int(M,C,Ind2,Expl,Class,Tab0L,Tab1L),!,
+  scan_ch_class_list(M,Ind2,Expl2,ABox,T,Tab1L,TabL).
+
+scan_ch_class_list(M,Ind2,Expl2,ABox,[_|T],Tab0L,TabL):-
+  scan_ch_class_list(M,Ind2,Expl2,ABox,T,Tab0L,TabL).
+
+
+scan_ch_list_int(_M,_C,_,_,_,[],[]):-!.
+
+scan_ch_list_int(M,C,Ind2,Expl,Class,[Tab0|TabT],L):-
+  scan_ch_list_int(M,C,Ind2,Expl,Class,TabT,L0),
+  get_choice_point_id(M,ID),%gtrace,
+  neg_class(C,NC),
+  scan_or_list(M,[C,NC],0,ID,Ind2,Expl,Tab0,L1),
+  dif(L,[]),!,
+  create_choice_point(M,Ind2,ch,Class,[C,NC],_),!, % last variable whould be equals to ID
+  append(L0,L1,L),!.
+
+scan_ch_list_int(M,C,Ind2,Expl,Class,[_|TabT],L):-
+  scan_ch_list_int(M,C,Ind2,Expl,Class,TabT,L).
+
+% ---------------------
 
 absent_c_not_c(Ind,C,ABox) :-
   \+ is_there_c_not_c(Ind,C,ABox).
@@ -2485,19 +2503,30 @@ is_there_c_not_c(Ind,C,ABox) :-
 % TODO da sistemare
 o_rule(M,Tab0,[oneOf(C),X],Tab):-
   get_abox(Tab0,ABox),
-  findClassAssertion(oneOf(C),X,ExplX,ABox),
-  findClassAssertion(oneOf(D),Y,ExplY,ABox),
-  containsCommon(C,D),
-  dif(X,Y),
-  notDifferentIndividuals(M,X,Y,ABox),
-  nominal(C,Tab),
+  findClassAssertion(oneOf(C),X,ExplX,ABox),!,
+  nominal(C,Tab0),!,
+  findall(Y-ExplY,
+    (findClassAssertion(oneOf(D),Y,ExplY,ABox),
+     containsCommon(C,D),dif(X,Y),
+     notDifferentIndividuals(M,X,Y,ABox)
+    ),LOneOf),
   ind_as_list(X,LX),
+  scan_o_list(M,X,LX,ExplX,ABox,LOneOf,Tab0,Tab).
+
+scan_o_list(_M,_X,_LX,_ExplX,_,[],Tab,Tab):-!.
+
+scan_o_list(M,X,LX,ExplX,ABox,[Y-ExplY|T],Tab0,Tab):-
   ind_as_list(Y,LY),
   and_f(M,ExplX,ExplY,ExplC),
-  merge(M,X,Y,ExplC,Tab0,Tab),
   flatten([LX,LY],LI0),
   sort(LI0,LI),
-  absent(sameIndividual(LI),ExplC,ABox).
+  absent(sameIndividual(LI),ExplC,ABox),!,
+  merge(M,X,Y,ExplC,Tab0,Tab1),!,
+  scan_o_list(M,X,LX,ExplX,ABox,T,Tab1,Tab).
+
+scan_o_list(M,X,LX,ExplX,ABox,[_|T],Tab0,Tab):-
+  scan_o_list(M,X,LX,ExplX,ABox,T,Tab0,Tab).
+
 
 containsCommon(L1,L2):-
   member(X,L1),
