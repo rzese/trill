@@ -1356,26 +1356,29 @@ apply_all_rules(M,Tab0,EA,Tab,Expl):-
   apply_det_rules(M,Rules,Tab0,EA,Tab1),
   get_clashes(Tab1,Clash),
   assert(M:tab_end(Tab1)),
-  continue_or_return_expl(M,Rules,Tab0,EA,Tab1,Clash,Tab,Expl).
+  continue_or_return_expl(M,Rules,Tab0,Tab1,Clash,Tab,Expl).
 
-continue_or_return_expl(M,Rules,Tab0,EA,Tab1,[],Tab,Expl):-!,
-  continue(M,Rules,Tab0,EA,Tab1,[],Tab,Expl).
+continue_or_return_expl(M,Rules,Tab0,Tab1,[],Tab,Expl):-!,
+  continue(M,Rules,Tab0,Tab1,[],Tab,Expl).
   
-continue_or_return_expl(M,_Rules,_Tab0,_EA,Tab,Clash,Tab,Expl):- 
+continue_or_return_expl(M,_Rules,_Tab0,Tab,Clash,Tab,Expl):- 
   find_expls(M,Clash,Tab,Expl).
 
-continue_or_return_expl(M,Rules,Tab0,EA,Tab1,Clash,Tab,Expl):-!,
-  continue(M,Rules,Tab0,EA,Tab1,Clash,Tab,Expl).
+continue_or_return_expl(M,Rules,Tab0,Tab1,Clash,Tab,Expl):-!,
+  continue(M,Rules,Tab0,Tab1,Clash,Tab,Expl).
 
-continue(M,_Rules,Tab0,EA,Tab1,_Clash,Tab,Expl):-
+continue(M,_Rules,Tab0,Tab1,_Clash,Tab,Expl):-
   retract(M:tab_end(Tab1)),
-  set_next_from_expansion_queue(Tab0,_EA1,Tab),
   ( test_end_apply_rule(M,Tab0,Tab1) ->
-      Expl=[] 
+      (
+        set_next_from_expansion_queue(Tab0,_EA1,Tab),
+        Expl=[]
+      )
       ;
       (
         pop_clashes(Tab1,_,Tab2),
-        apply_all_rules(M,Tab2,EA,Tab,Expl)
+        set_next_from_expansion_queue(Tab2,EA1,Tab3),
+        apply_all_rules(M,Tab3,EA1,Tab,Expl)
       )
   ).
 
@@ -1460,16 +1463,16 @@ apply_nondet_rules([_|T],Tab0,Tab):-
 add_exists_rule(M,Tab0,[R,Ind1,Ind2],Tab):-
   get_abox(Tab0,ABox),
   findall(C-Expl2,(findClassAssertion(C,Ind2,Expl2,ABox),\+unifiable(C,someValuesFrom(_,_),_)),L),
-  findPropertyAssertion(R,Ind1,Ind2,Expl1,ABox),
-  scan_exists_from_rule_list(M,Tab0,R,Ind1,Ind2,ABox,L,Tab),!.
+  findPropertyAssertion(R,Ind1,Ind2,Expl1,ABox),!,
+  scan_exists_from_class_list(M,R,Ind1,Expl1,ABox,L,Tab0,Tab),!.
 
-add_exists_rule(M,Tab,[someValuesFrom(_,_),Ind2],Tab):-!.
+add_exists_rule(_,Tab,[someValuesFrom(_,_),_Ind2],Tab):-!.
 
 add_exists_rule(M,Tab0,[C,Ind2],Tab):-
   get_abox(Tab0,ABox),
   findall(R-Ind1-Expl1,findPropertyAssertion(R,Ind1,Ind2,Expl1,ABox),L),
-  findClassAssertion(C,Ind2,Expl2,ABox),
-  scan_exists_from_class_list(M,Tab0,C,Expl2,ABox,L,Tab),!.
+  findClassAssertion(C,Ind2,Expl2,ABox),!,
+  scan_exists_from_rule_list(M,C,Expl2,ABox,L,Tab0,Tab),!.
 
 /*
 existsInKB(M,R,C):-
@@ -1481,29 +1484,29 @@ existsInKB(M,R,C):-
   member(someValuesFrom(R,C),L).
 */
 
-scan_exists_from_rule_list(_,_,_,_,[],Tab,Tab):-!,
-  add_tableau_rules_from_class(M,someValuesFrom(R,C)).
+scan_exists_from_class_list(M,_,_,_,_,[],Tab,Tab):-!,
+  add_tableau_rules_from_class(M,someValuesFrom(_,_)).
 
-scan_exists_from_rule_list(M,R,Ind1,Expl1,ABox,[C-Expl2|T],Tab0,Tab):-
+scan_exists_from_class_list(M,R,Ind1,Expl1,ABox,[C-Expl2|T],Tab0,Tab):-
   and_f(M,Expl1,Expl2,Expl),
   modify_ABox(M,Tab0,someValuesFrom(R,C),Ind1,Expl,Tab1),
-  scan_exists_from_rule_list(M,R,Ind1,Expl1,Abox,T,Tab1,Tab).
+  scan_exists_from_class_list(M,R,Ind1,Expl1,ABox,T,Tab1,Tab).
 
-scan_exists_from_rule_list(M,R,Ind1,Expl1,ABox,[_|T],Tab0,Tab):-
-  scan_exists_from_rule_list(M,R,Ind1,Expl1,Abox,T,Tab0,Tab).
+scan_exists_from_class_list(M,R,Ind1,Expl1,ABox,[_|T],Tab0,Tab):-
+  scan_exists_from_class_list(M,R,Ind1,Expl1,ABox,T,Tab0,Tab).
 
 % -----------------
 
-scan_exists_from_class_list(_,_,_,_,_,[],Tab,Tab):-!,
-  add_tableau_rules_from_class(M,someValuesFrom(R,C)).
+scan_exists_from_rule_list(M,_,_,_,[],Tab,Tab):-!,
+  add_tableau_rules_from_class(M,someValuesFrom(_,_)).
 
-scan_exists_from_class_list(M,C,Expl2,ABox,[R-Ind1-Expl1|T],Tab0,Tab):-
+scan_exists_from_rule_list(M,C,Expl2,ABox,[R-Ind1-Expl1|T],Tab0,Tab):-
   and_f(M,Expl1,Expl2,Expl),
   modify_ABox(M,Tab0,someValuesFrom(R,C),Ind1,Expl,Tab1),
-  scan_exists_from_class_list(M,C,Expl2,Abox,T,Tab1,Tab).
+  scan_exists_from_rule_list(M,C,Expl2,ABox,T,Tab1,Tab).
 
-scan_exists_from_class_list(M,C,Expl2,ABox,[_|T],Tab0,Tab):-
-  scan_exists_from_class_list(M,C,Expl2,Abox,T,Tab0,Tab).
+scan_exists_from_rule_list(M,C,Expl2,ABox,[_|T],Tab0,Tab):-
+  scan_exists_from_rule_list(M,C,Expl2,ABox,T,Tab0,Tab).
 
 /* *************** */ 
 
@@ -1513,7 +1516,7 @@ scan_exists_from_class_list(M,C,Expl2,ABox,[_|T],Tab0,Tab):-
 */
 and_rule(M,Tab0,[intersectionOf(LC),Ind],Tab):-
   get_abox(Tab0,ABox),
-  findClassAssertion(intersectionOf(LC),Ind,Expl,ABox),
+  findClassAssertion(intersectionOf(LC),Ind,Expl,ABox),!,
   \+ indirectly_blocked(Ind,Tab0),
   scan_and_list(M,LC,Ind,Expl,Tab0,Tab).
 
@@ -1535,7 +1538,7 @@ scan_and_list(M,[_C|T],Ind,Expl,Tab0,Tab):-
 */
 or_rule(M,Tab0,[unionOf(LC),Ind],L):- %gtrace,
   get_abox(Tab0,ABox),
-  findClassAssertion(unionOf(LC),Ind,Expl,ABox),
+  findClassAssertion(unionOf(LC),Ind,Expl,ABox),!,
   \+ indirectly_blocked(Ind,Tab0), %gtrace,
   %not_ind_intersected_union(Ind,LC,ABox),
   % length(LC,NClasses),
@@ -1567,7 +1570,7 @@ scan_or_list(M,[C|T],N0,CP,Ind,Expl0,Tab0,[Tab|L]):-
 */
 exists_rule(M,Tab0,[someValuesFrom(R,C),Ind1],Tab):-
   get_abox(Tab0,ABox0),
-  findClassAssertion(someValuesFrom(R,C),Ind1,Expl,ABox0),
+  findClassAssertion(someValuesFrom(R,C),Ind1,Expl,ABox0),!,
   \+ blocked(Ind1,Tab0),
   \+ connected_individual(R,C,Ind1,ABox0),
   new_ind(M,Ind2),
@@ -1593,15 +1596,15 @@ forall_rule(M,Tab0,[allValuesFrom(R,C),Ind1],Tab):-
   \+ indirectly_blocked(Ind1,Tab0),!,
   get_abox(Tab0,ABox),
   findall(Ind2-Expl2,findPropertyAssertion(R,Ind1,Ind2,Expl2,ABox),L),
-  findClassAssertion(allValuesFrom(R,C),Ind1,Expl1,ABox),
+  findClassAssertion(allValuesFrom(R,C),Ind1,Expl1,ABox),!,
   scan_forall_from_class_list(M,C,Expl1,L,Tab0,Tab).
 
 forall_rule(M,Tab0,[R,Ind1,Ind2],Tab):-
   \+ indirectly_blocked(Ind1,Tab0),!,
   get_abox(Tab0,ABox),
   findall(C-Expl1,findClassAssertion(allValuesFrom(R,C),Ind1,Expl1,ABox),L),
-  findPropertyAssertion(R,Ind1,Ind2,Expl2,ABox),
-  scan_forall_from_rule_list(M,Ind2,L,Tab0,Tab).
+  findPropertyAssertion(R,Ind1,Ind2,Expl2,ABox),!,
+  scan_forall_from_rule_list(M,Ind2,Expl2,L,Tab0,Tab).
 
 forall_rule(_,Tab,_,Tab):-!.
 
@@ -1623,7 +1626,7 @@ scan_forall_from_rule_list(_M,_Ind2,_Expl2,[],Tab,Tab):-!.
 
 scan_forall_from_rule_list(M,Ind2,Expl2,[C-Expl1|T],Tab0,Tab):-
   and_f(M,Expl1,Expl2,Expl),
-  modify_ABox(M,Tab0,C,Ind2,Expl,Tab),!,
+  modify_ABox(M,Tab0,C,Ind2,Expl,Tab1),!,
   scan_forall_from_rule_list(M,Ind2,Expl2,T,Tab1,Tab).
 
 scan_forall_from_rule_list(M,Ind2,Expl2,[_|T],Tab0,Tab):-
@@ -1640,15 +1643,15 @@ forall_plus_rule(M,Tab0,[allValuesFrom(S,C),Ind1],Tab):-
   \+ indirectly_blocked(Ind1,Tab0),!,
   get_abox(Tab0,ABox),
   findall(R-Ind2-Expl2,findPropertyAssertion(R,Ind1,Ind2,Expl2,ABox),LPropAss),
-  findClassAssertion(allValuesFrom(S,C),Ind1,Expl1,ABox),
+  findClassAssertion(allValuesFrom(S,C),Ind1,Expl1,ABox),!,
   scan_forall_plus_from_class_list(M,S,C,Expl1,LPropAss,Tab0,Tab).
 
 forall_plus_rule(M,Tab0,[R,Ind1,Ind2],Tab):-
   \+ indirectly_blocked(Ind1,Tab0),!,
   get_abox(Tab0,ABox),
   findall(S-C-Expl1,findClassAssertion(allValuesFrom(S,C),Ind1,Expl1,ABox),LClassAss),
-  findPropertyAssertion(R,Ind1,Ind2,Expl2,ABox),
-  scan_forall_plus_from_rule_list(M,R,Ind2,Expl2,LPropAss,Tab0,Tab).
+  findPropertyAssertion(R,Ind1,Ind2,Expl2,ABox),!,
+  scan_forall_plus_from_rule_list(M,R,Ind2,Expl2,LClassAss,Tab0,Tab).
 
 forall_plus_rule(_,Tab,_,Tab):-!.
 
@@ -1674,11 +1677,11 @@ scan_forall_plus_from_class_list(M,S,C,Expl1,[R-Ind2-Expl2|T],Tab0,Tab):-
   find_sub_sup_trans_role(M,R,S,Expl3),!,
   and_f(M,Expl1,Expl2,ExplT),
   and_f(M,ExplT,Expl3,Expl),
-  modify_ABox(M,Tab0,allValuesFrom(R,C),Ind2,Expl,Tab1),!
+  modify_ABox(M,Tab0,allValuesFrom(R,C),Ind2,Expl,Tab1),!,
   scan_forall_plus_from_class_list(M,S,C,Expl1,T,Tab1,Tab).
 
 scan_forall_plus_from_class_list(M,S,C,Expl1,[_|T],Tab0,Tab):-
-  scan_forall_plus_from_class_list(M,C,Expl1,T,Tab0,Tab)
+  scan_forall_plus_from_class_list(M,S,C,Expl1,T,Tab0,Tab).
 
 % ------------------
 
@@ -1689,7 +1692,7 @@ scan_forall_plus_from_rule_list(M,R,Ind2,Expl2,[S-C-Expl1|T],Tab0,Tab):-
   and_f(M,Expl1,Expl2,ExplT),
   and_f(M,ExplT,Expl3,Expl),
   modify_ABox(M,Tab0,allValuesFrom(R,C),Ind2,Expl,Tab1),!,
-  scan_forall_plus_from_rule_list(M,R,Ind2,Expl2,T,Tab1,Tab)
+  scan_forall_plus_from_rule_list(M,R,Ind2,Expl2,T,Tab1,Tab).
 
 scan_forall_plus_from_rule_list(M,R,Ind2,Expl2,[_|T],Tab0,Tab):-
   scan_forall_plus_from_rule_list(M,R,Ind2,Expl2,T,Tab0,Tab).
@@ -1714,7 +1717,7 @@ unfold_rule(M,Tab0,[P,Ind1,Ind2],Tab):-
 
 unfold_rule_c1(M,Tab0,[C,Ind],Tab):-
   get_abox(Tab0,ABox),
-  findClassAssertion(C,Ind,Expl,ABox),
+  findClassAssertion(C,Ind,Expl,ABox),!,
   % usare findall(D-AX,find_sub_sup_class(M,C,D,Ax),L) e iniziare ciclo per evitare di ripetere stessi test più volte
   find_superclasses(M,C,L),
   scan_supclass_list(M,Ind,Expl,L,Tab0,Tab),!.
@@ -1730,8 +1733,7 @@ unfold_rule_c1(M,Tab0,[C,Ind],Tab):-
 */
 unfold_rule_c2(M,Tab0,[C1,Ind],Tab):-
   findall(C-L,find_not_atomic(M,C1,C,L),LNotAt),
-  get_abox(Tab0,ABox),
-  scan_notat_list(M,Ind,LNotAt,Tab0,Tab).
+  scan_notat_list(M,C1,Ind,LNotAt,Tab0,Tab).
   
 /*
  * -- unfold_rule
@@ -1740,10 +1742,12 @@ unfold_rule_c2(M,Tab0,[C1,Ind],Tab):-
  */
 unfold_rule_c3(M,Tab0,[complementOf(C),Ind],Tab):-
   get_abox(Tab0,ABox),
-  findClassAssertion(complementOf(C),Ind,Expl,ABox),
+  findClassAssertion(complementOf(C),Ind,Expl,ABox),!,
   find_neg_class(C,D),
   and_f_ax(M,complementOf(C),Expl,AxL),
-  (modify_ABox(M,Tab0,D,Ind,AxL,Tab1)->add_nominal(M,D,Ind,Tab1,Tab);Tab=Tab0).
+  (modify_ABox(M,Tab0,D,Ind,AxL,Tab1)->add_nominal(M,D,Ind,Tab1,Tab);Tab=Tab0),!.
+
+unfold_rule_c3(_M,Tab,_,Tab).
 
 % ----------------
 % scan_supclass_list
@@ -1763,12 +1767,14 @@ scan_supclass_list(M,Ind,Expl,[_|T],Tab0,Tab):-
 scan_notat_list(_,_C1,_Ind,[],Tab,Tab):- !.
 
 scan_notat_list(M,C1,Ind,[unionOf(UO)-_|T],Tab0,Tab):-!,
-  findClassAssertion(C1,Ind,Expl,ABox)
+  get_abox(Tab0,ABox),
+  findClassAssertion(C1,Ind,Expl,ABox),
   modify_ABox(M,Tab0,unionOf(UO),Ind,Expl,Tab1),!,
-  add_nominal(M,C,Ind,Tab1,Tab2),!,
+  add_nominal(M,unionOf(UO),Ind,Tab1,Tab2),!,
   scan_notat_list(M,C1,Ind,T,Tab2,Tab).
 
-scan_notat_list(M,_C1,Ind,[C-L|T],Tab0,Tab):-
+scan_notat_list(M,C1,Ind,[C-L|T],Tab0,Tab):-
+  get_abox(Tab0,ABox),
   find_all(M,Ind,L,ABox,Expl),
   modify_ABox(M,Tab0,C,Ind,Expl,Tab1),!,
   add_nominal(M,C,Ind,Tab1,Tab2),!,
@@ -2020,25 +2026,27 @@ scan_rangedom_list(M,[_|T],Tab0,Tab):-
 % sub properties
 unfold_rule_p2(M,Tab0,[C,Ind1,Ind2],Tab):-
   get_abox(Tab0,ABox),
-  findPropertyAssertion(C,Ind1,Ind2,Expl,ABox),
+  findPropertyAssertion(C,Ind1,Ind2,Expl,ABox),!,
   findall(D-Ax,find_sub_sup_property(M,C,D,Ax),L),
   scan_subinvprop_list(M,Ind1,Ind2,Expl,L,Tab0,Tab).
 
 %inverseProperties
 unfold_rule_p3(M,Tab0,[C,Ind1,Ind2],Tab):-
   get_abox(Tab0,ABox),
-  findPropertyAssertion(C,Ind1,Ind2,Expl,ABox),
+  findPropertyAssertion(C,Ind1,Ind2,Expl,ABox),!,
   findall(D-Ax,find_inverse_property(M,C,D,Ax),L),
-  scan_subinvprop_list(M,Ind1,Ind2,Expl,L,Tab0,Tab).
+  scan_subinvprop_list(M,Ind2,Ind1,Expl,L,Tab0,Tab).
 
 %transitiveProperties
 unfold_rule_p4(M,Tab0,[C,Ind1,Ind2],Tab):-
   get_abox(Tab0,ABox),
-  findPropertyAssertion(C,Ind1,Ind2,Expl,ABox),
-  find_transitive_property(M,C,Ax),
+  find_transitive_property(M,C,Ax),!,
+  findPropertyAssertion(C,Ind1,Ind2,Expl,ABox),!,
   and_f_ax(M,Ax,Expl,AxL),
   findall(Ind3-ExplSecond,findPropertyAssertion(C,Ind2,Ind3,ExplSecond,ABox),L),
   scan_trans_list(M,C,Ind1,AxL,L,Tab0,Tab).
+
+unfold_rule_p4(_,Tab,_,Tab).
 
 %-----------------
 % subPropertyOf
@@ -2078,10 +2086,10 @@ scan_subinvprop_list(M,Ind1,Ind2,Expl,[D-Ax|T],Tab0,Tab):-
   modify_ABox(M,Tab0,D,Ind1,Ind2,AxL,Tab1),!,
   add_nominal(M,D,Ind1,Tab1,Tab2),!,
   add_nominal(M,D,Ind2,Tab2,Tab3),!,
-  scan_subinvprop_list(M,T,Tab3,Tab).
+  scan_subinvprop_list(M,Ind1,Ind2,Expl,T,Tab3,Tab).
 
 scan_subinvprop_list(M,Ind1,Ind2,Expl,[_|T],Tab0,Tab):-
-  scan_subinvprop_list(M,,Ind1,Ind2,Expl,T,Tab0,Tab).
+  scan_subinvprop_list(M,Ind1,Ind2,Expl,T,Tab0,Tab).
 
 % ----------------
 % scan_trans_list
@@ -2151,7 +2159,7 @@ apply_ce_to(M,[_Ind|T],Ax,UnAx,Tab0,Tab):-
 min_rule(M,Tab0,[minCardinality(N,S),Ind1],Tab):-
   \+ blocked(Ind1,Tab0),!,
   get_abox(Tab0,ABox),
-  findClassAssertion(minCardinality(N,S),Ind1,Expl,ABox),
+  findClassAssertion(minCardinality(N,S),Ind1,Expl,ABox),!,
   s_neighbours(M,Ind1,S,Tab0,SN),
   safe_s_neigh(SN,S,Tab0,SS),
   length(SS,LSS),
@@ -2164,7 +2172,7 @@ min_rule(M,Tab0,[minCardinality(N,S),Ind1],Tab):-
 min_rule(M,Tab0,[minCardinality(N,S,C),Ind1],Tab):-
   \+ blocked(Ind1,Tab0),!,
   get_abox(Tab0,ABox),
-  findClassAssertion(minCardinality(N,S,C),Ind1,Expl,ABox),
+  findClassAssertion(minCardinality(N,S,C),Ind1,Expl,ABox),!,
   s_neighbours(M,Ind1,S,Tab0,SN),
   safe_s_neigh_C(SN,S,C,Tab0,ABox,SS),
   length(SS,LSS),
@@ -2176,7 +2184,7 @@ min_rule(M,Tab0,[minCardinality(N,S,C),Ind1],Tab):-
 min_rule(M,Tab0,[exactCardinality(N,S),Ind1],Tab):-
   \+ blocked(Ind1,Tab0),!,
   get_abox(Tab0,ABox),
-  findClassAssertion(exactCardinality(N,S),Ind1,Expl,ABox),
+  findClassAssertion(exactCardinality(N,S),Ind1,Expl,ABox),!,
   s_neighbours(M,Ind1,S,Tab0,SN),
   safe_s_neigh(SN,S,Tab0,SS),
   length(SS,LSS),
@@ -2189,7 +2197,7 @@ min_rule(M,Tab0,[exactCardinality(N,S),Ind1],Tab):-
 min_rule(M,Tab0,[exactCardinality(N,S,C),Ind1],Tab):-
   \+ blocked(Ind1,Tab0),!,
   get_abox(Tab0,ABox),
-  findClassAssertion(exactCardinality(N,S,C),Ind1,Expl,ABox),
+  findClassAssertion(exactCardinality(N,S,C),Ind1,Expl,ABox),!,
   s_neighbours(M,Ind1,S,Tab0,SN),
   safe_s_neigh_C(SN,S,C,Tab0,SS),
   length(SS,LSS),
@@ -2254,7 +2262,7 @@ safe_s_neigh_C([H|T],S,C,Tab,ABox,[H|ST]):-
 max_rule(M,Tab0,[maxCardinality(N,S),Ind],L):-
   \+ indirectly_blocked(Ind,Tab0),!,
   get_abox(Tab0,ABox),
-  findClassAssertion(maxCardinality(N,S),Ind,Expl0,ABox),
+  findClassAssertion(maxCardinality(N,S),Ind,Expl0,ABox),!,
   s_neighbours(M,Ind,S,Tab0,SN),
   length(SN,LSS),
   LSS @> N,
@@ -2264,7 +2272,7 @@ max_rule(M,Tab0,[maxCardinality(N,S),Ind],L):-
 max_rule(M,Tab0,[maxCardinality(N,S,C),Ind],L):-%gtrace,
   \+ indirectly_blocked(Ind,Tab0),!,
   get_abox(Tab0,ABox),
-  findClassAssertion(maxCardinality(N,S,C),Ind,Expl0,ABox),
+  findClassAssertion(maxCardinality(N,S,C),Ind,Expl0,ABox),!,
   s_neighbours(M,Ind,S,Tab0,SN),
   individual_class_C(SN,C,ABox,SNC),
   length(SNC,LSS),
@@ -2277,7 +2285,7 @@ max_rule(M,Tab0,[maxCardinality(N,S,C),Ind],L):-%gtrace,
 max_rule(M,Tab0,[exactCardinality(N,S),Ind],L):-
   \+ indirectly_blocked(Ind,Tab0),!,
   get_abox(Tab0,ABox),
-  findClassAssertion(exactCardinality(N,S),Ind,Expl0,ABox),
+  findClassAssertion(exactCardinality(N,S),Ind,Expl0,ABox),!,
   s_neighbours(M,Ind,S,Tab0,SN),
   length(SN,LSS),
   LSS @> N,
@@ -2287,7 +2295,7 @@ max_rule(M,Tab0,[exactCardinality(N,S),Ind],L):-
 max_rule(M,Tab0,[exactCardinality(N,S,C),Ind],L):-
   \+ indirectly_blocked(Ind,Tab0),!,
   get_abox(Tab0,ABox),
-  findClassAssertion(exactCardinality(N,S,C),Ind,Expl0,ABox),
+  findClassAssertion(exactCardinality(N,S,C),Ind,Expl0,ABox),!,
   s_neighbours(M,Ind,S,Tab0,SN),
   individual_class_C(SN,C,ABox,SNC),
   length(SNC,LSS),
@@ -2298,7 +2306,7 @@ max_rule(M,Tab0,[exactCardinality(N,S,C),Ind],L):-
 max_rule(M,Tab0,[S,Ind,_],L):-
   \+ indirectly_blocked(Ind,Tab0),!,
   get_abox(Tab0,ABox),
-  findClassAssertion(exactCardinality(N,S),Ind,Expl0,ABox),
+  findClassAssertion(exactCardinality(N,S),Ind,Expl0,ABox),!,
   s_neighbours(M,Ind,S,Tab0,SN),
   length(SN,LSS),
   LSS @> N,
@@ -2308,7 +2316,7 @@ max_rule(M,Tab0,[S,Ind,_],L):-
 max_rule(M,Tab0,[S,Ind,_],L):-
   \+ indirectly_blocked(Ind,Tab0),
   get_abox(Tab0,ABox),
-  findClassAssertion(exactCardinality(N,S,C),Ind,Expl0,ABox),
+  findClassAssertion(exactCardinality(N,S,C),Ind,Expl0,ABox),!,
   s_neighbours(M,Ind,S,Tab0,SN),
   individual_class_C(SN,C,ABox,SNC),
   length(SNC,LSS),
@@ -2403,11 +2411,12 @@ individual_class_C([_H|T],C,ABox,T1):-
   ch_rule
   ================
 */
+% TODO da sistemare
 ch_rule(M,Tab0,[maxCardinality(N,S,C),Ind1],L):-
   \+ indirectly_blocked(Ind1,Tab0),!,
   get_abox(Tab0,ABox),
+  findClassAssertion(maxCardinality(N,S,C),Ind1,Expl1,ABox),!,
   findPropertyAssertion(S,Ind1,Ind2,Expl2,ABox),
-  findClassAssertion(maxCardinality(N,S,C),Ind1,Expl1,ABox),
   absent_c_not_c(Ind2,C,ABox),
   and_f(M,Expl1,Expl2,Expl),
   get_choice_point_id(M,ID),%gtrace,
@@ -2419,8 +2428,8 @@ ch_rule(M,Tab0,[maxCardinality(N,S,C),Ind1],L):-
 ch_rule(M,Tab0,[exactCardinality(N,S,C),Ind1],L):-
   \+ indirectly_blocked(Ind1,Tab0),
   get_abox(Tab0,ABox),
+  findClassAssertion(exactCardinality(N,S,C),Ind1,Expl1,ABox),!,
   findPropertyAssertion(S,Ind1,Ind2,Expl2,ABox),
-  findClassAssertion(exactCardinality(N,S,C),Ind1,Expl1,ABox),
   absent_c_not_c(Ind2,C,ABox),
   and_f(M,Expl1,Expl2,Expl),
   get_choice_point_id(M,ID),%gtrace,
@@ -2432,8 +2441,8 @@ ch_rule(M,Tab0,[exactCardinality(N,S,C),Ind1],L):-
 ch_rule(M,Tab0,[S,Ind1,Ind2],L):-
   \+ indirectly_blocked(Ind1,Tab0),
   get_abox(Tab0,ABox),
+  findPropertyAssertion(S,Ind1,Ind2,Expl2,ABox),!,
   findClassAssertion(maxCardinality(N,S,C),Ind1,Expl1,ABox),
-  findPropertyAssertion(S,Ind1,Ind2,Expl2,ABox),
   absent_c_not_c(Ind2,C,ABox),
   and_f(M,Expl1,Expl2,Expl),
   get_choice_point_id(M,ID),%gtrace,
@@ -2445,8 +2454,8 @@ ch_rule(M,Tab0,[S,Ind1,Ind2],L):-
 ch_rule(M,Tab0,[S,Ind1,Ind2],L):-
   \+ indirectly_blocked(Ind1,Tab0),!,
   get_abox(Tab0,ABox),
+  findPropertyAssertion(S,Ind1,Ind2,Expl2,ABox),!,
   findClassAssertion(exactCardinality(N,S,C),Ind1,Expl1,ABox),
-  findPropertyAssertion(S,Ind1,Ind2,Expl2,ABox),
   absent_c_not_c(Ind2,C,ABox),
   and_f(M,Expl1,Expl2,Expl),
   get_choice_point_id(M,ID),%gtrace,
@@ -2473,7 +2482,7 @@ is_there_c_not_c(Ind,C,ABox) :-
  o_rule
  ============
 */
-
+% TODO da sistemare
 o_rule(M,Tab0,[oneOf(C),X],Tab):-
   get_abox(Tab0,ABox),
   findClassAssertion(oneOf(C),X,ExplX,ABox),
