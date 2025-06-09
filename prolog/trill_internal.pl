@@ -123,7 +123,8 @@ find_expls(M,[],Q,E):-
 */
 % checks if an explanations was already found (instance_of version)
 find_expls(M,[Clash|_],Tab,E):- %gtrace,  % QueryArgs
-  clash(M,Clash,Tab,EL0),
+  findall(EL0,clash(M,Clash,Tab,EL0),LEL0),!,
+  member(EL0,LEL0),
   member(E0-CPs0,EL0),
   sort(CPs0,CPs1),
   dif(E0,[]),
@@ -133,7 +134,9 @@ find_expls(M,[Clash|_],Tab,E):- %gtrace,  % QueryArgs
   consistency_check(CPs1,[],Q),
   %findall(Exp,M:exp_found([C,I],Exp),Expl),
   %not_already_found(M,Expl,[C,I],E),
-  ( dif(Q,['inconsistent','kb']) -> true ; print_message(warning,inconsistent)),
+  ( dif(Q,['inconsistent','kb']) -> true ; 
+    (check_open_query_monitor_status(M,it,['inconsistent','kb']) -> true ; print_message(warning,inconsistent))
+  ),
   \+ M:exp_found(Q,E),
   assert(M:exp_found(Q,E)). % QueryArgs
 
@@ -155,7 +158,8 @@ find_expls_from_tab_list(M,[],E):-%gtrace,
 find_expls_from_tab_list(M,[Tab|_T],E):- %gtrace,  % QueryArgs
   get_solved_clashes(Tab,Clashes),
   member(Clash,Clashes),
-  clash(M,Clash,Tab,EL0),
+  findall(EL0,clash(M,Clash,Tab,EL0),LEL0),
+  member(EL0,LEL0),
   member(E0-CPs0,EL0),
   sort(CPs0,CPs1),
   dif(E0,[]),
@@ -195,7 +199,9 @@ combine_expls_from_nondet_rules(M,cp(_,_,_,_,_,Expl),E):-%gtrace,
       fail % to force recursion
     ) ;
     (
-      ( dif(Q,['inconsistent','kb']) -> true ; print_message(warning,inconsistent)),
+      ( dif(Q,['inconsistent','kb']) -> true ; 
+        (check_open_query_monitor_status(M,it,['inconsistent','kb']) -> true ; print_message(warning,inconsistent))
+      ),
       \+ M:exp_found(Q,E)
     )
   ).
@@ -244,7 +250,7 @@ not_already_found(M,[_H|T],Q,E):-
   not_already_found(M,T,Q,E).
 
 
-get_latest_choice([],0,0).
+get_latest_choice([],0,0):-!,fail.
 
 get_latest_choice(CPs,ID,Choice):-
   get_latest_choice_point(CPs,0,ID),

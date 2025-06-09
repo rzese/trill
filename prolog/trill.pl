@@ -1144,24 +1144,24 @@ clash(M,C-sameIndividual(L1),Tab,Expl):-
 
 clash(M,C1-Ind,Tab,Expl):-
   get_abox(Tab,ABox),
+  findClassAssertion(C1,Ind,Expl1,ABox),
   %write('clash 7'),nl,
   M:disjointClasses(L), % TODO use hierarchy
   member(C1,L),
   member(C2,L),
   dif(C1,C2),
-  findClassAssertion(C1,Ind,Expl1,ABox),
   findClassAssertion(C2,Ind,Expl2,ABox),
   and_f(M,Expl1,Expl2,ExplT),
   and_f_ax(M,disjointClasses(L),ExplT,Expl).
 
 clash(M,C1-Ind,Tab,Expl):-
   get_abox(Tab,ABox),
+  findClassAssertion(C1,Ind,Expl1,ABox),
   %write('clash 8'),nl,
   M:disjointUnion(Class,L), % TODO use hierarchy
   member(C1,L),
   member(C2,L),
   dif(C1,C2),
-  findClassAssertion(C1,Ind,Expl1,ABox),
   findClassAssertion(C2,Ind,Expl2,ABox),
   and_f(M,Expl1,Expl2,ExplT),
   and_f_ax(M,disjointUnion(Class,L),ExplT,Expl).
@@ -1350,6 +1350,8 @@ get_explanation_int(M,Tab0,Expl):-
       ;
       get_explanation_int(M,Tab1,Expl)
   ).
+
+apply_all_rules(_,Tab,[],Tab,[]):-!.
 
 apply_all_rules(M,Tab0,EA,Tab,Expl):-
   M:setting_trill(det_rules,Rules),
@@ -2593,7 +2595,7 @@ retract_sameIndividual(L):-
 nominal(Inds,Tab):-
   get_abox(Tab,ABox),
   find((nominal(Ind)),ABox),
-  member(Ind,Inds).
+  member(Ind,Inds),!.
 
 % ----------------
 
@@ -2603,12 +2605,12 @@ blockable(Ind,Tab):-
     ->
     false
     ;
-    true ).
+    true ),!.
 
 % ---------------
 
 blocked(Ind,Tab):-
-  check_block(Ind,Tab).
+  check_block(Ind,Tab),!.
 
 /*
 
@@ -2680,7 +2682,7 @@ safe(Ind,R,Tab):-
   rb_lookup(R,V,RBR),
   get_parent(X,Ind,V),
   nominal(X,Tab),!,
-  \+ blocked(Ind,Tab).
+  \+ blocked(Ind,Tab),!.
 
 get_parent(X,Ind,[(X,Ind)|_T]):-!.
 
