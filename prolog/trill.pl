@@ -83,7 +83,7 @@ details.
 :- style_check(-discontiguous).
 
 %:- table ancestor1/4.
-:- table blocked/2.
+:- table blocked/2, indirectly_blocked/2, nominal/2, safe/3, blockable/2.
 
 /********************************
   DISPONTE IRIS
