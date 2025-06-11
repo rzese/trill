@@ -1739,7 +1739,7 @@ unfold_rule_c1(M,Tab0,[C,Ind],Tab):-
    --
 */
 unfold_rule_c2(M,Tab0,[C1,Ind],Tab):-
-  findall(C-L,find_not_atomic(M,C1,C,L),LNotAt),
+  find_not_atomic_classes(M,C1,LNotAt),
   scan_notat_list(M,C1,Ind,LNotAt,Tab0,Tab).
   
 /*
@@ -1820,10 +1820,13 @@ add_nominal(M,D,Ind,Tab0,Tab):-
 %  findall(D-Ax,find_sub_sup_class(M,C,D,Ax),L),
 %  set_superclasses(Tab0,C,L,Tab1).
   
-:- table find_superclasses/3.
+:- table find_superclasses/3, find_not_atomic_classes/3.
 
 find_superclasses(M,C,L):-
   findall(D-Ax,find_sub_sup_class(M,C,D,Ax),L).
+
+find_not_atomic_classes(M,C1,LNotAt):-
+  findall(C-L,find_not_atomic(M,C1,C,L),LNotAt).
 
 
 % ----------------
@@ -2034,7 +2037,7 @@ scan_rangedom_list(M,[_|T],Tab0,Tab):-
 unfold_rule_p2(M,Tab0,[C,Ind1,Ind2],Tab):-
   get_abox(Tab0,ABox),
   findPropertyAssertion(C,Ind1,Ind2,Expl,ABox),!,
-  findall(D-Ax,find_sub_sup_property(M,C,D,Ax),L),
+  find_superproperties(M,C,L),
   scan_subinvprop_list(M,Ind1,Ind2,Expl,L,Tab0,Tab).
 
 %inverseProperties
@@ -2056,6 +2059,11 @@ unfold_rule_p4(M,Tab0,[C,Ind1,Ind2],Tab):-
 unfold_rule_p4(_,Tab,_,Tab).
 
 %-----------------
+:- table find_superproperties/3.
+find_superproperties(M,C,L):-
+  findall(D-Ax,find_sub_sup_property(M,C,D,Ax),L).
+  
+
 % subPropertyOf
 find_sub_sup_property(M,C,D,subPropertyOf(C,D)):-
   M:subPropertyOf(C,D).
