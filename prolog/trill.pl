@@ -2642,7 +2642,7 @@ check_block(M,Ind,Tab):-
   blockable(M,Ind,Tab),
   get_tabs(Tab,(T,_,_)),
   transpose_ugraph(T,T1),
-  ancestor_nt(Ind,T1,A),
+  ancestor_nt(M,Ind,T1,A),
   neighbours(Ind,T1,N),
   check_block1(M,Ind,A,N,Tab),!.
 
@@ -2932,8 +2932,8 @@ ancestor(Ind,T,AN):-
   findall(Y,connection(Ind,T1,Y),AN).
   %ancestor1([Ind],T1,[],AN).
 
-ancestor_nt(Ind,TT,AN):-
-  connection(Ind,TT,AN).
+ancestor_nt(M,Ind,TT,AN):-
+  connection(M,Ind,TT,AN).
   %findall(Y,connection(Ind,TT,Y),AN).
 
 ancestor1([],_,A,A).
@@ -2945,10 +2945,10 @@ ancestor1([Ind|Tail],T,A,AN):-
   ancestor1(Tail1,T,A1,AN).
 
 %:- table connection/3.
-connection(X,_T,L):-
+connection(M,X,_T,L):-
   M:tab_util(rc,X-L),!.
 
-connection(X,T,L):-
+connection(M,X,T,L):-
   reachable(X,T,L),
   assert(M:tab_util(rc,X-L)).
 
