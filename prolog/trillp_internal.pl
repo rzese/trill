@@ -27,10 +27,11 @@ setting_trill_default(nondet_rules,[or_rule]).
 
 set_up(M):-
   utility_translation:set_up(M),
-  M:(dynamic exp_found/2, inconsistent_theory_flag/0, setting_trill/2, tab_end/1, query_option/2),
+  M:(dynamic exp_found/2, inconsistent_theory_flag/0, setting_trill/2, tab_end/1, query_option/2, tab_util/2),
   retractall(M:setting_trill(_,_)),
   retractall(M:query_option(_,_)),
-  retractall(M:tab_end(_)).
+  retractall(M:tab_end(_)),
+  retractall(M:tab_util(_,_)).
   %retractall(M:setting_trill(_,_)),
   %prune_tableau_rules(M).
   %foreach(setting_trill_default(DefaultSetting,DefaultVal),assert(M:setting_trill(DefaultSetting,DefaultVal))).

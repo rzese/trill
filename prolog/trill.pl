@@ -82,9 +82,6 @@ details.
 
 :- style_check(-discontiguous).
 
-%:- table ancestor1/4.
-% :- table blocked/2.
-
 /********************************
   DISPONTE IRIS
 *********************************/
@@ -395,14 +392,9 @@ check_open_query_monitor(M):-
 
 set_up_reasoner(M):-
   set_up(M),
-  M:(dynamic trill_blockable/1, trill_blocked/1, trill_indirectly_blocked/1, trill_safe/2),
   retractall(M:exp_found(_,_)),
   retractall(M:exp_found(_,_,_)),
   retractall(M:trillan_idx(_)),
-  retractall(M:trill_blockable(_)),
-  retractall(M:trill_blocked(_)),
-  retractall(M:trill_indirectly_blocked(_)),
-  retractall(M:trill_safe(_,_)),
   assert(M:trillan_idx(1)).
 
 set_up_tableau(M):-
@@ -1738,9 +1730,11 @@ unfold_rule_c1(M,Tab0,[C,Ind],Tab):-
       correspond to the ce_rule
    --
 */
-unfold_rule_c2(M,Tab0,[C1,Ind],Tab):-
-  find_not_atomic_classes(M,C1,LNotAt),
-  scan_notat_list(M,C1,Ind,LNotAt,Tab0,Tab).
+unfold_rule_c2(M,Tab0,[C,Ind],Tab):-
+  get_abox(Tab0,ABox),
+  findClassAssertion(C,Ind,Expl,ABox),!,
+  find_not_atomic_classes(M,C,LNotAt),
+  scan_notat_list(M,Ind,Expl,LNotAt,Tab0,Tab).
   
 /*
  * -- unfold_rule
@@ -1773,22 +1767,20 @@ scan_supclass_list(M,Ind,Expl,[_|T],Tab0,Tab):-
 % scan_notat_list
 scan_notat_list(_,_C1,_Ind,[],Tab,Tab):- !.
 
-scan_notat_list(M,C1,Ind,[unionOf(UO)-_|T],Tab0,Tab):-!,
-  get_abox(Tab0,ABox),
-  findClassAssertion(C1,Ind,Expl,ABox),
+scan_notat_list(M,Ind,Expl,[unionOf(UO)-_|T],Tab0,Tab):-!,
   modify_ABox(M,Tab0,unionOf(UO),Ind,Expl,Tab1),!,
   add_nominal(M,unionOf(UO),Ind,Tab1,Tab2),!,
-  scan_notat_list(M,C1,Ind,T,Tab2,Tab).
+  scan_notat_list(M,Ind,Expl,T,Tab2,Tab).
 
-scan_notat_list(M,C1,Ind,[C-L|T],Tab0,Tab):-
+scan_notat_list(M,Ind,Expl,[C-L|T],Tab0,Tab):-
   get_abox(Tab0,ABox),
-  find_all(M,Ind,L,ABox,Expl),
-  modify_ABox(M,Tab0,C,Ind,Expl,Tab1),!,
+  find_all(M,Ind,L,ABox,ExplL),
+  modify_ABox(M,Tab0,C,Ind,ExplL,Tab1),!,
   add_nominal(M,C,Ind,Tab1,Tab2),!,
-  scan_notat_list(M,C1,Ind,T,Tab2,Tab).
+  scan_notat_list(M,Ind,Expl,T,Tab2,Tab).
 
-scan_notat_list(M,C1,Ind,[_|T],Tab0,Tab):-
-  scan_notat_list(M,C1,Ind,T,Tab0,Tab).
+scan_notat_list(M,Ind,Expl,[_|T],Tab0,Tab):-
+  scan_notat_list(M,Ind,Expl,T,Tab0,Tab).
 
 % ----------------
 % add_nominal
@@ -1820,13 +1812,18 @@ add_nominal(M,D,Ind,Tab0,Tab):-
 %  findall(D-Ax,find_sub_sup_class(M,C,D,Ax),L),
 %  set_superclasses(Tab0,C,L,Tab1).
   
-:- table find_superclasses/3, find_not_atomic_classes/3.
+find_superclasses(M,C,L):-
+  M:tab_util(sc,C-L),!.
 
 find_superclasses(M,C,L):-
-  findall(D-Ax,find_sub_sup_class(M,C,D,Ax),L).
+  findall(D-Ax,find_sub_sup_class(M,C,D,Ax),L),
+  assert(M:tab_util(sc,C-L)).
 
-find_not_atomic_classes(M,C1,LNotAt):-
-  findall(C-L,find_not_atomic(M,C1,C,L),LNotAt).
+find_not_atomic_classes(M,C,LNotAt):-
+  M:tab_util(na,C-LNotAt),!.
+
+find_not_atomic_classes(M,C,LNotAt):-
+  findall(D-L,find_not_atomic(M,C,D,L),LNotAt).
 
 
 % ----------------
@@ -2059,10 +2056,12 @@ unfold_rule_p4(M,Tab0,[C,Ind1,Ind2],Tab):-
 unfold_rule_p4(_,Tab,_,Tab).
 
 %-----------------
-:- table find_superproperties/3.
+find_superproperties(M,C,L):-
+  M:tab_util(sp,C-L),!.
+
 find_superproperties(M,C,L):-
   findall(D-Ax,find_sub_sup_property(M,C,D,Ax),L).
-  
+
 
 % subPropertyOf
 find_sub_sup_property(M,C,D,subPropertyOf(C,D)):-
@@ -2613,7 +2612,7 @@ nominal(Inds,Tab):-
 % ----------------
 
 blockable(M,Ind,_):-
-  M:trill_blockable(Ind),!.
+  M:tab_util(bkl,Ind),!.
 
 blockable(M,Ind,Tab):-
   get_abox(Tab,ABox),
@@ -2622,16 +2621,16 @@ blockable(M,Ind,Tab):-
     false
     ;
     true ),!,
-    assert(M:trill_blockable(Ind)).
+    assert(M:tab_util(bkl,Ind)).
 
 % ---------------
 
 blocked(M,Ind,_):-
-  M:trill_blocked(Ind),!.
+  M:tab_util(bk,Ind),!.
 
 blocked(M,Ind,Tab):-
   check_block(M,Ind,Tab),!,
-  assert(M:trill_blocked(Ind)).
+  assert(M:tab_util(bk,Ind)).
 
 /*
 
@@ -2679,7 +2678,7 @@ check_block2(M,[H|Tail],Tab):-
 
 %---------------
 indirectly_blocked(M,Ind,_):-
-  M:trill_indirectly_blocked(Ind),!.
+  M:tab_util(ib,Ind),!.
 
 indirectly_blocked(M,Ind,Tab):-
   get_tabs(Tab,(T,_RBN,_RBR)),
@@ -2687,7 +2686,7 @@ indirectly_blocked(M,Ind,Tab):-
   neighbours(Ind,T1,N),
   member(A,N),
   blocked(M,A,Tab),!,
-  assert(M:trill_indirectly_blocked(Ind)).
+  assert(M:tab_util(ib,Ind)).
 
 %---------------------
 /*
@@ -2697,14 +2696,14 @@ indirectly_blocked(M,Ind,Tab):-
 */
 
 safe(M,Ind,R,_):-
-  M:trill_safe(Ind,R),!.
+  M:tab_util(sf,Ind-R),!.
 
 safe(M,Ind,R,Tab):-
   get_tabs(Tab,(_,_,RBR)),
   rb_lookup(R,V,RBR),
   get_parent(X,Ind,V),
   blockable(M,X,Tab),!,
-  assert(M:trill_safe(Ind,R)).
+  assert(M:tab_util(sf,Ind-R)).
 
 safe(M,Ind,R,Tab):-
   get_tabs(Tab,(_,_,RBR)),
@@ -2712,7 +2711,7 @@ safe(M,Ind,R,Tab):-
   get_parent(X,Ind,V),
   nominal(X,Tab),!,
   \+ blocked(M,Ind,Tab),!,
-  assert(M:trill_safe(Ind,R)).
+  assert(M:tab_util(sf,Ind-R)).
 
 get_parent(X,Ind,[(X,Ind)|_T]):-!.
 
@@ -2944,7 +2943,7 @@ ancestor1([Ind|Tail],T,A,AN):-
   add_all_n(A,AT,A1),
   ancestor1(Tail1,T,A1,AN).
 
-:- table connection/3.
+% :- table connection/3.
 connection(X, T, Y) :-
   neighbours(X,T,AT),
   member(Y,AT).
