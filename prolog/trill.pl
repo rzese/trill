@@ -389,7 +389,7 @@ get_open_query_monitor(M,QueryType,QueryArgs):-
 check_open_query_monitor_status(M,QueryType,QueryArgs):-
   M:query_option(active_query,[QueryType,QueryArgs]),!.
 
-check_open_query_monitor(M):-
+reset_open_query_monitor(M):-
   retractall(M:query_option(active_query,_)).
 /* *************** */
 
@@ -1854,7 +1854,7 @@ find_neg_class(someValuesFrom(R,C),allValuesFrom(R,NC)):-
 
 neg_class(complementOf(C),C):- !.
 
-neg_class(C,complementOf(C)).
+neg_class(C,complementOf(C)):- !.
 
 % ---------------
 
@@ -3466,8 +3466,7 @@ init_tableau(ABox,Tabs,tableau{
                             tabs:Tabs,
                             clashes:Clashes,
                             expq:ExpansionQueue,
-                            sameind:[],
-                            superclasses:superclasses{}
+                            sameind:[]
                         }):-
   empty_clashes(Clashes),
   empty_expansion_queue(ExpansionQueue).
@@ -3482,8 +3481,7 @@ init_tableau(ABox,Tabs,ExpansionQueue,tableau{
                                             tabs:Tabs,
                                             clashes:Clashes,
                                             expq:ExpansionQueue,
-                                            sameind:[],
-                                            superclasses:superclasses{}
+                                            sameind:[]
                                       }):-
   empty_clashes(Clashes).
 
