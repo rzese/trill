@@ -1574,6 +1574,7 @@ exists_rule(M,Tab0,[someValuesFrom(R,C),Ind1],Tab):-
   \+ connected_individual(R,C,Ind1,ABox0),
   new_ind(M,Ind2),
   add_edge(R,Ind1,Ind2,Tab0,Tab1),
+  %retractall(M:tab_util(rc,_)),
   add_owlThing_ind(M,Tab1,Ind2,Tab2),
   modify_ABox(M,Tab2,C,Ind2,Expl,Tab3),
   modify_ABox(M,Tab3,R,Ind1,Ind2,Expl,Tab).
@@ -2230,6 +2231,7 @@ min_rule_neigh(M,N,S,Ind1,Expl,[Ind2|NI],Tab0,Tab):-
   NoI is N-1,
   new_ind(M,Ind2),
   add_edge(S,Ind1,Ind2,Tab0,Tab1),
+  %retractall(M:tab_util(rc,_)),
   add_owlThing_ind(M,Tab1,Ind2,Tab2),
   modify_ABox(M,Tab2,S,Ind1,Ind2,Expl,Tab3),
   %check_block(Ind2,Tab3),
@@ -2243,6 +2245,7 @@ min_rule_neigh_C(M,N,S,C,Ind1,Expl,[Ind2|NI],Tab0,Tab):-
   NoI is N-1,
   new_ind(M,Ind2),
   add_edge(S,Ind1,Ind2,Tab0,Tab1),
+  %retractall(M:tab_util(rc,_)),
   add_owlThing_ind(M,Tab1,Ind2,Tab2),
   modify_ABox(M,Tab2,S,Ind1,Ind2,Expl,Tab3),
   modify_ABox(M,Tab3,C,Ind2,[propertyAssertion(S,Ind1,Ind2)|Expl],Tab4),
