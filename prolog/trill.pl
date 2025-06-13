@@ -2933,7 +2933,8 @@ ancestor(Ind,T,AN):-
   %ancestor1([Ind],T1,[],AN).
 
 ancestor_nt(Ind,TT,AN):-
-  findall(Y,connection(Ind,TT,Y),AN).
+  connection(Ind,TT,AN).
+  %findall(Y,connection(Ind,TT,Y),AN).
 
 ancestor1([],_,A,A).
 
@@ -2943,14 +2944,14 @@ ancestor1([Ind|Tail],T,A,AN):-
   add_all_n(A,AT,A1),
   ancestor1(Tail1,T,A1,AN).
 
-% :- table connection/3.
-connection(X, T, Y) :-
-  neighbours(X,T,AT),
-  member(Y,AT).
+%:- table connection/3.
+connection(X,_T,L):-
+  M:tab_util(rc,X-L),!.
 
-connection(X, T, Y) :-
-  connection(X, T, Z),
-  connection(Z, T, Y).
+connection(X,T,L):-
+  reachable(X,T,L),
+  assert(M:tab_util(rc,X-L)).
+
 
 
 %-----------------
