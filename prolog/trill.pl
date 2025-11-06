@@ -78,6 +78,8 @@ details.
 :- use_module(library(sandbox)).
 :- use_module(library(aggregate)).
 
+:- use_module(library(trill_utility)).
+
 :- reexport(library(bddem)).
 
 :- style_check(-discontiguous).
@@ -424,7 +426,7 @@ add_q(M,sc,Tableau0,[SubClassEx,SupClassEx],Tableau):- !,
   neg_class(SupClassEx,NSupClassEx),
   query_ind(QInd),
   add_q(M,Tableau0,classAssertion(intersectionOf([SubClassEx,NSupClassEx]),QInd),Tableau1),
-  utility_translation:add_kb_atoms(M,class,[intersectionOf([SubClassEx,NSupClassEx])]), % This is necessary to correctly prune expansion rules
+  add_kb_atoms(M,class,[intersectionOf([SubClassEx,NSupClassEx])]), % This is necessary to correctly prune expansion rules %TODO to remove
   add_owlThing_ind(M,Tableau1,QInd,Tableau2),
   add_clash_to_tableau(M,Tableau2,intersectionOf([SubClassEx,NSupClassEx])-QInd,Tableau3),
   update_expansion_queue_in_tableau(M,intersectionOf([SubClassEx,NSupClassEx]),QInd,Tableau3,Tableau).
@@ -3319,7 +3321,7 @@ set_algorithm(M:tornado):-
  * It initializes the algorithms Alg
  */
 init_trill(Alg):-
-  utility_translation:get_module(M),
+  get_module(M),
   set_algorithm(M:Alg),
   set_up(M),
   utility_translation:set_up_kb_loading(M),
@@ -3332,7 +3334,7 @@ init_trill(Alg):-
 %  pengine_self(Name),!.
 %get_trill_current_module('utility_translation'):- !.
 get_trill_current_module(M):-
-  utility_translation:get_module(M).
+  get_module(M).
 /**************/
 
 :- multifile sandbox:safe_primitive/1.
@@ -4402,24 +4404,24 @@ sandbox:safe_meta(trill:load_kb(_),[]).
 sandbox:safe_meta(trill:load_owl_kb(_),[]).
 sandbox:safe_meta(trill:set_tableau_expansion_rules(_,_),[]).
 
-:- use_module(library(utility_translation)).
+:- use_module(library(parse_ontology)).
 
 user:term_expansion((:- trill),[]):-
-  utility_translation:get_module(M),
+  get_module(M),
   set_algorithm(M:trill),
   set_up(M),
   utility_translation:set_up_kb_loading(M),
   trill:add_kb_prefixes(M:[('disponte'='http://ml.unife.it/disponte#'),('owl'='http://www.w3.org/2002/07/owl#')]).
 
 user:term_expansion((:- trillp),[]):-
-  utility_translation:get_module(M),
+  get_module(M),
   set_algorithm(M:trillp),
   set_up(M),
   utility_translation:set_up_kb_loading(M),
   trill:add_kb_prefixes(M:['disponte'='http://ml.unife.it/disponte#','owl'='http://www.w3.org/2002/07/owl#']).
 
 user:term_expansion((:- tornado),[]):-
-  utility_translation:get_module(M),
+  get_module(M),
   set_algorithm(M:tornado),
   set_up(M),
   utility_translation:set_up_kb_loading(M),
