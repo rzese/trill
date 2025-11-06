@@ -21,7 +21,7 @@ load_best_library :-
 
 load_best_library :- !,
     print_message(warning, noJPL),
-    use_module(library(utility_translation)).
+    use_module(library(internal_parser)).
 
 set_augmented_classpath :-
     % The folder you want to add

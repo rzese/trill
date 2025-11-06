@@ -136,7 +136,7 @@ load_owl_kb_from_string(String):-
 /*****************************
   UTILITY PREDICATES
 ******************************/
-%defined in utility_translation
+%defined in internal_parser
 :- multifile add_kb_prefix/2, add_kb_prefixes/1, add_axiom/1, add_axioms/1,
              remove_kb_prefix/2, remove_kb_prefix/1, remove_axiom/1, remove_axioms/1.
 
@@ -939,7 +939,7 @@ check_query_args_1(M,[_|ATT],[H|T],TEx,[H|NotEx]):-
 % expands query arguments using prefixes and checks their existence in the kb
 check_query_args_2(M,AT,L,LEx) :-
   M:ns4query(NSList),
-  expand_all_ns(M,L,NSList,false,LEx), %from utility_translation module
+  expand_all_ns(M,L,NSList,false,LEx), %from internal_parser module
   check_query_args_presence(M,AT,LEx).
 
 check_query_args_presence(_M,_AT,[]):-!.
@@ -3324,15 +3324,15 @@ init_trill(Alg):-
   get_module(M),
   set_algorithm(M:Alg),
   set_up(M),
-  utility_translation:set_up_kb_loading(M),
+  internal_parser:set_up_kb_loading(M),
   trill:add_kb_prefixes(M:[('disponte'='http://ml.unife.it/disponte#'),('owl'='http://www.w3.org/2002/07/owl#')]).
 
 /**************/
-/*get_trill_current_module('utility_translation'):-
+/*get_trill_current_module('internal_parser'):-
   pengine_self(_Name),!.*/
 %get_trill_current_module(Name):-
 %  pengine_self(Name),!.
-%get_trill_current_module('utility_translation'):- !.
+%get_trill_current_module('internal_parser'):- !.
 get_trill_current_module(M):-
   get_module(M).
 /**************/
@@ -4410,19 +4410,19 @@ user:term_expansion((:- trill),[]):-
   get_module(M),
   set_algorithm(M:trill),
   set_up(M),
-  utility_translation:set_up_kb_loading(M),
+  internal_parser:set_up_kb_loading(M),
   trill:add_kb_prefixes(M:[('disponte'='http://ml.unife.it/disponte#'),('owl'='http://www.w3.org/2002/07/owl#')]).
 
 user:term_expansion((:- trillp),[]):-
   get_module(M),
   set_algorithm(M:trillp),
   set_up(M),
-  utility_translation:set_up_kb_loading(M),
+  internal_parser:set_up_kb_loading(M),
   trill:add_kb_prefixes(M:['disponte'='http://ml.unife.it/disponte#','owl'='http://www.w3.org/2002/07/owl#']).
 
 user:term_expansion((:- tornado),[]):-
   get_module(M),
   set_algorithm(M:tornado),
   set_up(M),
-  utility_translation:set_up_kb_loading(M),
+  internal_parser:set_up_kb_loading(M),
   trill:add_kb_prefixes(M:['disponte'='http://ml.unife.it/disponte#','owl'='http://www.w3.org/2002/07/owl#']).

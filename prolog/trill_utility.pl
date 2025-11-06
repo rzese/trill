@@ -7,7 +7,7 @@ This module gives utility predicates for all the otehr modules.
 @copyright Riccardo Zese
 */
 
-:- module(trill_utility, [get_module/1,add_kb_atoms/3, set_up_parser/1]).
+:- module(trill_utility, [get_module/1, add_kb_atoms/3, set_up_parser/1, clean_up_parser/1]).
 
 :- meta_predicate get_module(-).
 :- multifile sandbox:safe_meta/2.
@@ -38,3 +38,4 @@ add_kb_atoms(M,Type,[H|T]):-
 
 
 :- multifile set_up_parser/1.
+:- multifile clean_up_parser/1.

@@ -34,7 +34,7 @@ set_up(M):-
   %foreach(setting_trill_default(DefaultSetting,DefaultVal),assert(M:setting_trill(DefaultSetting,DefaultVal))).
 
 clean_up(M):-
-  utility_translation:clean_up(M),
+  clean_up_parser(M),
   M:(dynamic exp_found/2, setting_trill/2, tab_end/1, query_option/2),
   retractall(M:exp_found(_,_)),
   retractall(M:setting_trill(_,_)),

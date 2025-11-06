@@ -1,4 +1,4 @@
-/** <module> utility_translation
+/** <module> internal_parser
 
 This module translates OWL/RDF axioms into TRILL format and 
 loads the knowledge base to be queried by TRILL.
@@ -12,7 +12,7 @@ http://vangelisv.github.io/thea/
 @copyright Riccardo Zese
 */
 
-:- module(utility_translation, []).
+:- module(internal_parser, []).
 
 :- dynamic trill_input_mode/1.
 
@@ -1634,7 +1634,7 @@ retract_all_axioms(M) :-
 	!.
 
 
-utility_translation_init(M) :-
+internal_parser_init(M) :-
 	assert(M:annotationProperty('http://www.w3.org/2000/01/rdf-schema#label')),
 	assert(M:annotationProperty('http://www.w3.org/2000/01/rdf-schema#comment')),
 	assert(M:annotationProperty('https://sites.google.com/a/unife.it/ml/disponte#probability')), % Retro-compatibility
@@ -1963,7 +1963,7 @@ owl_parse(URL, RDF_Load_Mode, OWL_Parse_Mode,ImportFlag) :-
         debug(owl_parser,'Loading stream ~w',[URL]),
 	owl_canonical_parse_2([URL],URL,ImportFlag,[],ProcessedIRIs),
         debug(owl_parser,'rdf_db populated, the following IRIs were processed: ~w',[ProcessedIRIs]),
-	utility_translation_init,
+	internal_parser_init,
 	owl_canonical_parse_3(ProcessedIRIs).
 
 
@@ -3189,7 +3189,7 @@ load_owl_from_stream(S):-
   close(S),
   trill:add_kb_prefixes(M:NSList),
   rdf_2_owl(M,'ont'),
-  utility_translation_init(M),
+  internal_parser_init(M),
   owl_canonical_parse_3(M,['ont']),
   parse_probabilistic_annotation_assertions(M).
 
@@ -3690,7 +3690,9 @@ parse_ontology:is_axiom(Axiom) :-
 	functor(Axiom,Pred,Arity),
 	axiompred(Pred/Arity),!.
 
-clean_up(M):-
+:- multifile trill_utility:clean_up_parser/1.
+
+trill_utility:clean_up_parser(M):-
   rdf_reset_db,
   M:(dynamic class/1, datatype/1, objectProperty/1, dataProperty/1, annotationProperty/1),
   M:(dynamic namedIndividual/1, anonymousIndividual/1, subClassOf/2, equivalentClasses/1, disjointClasses/1, disjointUnion/2),
@@ -3780,7 +3782,7 @@ user:term_expansion(end_of_file, end_of_file) :-
   get_module(M),
   trill_input_mode(M),
   dif(M,trill),
-  dif(M,utility_translation),
+  dif(M,internal_parser),
   fix_wrongly_classified_atoms(M),
   retractall(M:addKBName),
   retractall(trill_input_mode(_)).
