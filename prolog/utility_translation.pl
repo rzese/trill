@@ -12,7 +12,7 @@ http://vangelisv.github.io/thea/
 @copyright Riccardo Zese
 */
 
-:- module(utility_translation, [load_owl/1, load_owl_from_string/1, expand_all_ns/4, expand_all_ns/5, is_axiom/1]).
+:- module(utility_translation, []).
 
 :- dynamic trill_input_mode/1.
 
@@ -3157,25 +3157,28 @@ The file owl2_from_rdf.plt has some examples
 */
 %:- thread_local ns4query/1.
 
+
+:- multifile parse_ontology:load_owl/1.
 /**
  * load_owl(++FileName:kb_file_name) is det
  *
  * The predicate loads the knowledge base contained in the given file. 
  * The knowledge base must be defined in pure OWL/RDF format.
  */
-load_owl(String):-
+parse_ontology:load_owl(String):-
   get_module(M),
   retractall(M:ns4query(_)),
   open(String,read,S),
   load_owl_from_stream(S),!.
-  
+
+:- multifile parse_ontology:load_owl_from_string/1.
 /**
  * load_owl_from_string(++KB:string) is det
  *
  * The predicate loads the knowledge base contained in the given string. 
  * The knowledge base must be defined in pure OWL/RDF format.
  */
-load_owl_from_string(String):-
+parse_ontology:load_owl_from_string(String):-
   open_chars_stream(String,S),
   load_owl_from_stream(S).
   
@@ -3337,7 +3340,7 @@ expand_argument(M,P,NSList,ExpP) :-
    expand_ontology(M,P,NSList,ExpP) ), !.
 
 
-
+:- multifile parse_ontology:expand_all_ns/4.
 /**
  * expand_all_ns(++Module:string,++Args:list,++NSList:list,--ExpandedArgs:list) is det
  *
@@ -3345,9 +3348,10 @@ expand_argument(M,P,NSList,ExpP) :-
  * using the list of prefixes. Finally, it returns the list of expanded strings.
  * It adds names in Args to the list of known elements.
  */
-expand_all_ns(M,Args,NSList,ExpandedArgs):-
-  expand_all_ns(M,Args,NSList,true,ExpandedArgs).
+parse_ontology:expand_all_ns(M,Args,NSList,ExpandedArgs):-
+  parse_ontology:expand_all_ns(M,Args,NSList,true,ExpandedArgs).
 
+:- multifile parse_ontology:expand_all_ns/5.
 /**
  * expand_all_ns(++Module:string,++Args:list,++NSList:list,++AddName:boolean,--ExpandedArgs:list) is det
  *
@@ -3355,16 +3359,16 @@ expand_all_ns(M,Args,NSList,ExpandedArgs):-
  * using the list of prefixes. Finally, it returns the list of expanded strings.
  * If AddName is set true it adds names in Args in the list of known elements.
  */
-expand_all_ns(_M,[],_,_,[]):- !.
+parse_ontology:expand_all_ns(_M,[],_,_,[]):- !.
 
-expand_all_ns(M,[P|T],NSList,AddName,[PNewArgs|NewArgs]):-
+parse_ontology:expand_all_ns(M,[P|T],NSList,AddName,[PNewArgs|NewArgs]):-
   is_list(P),!,
-  expand_all_ns(M,P,NSList,AddName,PNewArgs),
-  expand_all_ns(M,T,NSList,AddName,NewArgs).
+  parse_ontology:expand_all_ns(M,P,NSList,AddName,PNewArgs),
+  parse_ontology:expand_all_ns(M,T,NSList,AddName,NewArgs).
 
-expand_all_ns(M,[P|T],NSList,AddName,[NP|NewArgs]):-
+parse_ontology:expand_all_ns(M,[P|T],NSList,AddName,[NP|NewArgs]):-
   expand_argument(M,P,NSList,NP),
-  expand_all_ns(M,T,NSList,AddName,NewArgs).
+  parse_ontology:expand_all_ns(M,T,NSList,AddName,NewArgs).
 
 /*
 expand_all_ns(M,[P|T],NSList,AddName,[NP|NewArgs]):-
@@ -3675,13 +3679,14 @@ add_expressivity(M,f):-
   M:expressivity(I,[H,R,O,I,Res,F]),
   ( F=1 ; ( retractall(M:expressivity(_,_)),assert(M:expressivity(I,[H,R,O,I,Res,1])))), !.
 
+:- multifile parse_ontology:is_axiom/1.
 /**
  * is_axiom(?Axiom:string) is det
  *
  * This predicate unifies Pred with one of the possible type of axioms managed by TRILL and 
  * by the translation module.
  */
-is_axiom(Axiom) :-
+parse_ontology:is_axiom(Axiom) :-
 	functor(Axiom,Pred,Arity),
 	axiompred(Pred/Arity),!.
 
@@ -3730,13 +3735,24 @@ init_kb_atom(M,AnnProps,Classes,DataProps,Datatypes,Inds,ObjectProps):-
 init_kb_atom(M,KB):-
   assert(M:kb_atom(kbatoms{annotationProperty:KB.annotationProperties,class:KB.classesName,dataProperty:KB.dataProperties,datatype:KB.datatypes,individual:KB.individuals,objectProperty:KB.objectProperties})).
 
-:- multifile sandbox:safe_primitive/1.
 
-sandbox:safe_primitive(utility_translation:load_owl(_)).
-sandbox:safe_primitive(utility_translation:load_owl_from_string(_)).
-sandbox:safe_primitive(utility_translation:expand_all_ns(_,_,_,_)).
-sandbox:safe_primitive(utility_translation:expand_all_ns(_,_,_,_,_)).
-%sandbox:safe_primitive(utility_translation:query_expand(_)).
+:- multifile trill_utility:set_up_parser/1.
+
+trill_utility:set_up_parser(M):-
+  M:(dynamic class/1, datatype/1, objectProperty/1, dataProperty/1, annotationProperty/1),
+  M:(dynamic namedIndividual/1, anonymousIndividual/1, subClassOf/2, equivalentClasses/1, disjointClasses/1, disjointUnion/2),
+  M:(dynamic subPropertyOf/2, equivalentProperties/1, disjointProperties/1, inverseProperties/2, propertyDomain/2, propertyRange/2),
+  M:(dynamic functionalProperty/1, inverseFunctionalProperty/1, reflexiveProperty/1, irreflexiveProperty/1, symmetricProperty/1, asymmetricProperty/1, transitiveProperty/1, hasKey/2),
+  M:(dynamic sameIndividual/1, differentIndividuals/1, classAssertion/2, propertyAssertion/3, negativePropertyAssertion/3),
+  M:(dynamic annotationAssertion/3, annotation/3, ontology/1, ontologyAxiom/2, ontologyImport/2, ontologyVersionInfo/2),
+  M:(dynamic owl/4, owl/3, owl/2, blanknode/3, outstream/1, aNN/3, annotation_r_node/4, axiom_r_node/4, owl_repository/2, trdf_setting/2),
+  M:(dynamic ns4query/1, addKBName/0),
+  retractall(M:addKBName).
+  %retractall(M:rules(_,_)),
+  %assert(M:rules([],[])),
+  %retractall(M:expressivity(_,_)),
+  %assert(M:expressivity(1,[0,0,0,0,0,0])).
+
 
 user:term_expansion(kb_prefix(A,B),[]):-
   get_module(M),
@@ -3774,7 +3790,7 @@ user:term_expansion(end_of_file, end_of_file) :-
 
 user:term_expansion(TRILLAxiom,[]):-
   get_module(M),
-  is_axiom(TRILLAxiom),
+  parse_ontology:is_axiom(TRILLAxiom),
   create_and_assert_axioms(M,TRILLAxiom).
 
 

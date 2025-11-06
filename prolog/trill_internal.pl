@@ -24,7 +24,7 @@ setting_trill_default(det_rules,[o_rule,and_rule,unfold_rule,add_exists_rule,for
 setting_trill_default(nondet_rules,[or_rule,max_rule,ch_rule]).
 
 set_up(M):-
-  utility_translation:set_up(M),
+  set_up_parser(M),
   init_delta(M),
   M:(dynamic exp_found/2, setting_trill/2, tab_end/1, query_option/2, tab_util/2),
   retractall(M:setting_trill(_,_)),
