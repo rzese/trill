@@ -23,9 +23,7 @@ details.
                  unsat/1, unsat/2, prob_unsat/2, unsat/3, all_unsat/2,
                  inconsistent_theory/0, inconsistent_theory/1, prob_inconsistent_theory/1, inconsistent_theory/2, all_inconsistent_theory/1,
                  resume_query/1, compute_query_prob/1, reset_query/0,
-                 axiom/1, kb_prefixes/1, add_kb_prefix/2, add_kb_prefixes/1, add_axiom/1, add_axioms/1, remove_kb_prefix/2, remove_kb_prefix/1, remove_axiom/1, remove_axioms/1,
-                 load_kb/1, load_owl_kb/1, load_owl_kb_from_string/1, init_trill/1,
-                 set_tableau_expansion_rules/2] ).
+                 init_trill/1, set_tableau_expansion_rules/2] ).
 
 :- meta_predicate sub_class(:,+).
 :- meta_predicate sub_class(:,+,-).
@@ -53,19 +51,6 @@ details.
 :- meta_predicate prob_inconsistent_theory(:).
 :- meta_predicate resume_query(:).
 :- meta_predicate compute_query_prob(:).
-:- meta_predicate axiom(:).
-:- meta_predicate kb_prefixes(:).
-:- meta_predicate add_kb_prefix(:,+).
-:- meta_predicate add_kb_prefixes(:).
-:- meta_predicate add_axiom(:).
-:- meta_predicate add_axioms(:).
-:- meta_predicate remove_kb_prefix(:,+).
-:- meta_predicate remove_kb_prefix(:).
-:- meta_predicate remove_axiom(:).
-:- meta_predicate remove_axioms(:).
-:- meta_predicate load_kb(+).
-:- meta_predicate load_owl_kb(+).
-:- meta_predicate load_owl_kb_from_string(+).
 :- meta_predicate set_algorithm(:).
 :- meta_predicate init_trill(+).
 :- meta_predicate set_tableau_expansion_rules(:,+).
@@ -100,114 +85,10 @@ disponte_iri('https://ai.unife.it/disponte#probability').
 *********************************/
 :- multifile setting_trill_default/2.
 
-/********************************
-  LOAD KNOWLEDGE BASE
-*********************************/
-/**
- * load_kb(++FileName:kb_file_name) is det
- *
- * The predicate loads the knowledge base contained in the given file. 
- * The knowledge base must be defined in TRILL format, to use also OWL/RDF format
- * use the predicate owl_rdf/1.
- */
-load_kb(FileName):-
-  user:consult(FileName).
-
-/**
- * load_owl_kb(++FileName:kb_file_name) is det
- *
- * The predicate loads the knowledge base contained in the given file. 
- * The knowledge base must be defined in pure OWL/RDF format.
- */
-load_owl_kb(FileName):-
-  load_owl(FileName).
-
-/**
- * load_owl_kb_from_string(++KB:string) is det
- *
- * The predicate loads the knowledge base contained in the given string. 
- * The knowledge base must be defined in pure OWL/RDF format.
- */
-load_owl_kb_from_string(String):-
-  load_owl_from_string(String).
-
-/*****************************/
 
 /*****************************
   UTILITY PREDICATES
 ******************************/
-%defined in internal_parser
-:- multifile add_kb_prefix/2, add_kb_prefixes/1, add_axiom/1, add_axioms/1,
-             remove_kb_prefix/2, remove_kb_prefix/1, remove_axiom/1, remove_axioms/1.
-
-/**
- * add_kb_prefix(:ShortPref:string,++LongPref:string) is det
- *
- * This predicate registers the alias ShortPref for the prefix defined in LongPref.
- * The empty string '' can be defined as alias.
- */
-
-/**
- * add_kb_prefixes(:Prefixes:list) is det
- *
- * This predicate registers all the alias prefixes contained in Prefixes.
- * The input list must contain pairs alias=prefix, i.e., [('foo'='http://example.foo#')].
- * The empty string '' can be defined as alias.
- */
-
-/**
- * add_axiom(:Axiom:axiom) is det
- *
- * This predicate adds the given axiom to the knowledge base.
- * The axiom must be defined following the TRILL syntax.
- */
-
-/**
- * add_axioms(:Axioms:list) is det
- *
- * This predicate adds the axioms of the list to the knowledge base.
- * The axioms must be defined following the TRILL syntax.
- */
-
-/**
- * remove_kb_prefix(:ShortPref:string,++LongPref:string) is det
- *
- * This predicate removes from the registered aliases the one given in input.
- */
-
-/**
- * remove_kb_prefix(:Name:string) is det
- *
- * This predicate takes as input a string that can be an alias or a prefix and 
- * removes the pair containing the string from the registered aliases.
- */
-
-/**
- * remove_axiom(:Axiom:axiom) is det
- *
- * This predicate removes the given axiom from the knowledge base.
- * The axiom must be defined following the TRILL syntax.
- */
-
-/**
- * remove_axioms(++Axioms:list) is det
- *
- * This predicate removes the axioms of the list from the knowledge base.
- * The axioms must be defined following the TRILL syntax.
- */
-
-/**
- * axiom(:Axiom:axiom) is det
- *
- * This predicate searches in the loaded knowledge base axioms that unify with Axiom.
- */
-:- multifile axiom/1.
-/*axiom(M:Axiom):-
-  M:ns4query(NSList),
-  expand_all_ns(M,[Axiom],NSList,[AxiomEx]),
-  M:axiom(AxiomEx).*/
-
-:- multifile kb_prefixes/1.
 
 /**
  * set_tableau_expansion_rules(:DetRules:list,++NondetRules:list) is det
@@ -3325,7 +3206,7 @@ init_trill(Alg):-
   set_algorithm(M:Alg),
   set_up(M),
   internal_parser:set_up_kb_loading(M),
-  trill:add_kb_prefixes(M:[('disponte'='http://ml.unife.it/disponte#'),('owl'='http://www.w3.org/2002/07/owl#')]).
+  add_kb_prefixes(M:[('disponte'='http://ml.unife.it/disponte#'),('owl'='http://www.w3.org/2002/07/owl#')]).
 
 /**************/
 /*get_trill_current_module('internal_parser'):-
@@ -4392,16 +4273,6 @@ sandbox:safe_meta(trill:prob_inconsistent_theory(_),[]).
 sandbox:safe_meta(trill:resume_query(_),[]).
 sandbox:safe_meta(trill:compute_query_prob(_),[]).
 sandbox:safe_meta(trill:reset_query,[]).
-sandbox:safe_meta(trill:axiom(_),[]).
-sandbox:safe_meta(trill:kb_prefixes(_),[]).
-sandbox:safe_meta(trill:add_kb_prefix(_,_),[]).
-sandbox:safe_meta(trill:add_kb_prefixes(_),[]).
-sandbox:safe_meta(trill:remove_kb_prefix(_,_),[]).
-sandbox:safe_meta(trill:remove_kb_prefix(_),[]).
-sandbox:safe_meta(trill:add_axiom(_),[]).
-sandbox:safe_meta(trill:add_axioms(_),[]).
-sandbox:safe_meta(trill:load_kb(_),[]).
-sandbox:safe_meta(trill:load_owl_kb(_),[]).
 sandbox:safe_meta(trill:set_tableau_expansion_rules(_,_),[]).
 
 :- use_module(library(parse_ontology)).
@@ -4411,18 +4282,18 @@ user:term_expansion((:- trill),[]):-
   set_algorithm(M:trill),
   set_up(M),
   internal_parser:set_up_kb_loading(M),
-  trill:add_kb_prefixes(M:[('disponte'='http://ml.unife.it/disponte#'),('owl'='http://www.w3.org/2002/07/owl#')]).
+  add_kb_prefixes(M:[('disponte'='http://ml.unife.it/disponte#'),('owl'='http://www.w3.org/2002/07/owl#')]).
 
 user:term_expansion((:- trillp),[]):-
   get_module(M),
   set_algorithm(M:trillp),
   set_up(M),
   internal_parser:set_up_kb_loading(M),
-  trill:add_kb_prefixes(M:['disponte'='http://ml.unife.it/disponte#','owl'='http://www.w3.org/2002/07/owl#']).
+  add_kb_prefixes(M:['disponte'='http://ml.unife.it/disponte#','owl'='http://www.w3.org/2002/07/owl#']).
 
 user:term_expansion((:- tornado),[]):-
   get_module(M),
   set_algorithm(M:tornado),
   set_up(M),
   internal_parser:set_up_kb_loading(M),
-  trill:add_kb_prefixes(M:['disponte'='http://ml.unife.it/disponte#','owl'='http://www.w3.org/2002/07/owl#']).
+  add_kb_prefixes(M:['disponte'='http://ml.unife.it/disponte#','owl'='http://www.w3.org/2002/07/owl#']).
