@@ -24,44 +24,44 @@ http://vangelisv.github.io/thea/
 :- use_module(library(trill_utility)).
 
 /*****************************
-  PREDICATES FROM parse_ontology
+  PREDICATES FROM ontology_parser
 ******************************/
 
 %% axiom(:Axiom)
 % The main component of an OWL 2 ontology is a set of axioms - statements that say what is true in the domain being modeled.
 % @see classAxiom/1, propertyAxiom/1, fact/1
-:- multifile parse_ontology:axiom/1.
+:- multifile ontology_parser:axiom/1.
 
-parse_ontology:axiom(M:A) :- classAxiom(M:A).
-parse_ontology:axiom(M:A) :- propertyAxiom(M:A).
-parse_ontology:axiom(M:hasKey(A,B)) :- M:hasKey(A,B).
-parse_ontology:axiom(M:A) :- fact(M:A).
-parse_ontology:axiom(M:A) :- declarationAxiom(M:A).
+ontology_parser:axiom(M:A) :- classAxiom(M:A).
+ontology_parser:axiom(M:A) :- propertyAxiom(M:A).
+ontology_parser:axiom(M:hasKey(A,B)) :- M:hasKey(A,B).
+ontology_parser:axiom(M:A) :- fact(M:A).
+ontology_parser:axiom(M:A) :- declarationAxiom(M:A).
 %axiom(annotation(A,B,C)) :-
 %	annotation(A,B,C). % CJM-treat annotations as axioms
 
 % Get the KB's prefixes contained into ns4query
-:- multifile parse_ontology:kb_prefixes/1.
+:- multifile ontology_parser:kb_prefixes/1.
 
-parse_ontology:kb_prefixes(M:L):-
+ontology_parser:kb_prefixes(M:L):-
   M:ns4query(L),!.
 
 % Adds a list of kb prefixes into ns4query
-:- multifile parse_ontology:add_kb_prefixes/1.
+:- multifile ontology_parser:add_kb_prefixes/1.
 
-parse_ontology:add_kb_prefixes(_:[]):-!.
+ontology_parser:add_kb_prefixes(_:[]):-!.
 
-parse_ontology:add_kb_prefixes(M:[(H=H1)|T]):-
-  parse_ontology:add_kb_prefix(M:H,H1),
-  parse_ontology:add_kb_prefixes(M:T).
+ontology_parser:add_kb_prefixes(M:[(H=H1)|T]):-
+  ontology_parser:add_kb_prefix(M:H,H1),
+  ontology_parser:add_kb_prefixes(M:T).
 
 % Adds a prefix into ns4query
-:- multifile parse_ontology:add_kb_prefix/2.
+:- multifile ontology_parser:add_kb_prefix/2.
 
-parse_ontology:add_kb_prefix(M:'',B):- !,
-  parse_ontology:add_kb_prefix(M:[],B).
+ontology_parser:add_kb_prefix(M:'',B):- !,
+  ontology_parser:add_kb_prefix(M:[],B).
 
-parse_ontology:add_kb_prefix(M:A,B):-
+ontology_parser:add_kb_prefix(M:A,B):-
   M:ns4query(L),!,
   (\+ member((A=_),L) ->
       (retract(M:ns4query(L)),
@@ -72,12 +72,12 @@ parse_ontology:add_kb_prefix(M:A,B):-
       true
    ).
    
-parse_ontology:add_kb_prefix(M:A,B):-
+ontology_parser:add_kb_prefix(M:A,B):-
   assert(M:ns4query([(A=B)])).
 
 % Removes a prefix from ns4query
-:- multifile parse_ontology:remove_kb_prefix/2.
-parse_ontology:remove_kb_prefix(M:A,B):-
+:- multifile ontology_parser:remove_kb_prefix/2.
+ontology_parser:remove_kb_prefix(M:A,B):-
   M:ns4query(L),!,
   (member((A=B),L) ->
       (retract(M:ns4query(L)),
@@ -88,8 +88,8 @@ parse_ontology:remove_kb_prefix(M:A,B):-
       true
    ).
 
-:- multifile parse_ontology:remove_kb_prefix/1.
-parse_ontology:remove_kb_prefix(M:A):-
+:- multifile ontology_parser:remove_kb_prefix/1.
+ontology_parser:remove_kb_prefix(M:A):-
   M:ns4query(L),!,
   (member((A=B),L) *->
       (retract(M:ns4query(L)),
@@ -108,7 +108,7 @@ parse_ontology:remove_kb_prefix(M:A):-
    ).
 
 
-:- multifile parse_ontology:expand_all_ns/4.
+:- multifile ontology_parser:expand_all_ns/4.
 /**
  * expand_all_ns(++Module:string,++Args:list,++NSList:list,--ExpandedArgs:list) is det
  *
@@ -116,10 +116,10 @@ parse_ontology:remove_kb_prefix(M:A):-
  * using the list of prefixes. Finally, it returns the list of expanded strings.
  * It adds names in Args to the list of known elements.
  */
-parse_ontology:expand_all_ns(M,Args,NSList,ExpandedArgs):-
-  parse_ontology:expand_all_ns(M,Args,NSList,true,ExpandedArgs).
+ontology_parser:expand_all_ns(M,Args,NSList,ExpandedArgs):-
+  ontology_parser:expand_all_ns(M,Args,NSList,true,ExpandedArgs).
 
-:- multifile parse_ontology:expand_all_ns/5.
+:- multifile ontology_parser:expand_all_ns/5.
 /**
  * expand_all_ns(++Module:string,++Args:list,++NSList:list,++AddName:boolean,--ExpandedArgs:list) is det
  *
@@ -127,16 +127,16 @@ parse_ontology:expand_all_ns(M,Args,NSList,ExpandedArgs):-
  * using the list of prefixes. Finally, it returns the list of expanded strings.
  * If AddName is set true it adds names in Args in the list of known elements.
  */
-parse_ontology:expand_all_ns(_M,[],_,_,[]):- !.
+ontology_parser:expand_all_ns(_M,[],_,_,[]):- !.
 
-parse_ontology:expand_all_ns(M,[P|T],NSList,AddName,[PNewArgs|NewArgs]):-
+ontology_parser:expand_all_ns(M,[P|T],NSList,AddName,[PNewArgs|NewArgs]):-
   is_list(P),!,
-  parse_ontology:expand_all_ns(M,P,NSList,AddName,PNewArgs),
-  parse_ontology:expand_all_ns(M,T,NSList,AddName,NewArgs).
+  ontology_parser:expand_all_ns(M,P,NSList,AddName,PNewArgs),
+  ontology_parser:expand_all_ns(M,T,NSList,AddName,NewArgs).
 
-parse_ontology:expand_all_ns(M,[P|T],NSList,AddName,[NP|NewArgs]):-
+ontology_parser:expand_all_ns(M,[P|T],NSList,AddName,[NP|NewArgs]):-
   expand_argument(M,P,NSList,NP),
-  parse_ontology:expand_all_ns(M,T,NSList,AddName,NewArgs).
+  ontology_parser:expand_all_ns(M,T,NSList,AddName,NewArgs).
 
 /*
 expand_all_ns(M,[P|T],NSList,AddName,[NP|NewArgs]):-
@@ -183,29 +183,29 @@ expand_ns4query(_M,URL,_,_,URL):-
     var(URL),!.
 */
 
-:- multifile parse_ontology:add_axiom/1.
-parse_ontology:add_axiom(M:Ax):-
+:- multifile ontology_parser:add_axiom/1.
+ontology_parser:add_axiom(M:Ax):-
   assert(M:addKBName),
   %init_kb_atom(M),
   create_and_assert_axioms(M,Ax),!,
   retractall(M:addKBName),
-  parse_ontology:update_tabs(M,Ax),!.
+  ontology_parser:update_tabs(M,Ax),!.
 
 prolog:message(axiom_not_added(Ax,M)) -->
   [ 'Problems in adding axiom ~w ~w' -[Ax,M] ].
 
-parse_ontology:add_axiom(M:Ax):-
+ontology_parser:add_axiom(M:Ax):-
   print_message(warning,axiom_not_added(Ax,M)).
 
-:- multifile parse_ontology:add_axioms/1.
-parse_ontology:add_axioms(_:[]).
+:- multifile ontology_parser:add_axioms/1.
+ontology_parser:add_axioms(_:[]).
 
-parse_ontology:add_axioms(M:[H|T]) :-
-  parse_ontology:add_axiom(M:H),
-  parse_ontology:add_axioms(M:T).
+ontology_parser:add_axioms(M:[H|T]) :-
+  ontology_parser:add_axiom(M:H),
+  ontology_parser:add_axioms(M:T).
 
-:- multifile parse_ontology:remove_axiom/1.
-parse_ontology:remove_axiom(M:Ax):-
+:- multifile ontology_parser:remove_axiom/1.
+ontology_parser:remove_axiom(M:Ax):-
   %print_message(warning,under_development),
   ( M:ns4query(NSList) -> true; NSList = []),
   expand_axiom(M,Ax,NSList,ExpAx),
@@ -215,7 +215,7 @@ parse_ontology:remove_axiom(M:Ax):-
 
 
 /*
-parse_ontology:remove_axiom(M:subClassOf(C,D)):-
+ontology_parser:remove_axiom(M:subClassOf(C,D)):-
   print_message(warning,under_development),
   ( M:ns4query(NSList) -> true; NSList = []),
   expand_axiom(M,subClassOf(C,D),NSList,subClassOf(ExpC,ExpD)),
@@ -223,7 +223,7 @@ parse_ontology:remove_axiom(M:subClassOf(C,D)):-
   retract_axiom(M,subClassOf(ExpC,ExpD)),
   retractall(M:owl(subClassOf(ExpC,ExpD),'ont')),!.
 
-parse_ontology:remove_axiom(M:Ax):-
+ontology_parser:remove_axiom(M:Ax):-
   print_message(warning,under_development),
   ( M:ns4query(NSList) *-> true; NSList = []),
   Ax =.. [P|Args],
@@ -240,12 +240,12 @@ parse_ontology:remove_axiom(M:Ax):-
   retractall(M:owl(AxEx,'ont')),!.
 */
 
-:- multifile parse_ontology:remove_axioms/1.
-parse_ontology:remove_axioms(_:[]):-!.
+:- multifile ontology_parser:remove_axioms/1.
+ontology_parser:remove_axioms(_:[]):-!.
 
-parse_ontology:remove_axioms(M:[H|T]) :-
-  parse_ontology:remove_axiom(M:H),
-  parse_ontology:remove_axioms(M:T).
+ontology_parser:remove_axioms(M:[H|T]) :-
+  ontology_parser:remove_axiom(M:H),
+  ontology_parser:remove_axioms(M:T).
 
 test_and_assert(M,Ax,O):-
   (\+ M:owl(Ax,O) ->
@@ -276,21 +276,21 @@ create_and_assert_axioms(M,Axiom) :-
   test_and_assert(M,ExpAxiom,'ont').
 
 
-:- multifile parse_ontology:is_axiom/1.
+:- multifile ontology_parser:is_axiom/1.
 /**
  * is_axiom(?Axiom:string) is det
  *
  * This predicate unifies Pred with one of the possible type of axioms managed by TRILL and 
  * by the translation module.
  */
-parse_ontology:is_axiom(Axiom) :-
+ontology_parser:is_axiom(Axiom) :-
 	functor(Axiom,Pred,Arity),
 	axiompred(Pred/Arity),!.
 
 /********************************
   LOAD KNOWLEDGE BASE
 *********************************/
-:- multifile parse_ontology:load_kb/1, parse_ontology:load_owl_from_string/1, parse_ontology:load_owl_kb_from_string/1.
+:- multifile ontology_parser:load_kb/1, ontology_parser:load_owl_from_string/1, ontology_parser:load_owl_kb_from_string/1.
 /**
  * load_kb(++FileName:kb_file_name) is det
  *
@@ -298,7 +298,7 @@ parse_ontology:is_axiom(Axiom) :-
  * The knowledge base must be defined in TRILL format, to use also OWL/RDF format
  * use the predicate owl_rdf/1.
  */
-parse_ontology:load_kb(FileName):-
+ontology_parser:load_kb(FileName):-
   user:consult(FileName).
 
 /**
@@ -307,7 +307,7 @@ parse_ontology:load_kb(FileName):-
  * The predicate loads the knowledge base contained in the given file. 
  * The knowledge base must be defined in pure OWL/RDF format.
  */
-parse_ontology:load_owl_kb(FileName):-
+ontology_parser:load_owl_kb(FileName):-
   load_owl(FileName).
 
 /**
@@ -316,7 +316,7 @@ parse_ontology:load_owl_kb(FileName):-
  * The predicate loads the knowledge base contained in the given string. 
  * The knowledge base must be defined in pure OWL/RDF format.
  */
-parse_ontology:load_owl_kb_from_string(String):-
+ontology_parser:load_owl_kb_from_string(String):-
   load_owl_from_string(String).
 
 /**
@@ -347,30 +347,32 @@ load_owl_from_stream(S):-
   retractall(M:trdf_setting(_,_)),
   process_rdf(stream(S), assert_list(M), [namespaces(NSList)]),
   close(S),
-  parse_ontology:add_kb_prefixes(M:NSList),
+  ontology_parser:add_kb_prefixes(M:NSList),
   rdf_2_owl(M,'ont'),
   internal_parser_init(M),
   owl_canonical_parse_3(M,['ont']),
   parse_probabilistic_annotation_assertions(M).
 
 
-% ----------------------
-% CHECK QUERY ARGS
-:- multifile parse_ontology:check_query_args_1/5.
+/********************************
+  CHECK QUERY ARGS
+*********************************/ 
 
-parse_ontology:check_query_args_1(_,_,[],[],[]).
+:- multifile ontology_parser:check_query_args_1/5.
 
-parse_ontology:check_query_args_1(M,[ATH|ATT],[H|T],[HEx|TEx],NotEx):-
+ontology_parser:check_query_args_1(_,_,[],[],[]).
+
+ontology_parser:check_query_args_1(M,[ATH|ATT],[H|T],[HEx|TEx],NotEx):-
   check_query_args_2(M,[ATH],[H],[HEx]),!,
-  parse_ontology:check_query_args_1(M,ATT,T,TEx,NotEx).
+  ontology_parser:check_query_args_1(M,ATT,T,TEx,NotEx).
 
-parse_ontology:check_query_args_1(M,[_|ATT],[H|T],TEx,[H|NotEx]):-
-  parse_ontology:check_query_args_1(M,ATT,T,TEx,NotEx).
+ontology_parser:check_query_args_1(M,[_|ATT],[H|T],TEx,[H|NotEx]):-
+  ontology_parser:check_query_args_1(M,ATT,T,TEx,NotEx).
 
 % expands query arguments using prefixes and checks their existence in the kb
 check_query_args_2(M,AT,L,LEx) :-
   M:ns4query(NSList),
-  parse_ontology:expand_all_ns(M,L,NSList,false,LEx), %from internal_parser module
+  ontology_parser:expand_all_ns(M,L,NSList,false,LEx), %from internal_parser module
   check_query_args_presence(M,AT,LEx).
 
 check_query_args_presence(_M,_AT,[]):-!.
@@ -441,89 +443,13 @@ create_list([],_,[]).
 create_list([_|T],AT,[AT|ATT]):-
   create_list(T,AT,ATT).
 
-%-----------------------
+/********************************
+  PARSER MANAGEMENT
+*********************************/ 
 
-/**
- * 
- * AXIOMS SEARCH
- * 
- */
+:- multifile ontology_parser:clean_up_parser/1.
 
-:- multifile parse_ontology:get_axiom_subClassOf/3, parse_ontology:get_axiom_subPropertyOf/3,
-             parse_ontology:get_axiom_equivalentClasses/2, parse_ontology:get_axiom_differentIndividuals/2,
-             parse_ontology:get_axiom_sameIndividual/2, parse_ontology:get_axiom_propertyAssertion/4,
-             parse_ontology:get_axiom_classAssertion/3, parse_ontology:get_axiom_propertyRange/3,
-             parse_ontology:get_axiom_propertyDomain/3, parse_ontology:get_axiom_disjointClasses/2,
-             parse_ontology:get_axiom_disjointUnion/3, parse_ontology:get_axiom_transitiveProperty/2,
-             parse_ontology:get_axiom_symmetricProperty/2, parse_ontology:get_axiom_inverseProperties/3,
-             parse_ontology:get_axiom_equivalentProperties/2, parse_ontology:get_axiom_annotationAssertion/4.
-
-
-parse_ontology:get_axiom_subClassOf(M,A,B):-
-  M:subClassOf(A,B).
-
-parse_ontology:get_axiom_subPropertyOf(M,R,S):-
-  M:subPropertyOf(R,S).
-
-parse_ontology:get_axiom_equivalentClasses(M,L):-
-  M:equivalentClasses(L).
-
-parse_ontology:get_axiom_differentIndividuals(M,SI):-
-  M:differentIndividuals(SI).
-
-parse_ontology:get_axiom_sameIndividual(M,SI):-
-  M:sameIndividual(SI).
-
-parse_ontology:get_axiom_propertyAssertion(M,P,S,O):-
-  M:propertyAssertion(P,S,O).
-
-parse_ontology:get_axiom_classAssertion(M,C,I):-
-  M:classAssertion(C,I).
-
-parse_ontology:get_axiom_propertyRange(M,P,D):-
-  M:propertyRange(P,D).
-
-parse_ontology:get_axiom_propertyDomain(M,P,D):-
-  M:propertyDomain(P,D).
-
-parse_ontology:get_axiom_disjointClasses(M,L):-
-  M:disjointClasses(L).
-
-parse_ontology:get_axiom_disjointUnion(M,C,L):-
-  M:disjointUnion(C,L).
-
-parse_ontology:get_axiom_transitiveProperty(M,P):-
-  M:transitiveProperty(P).
-
-parse_ontology:get_axiom_symmetricProperty(M,P):-
-  M:symmetricProperty(P).
-
-parse_ontology:get_axiom_inverseProperties(M,P,S):-
-  M:inverseProperties(P,S).
-
-parse_ontology:get_axiom_equivalentProperties(M,L):-
-  M:equivalentProperties(L).
-
-parse_ontology:get_axiom_annotationAssertion(M,AnnIRI,Ax,AnnVal):-
-  M:annotationAssertion(AnnIRI,Ax,AnnVal).
-
-
-
-:- multifile parse_ontology:get_classes_list/2.
-
-parse_ontology:get_classes_list(M,Classes):-
-  M:kb_atom(KBA),
-  Classes=KBA.class.
-
-/*****************************/
-
-/*****************************
-  PREDICATES FROM trill_utility
-******************************/
-
-:- multifile trill_utility:clean_up_parser/1.
-
-trill_utility:clean_up_parser(M):-
+ontology_parser:clean_up_parser(M):-
   rdf_reset_db,
   M:(dynamic class/1, datatype/1, objectProperty/1, dataProperty/1, annotationProperty/1),
   M:(dynamic namedIndividual/1, anonymousIndividual/1, subClassOf/2, equivalentClasses/1, disjointClasses/1, disjointUnion/2),
@@ -534,7 +460,7 @@ trill_utility:clean_up_parser(M):-
   M:(dynamic owl/4, owl/3, owl/2, blanknode/3, outstream/1, aNN/3, annotation_r_node/4, axiom_r_node/4, owl_repository/2, trdf_setting/2),
   M:(dynamic ns4query/1),
   retractall(M:kb_atom([])),
-  forall(parse_ontology:axiom(M:A),retractall(M:A)),
+  forall(ontology_parser:axiom(M:A),retractall(M:A)),
   retractall(M:blanknode(_,_,_)),
   retractall(M:aNN(_,_,_)),
   retractall(M:annotation_r_node(_,_,_)),
@@ -549,9 +475,9 @@ trill_utility:clean_up_parser(M):-
   retractall(M:rdf(_,_,_)).
 
 
-:- multifile trill_utility:set_up_parser/1.
+:- multifile ontology_parser:set_up_parser/1.
 
-trill_utility:set_up_parser(M):-
+ontology_parser:set_up_parser(M):-
   M:(dynamic class/1, datatype/1, objectProperty/1, dataProperty/1, annotationProperty/1),
   M:(dynamic namedIndividual/1, anonymousIndividual/1, subClassOf/2, equivalentClasses/1, disjointClasses/1, disjointUnion/2),
   M:(dynamic subPropertyOf/2, equivalentProperties/1, disjointProperties/1, inverseProperties/2, propertyDomain/2, propertyRange/2),
@@ -565,6 +491,85 @@ trill_utility:set_up_parser(M):-
   %assert(M:rules([],[])),
   %retractall(M:expressivity(_,_)),
   %assert(M:expressivity(1,[0,0,0,0,0,0])).
+
+
+/* ************************************** */
+
+/**
+ * 
+ * AXIOMS SEARCH
+ * 
+ */
+
+:- multifile ontology_parser:get_axiom_subClassOf/3, ontology_parser:get_axiom_subPropertyOf/3,
+             ontology_parser:get_axiom_equivalentClasses/2, ontology_parser:get_axiom_differentIndividuals/2,
+             ontology_parser:get_axiom_sameIndividual/2, ontology_parser:get_axiom_propertyAssertion/4,
+             ontology_parser:get_axiom_classAssertion/3, ontology_parser:get_axiom_propertyRange/3,
+             ontology_parser:get_axiom_propertyDomain/3, ontology_parser:get_axiom_disjointClasses/2,
+             ontology_parser:get_axiom_disjointUnion/3, ontology_parser:get_axiom_transitiveProperty/2,
+             ontology_parser:get_axiom_symmetricProperty/2, ontology_parser:get_axiom_inverseProperties/3,
+             ontology_parser:get_axiom_equivalentProperties/2, ontology_parser:get_axiom_annotationAssertion/4.
+
+
+ontology_parser:get_axiom_subClassOf(M,A,B):-
+  M:subClassOf(A,B).
+
+ontology_parser:get_axiom_subPropertyOf(M,R,S):-
+  M:subPropertyOf(R,S).
+
+ontology_parser:get_axiom_equivalentClasses(M,L):-
+  M:equivalentClasses(L).
+
+ontology_parser:get_axiom_differentIndividuals(M,SI):-
+  M:differentIndividuals(SI).
+
+ontology_parser:get_axiom_sameIndividual(M,SI):-
+  M:sameIndividual(SI).
+
+ontology_parser:get_axiom_propertyAssertion(M,P,S,O):-
+  M:propertyAssertion(P,S,O).
+
+ontology_parser:get_axiom_classAssertion(M,C,I):-
+  M:classAssertion(C,I).
+
+ontology_parser:get_axiom_propertyRange(M,P,D):-
+  M:propertyRange(P,D).
+
+ontology_parser:get_axiom_propertyDomain(M,P,D):-
+  M:propertyDomain(P,D).
+
+ontology_parser:get_axiom_disjointClasses(M,L):-
+  M:disjointClasses(L).
+
+ontology_parser:get_axiom_disjointUnion(M,C,L):-
+  M:disjointUnion(C,L).
+
+ontology_parser:get_axiom_transitiveProperty(M,P):-
+  M:transitiveProperty(P).
+
+ontology_parser:get_axiom_symmetricProperty(M,P):-
+  M:symmetricProperty(P).
+
+ontology_parser:get_axiom_inverseProperties(M,P,S):-
+  M:inverseProperties(P,S).
+
+ontology_parser:get_axiom_equivalentProperties(M,L):-
+  M:equivalentProperties(L).
+
+ontology_parser:get_axiom_annotationAssertion(M,AnnIRI,Ax,AnnVal):-
+  M:annotationAssertion(AnnIRI,Ax,AnnVal).
+
+
+
+:- multifile ontology_parser:get_classes_list/2.
+
+ontology_parser:get_classes_list(M,Classes):-
+  M:kb_atom(KBA),
+  Classes=KBA.class.
+
+/*****************************/
+
+
 
 
 /******************************/
@@ -822,14 +827,14 @@ expand_axiom(M,anonymousIndividual(A),NSList,anonymousIndividual(A_full_URL)) :-
 % @see axiom/1, annotation/1, ontology/1
 :- meta_predicate costruct(:).
 
-construct(M:A) :- parse_ontology:axiom(M:A).
+construct(M:A) :- ontology_parser:axiom(M:A).
 construct(M:A) :- annotation(M:A).
 construct(M:A) :- M:ontology(A).
 axiom_arguments(construct,[iri]).
 valid_axiom(construct(A)) :- subsumed_by([A],[iri]).
 
 axiom_arguments(axiom,[axiom]).
-valid_axiom(parse_ontology:axiom(A)) :- subsumed_by([A],[axiom]).
+valid_axiom(ontology_parser:axiom(A)) :- subsumed_by([A],[axiom]).
 
 %% classAxiom(:Axiom)
 % OWL 2 provides axioms that allow relationships to be established between class expressions. This predicate reifies the actual axiom
@@ -2002,20 +2007,20 @@ labelAnnotation_value(X,Val) :-
 % e.g. axiom_directly_about( propertyAssertion(P,X,_), X).
 %
 axiom_directly_about(Ax,About) :-
-        parse_ontology:axiom(Ax),
+        ontology_parser:axiom(Ax),
         Ax =.. [_,Arg1|_],
         (   is_list(Arg1)
         ->  member(About,Arg1)
         ;   About=Arg1).
 axiom_directly_about(Ax,About) :-
 	Ax=propertyAssertion(_,About,_),
-        parse_ontology:axiom(Ax).
+        ontology_parser:axiom(Ax).
 axiom_directly_about(Ax,About) :-
 	Ax=annotationAssertion(_,About,_),
-        parse_ontology:axiom(Ax).
+        ontology_parser:axiom(Ax).
 axiom_directly_about(Ax,About) :-
 	Ax=classAssertion(_,About),
-        parse_ontology:axiom(Ax).
+        ontology_parser:axiom(Ax).
 
 
 %% axiom_directly_references(?Ax:axiom,?Ref)
@@ -2025,7 +2030,7 @@ axiom_directly_about(Ax,About) :-
 %  - a named entity
 %  - an expression
 axiom_directly_references(Ax,Ref) :-
-        parse_ontology:axiom(Ax),
+        ontology_parser:axiom(Ax),
         axiom_or_expression_references(Ax,Ref).
 
 axiom_or_expression_references(X,Ref) :-
@@ -2051,7 +2056,7 @@ axiom_references(Ax,Ref) :-
 axiom_contains_expression(Ax,Ex) :-
         axiom_contains_expression(Ax,Ex,_).
 axiom_contains_expression(Ax,Ex,D) :-
-        parse_ontology:axiom(Ax),
+        ontology_parser:axiom(Ax),
         expression_has_subexpression(Ax,Ex,[],Chain),
         length(Chain,D).
 
@@ -2161,7 +2166,7 @@ retract_axiom(M,Axiom,Ontology) :-
 
 
 retract_all_axioms(M) :-
-        findall(M:A,parse_ontology:axiom(M:A),Axioms),
+        findall(M:A,ontology_parser:axiom(M:A),Axioms),
         maplist(retract,Axioms),
         findall(M:ontologyAxiom(O,A),M:ontologyAxiom(O,A),OAxioms),
         maplist(retract,OAxioms),
@@ -3876,6 +3881,23 @@ parse_rdf_from_owl_rdf_pred(String):-
   load_owl_from_stream(S).
 
 
+
+add_kb_atoms(_M,_Type,[]):-!.
+
+add_kb_atoms(M,Type,[H|T]):-
+  M:kb_atom(KBA0),
+  L=KBA0.Type,
+  ( memberchk(H,L) -> 
+      true
+    ;
+      ( retractall(M:kb_atom(_)),
+        KBA=KBA0.put(Type,[H|L]),
+        assert(M:kb_atom(KBA))
+      )
+  ),
+  add_kb_atoms(M,Type,T).
+
+
 /**
  * add_rule(+Module:string, +Rule:string) is det
  *
@@ -3954,7 +3976,7 @@ add_expressivity(M,f):-
 user:term_expansion(kb_prefix(A,B),[]):-
   get_module(M),
   assert(M:addKBName),
-  parse_ontology:add_kb_prefix(M:A,B).
+  ontology_parser:add_kb_prefix(M:A,B).
 
 user:term_expansion(owl_rdf(String),[]):-
   parse_rdf_from_owl_rdf_pred(String).
@@ -3987,7 +4009,7 @@ user:term_expansion(end_of_file, end_of_file) :-
 
 user:term_expansion(TRILLAxiom,[]):-
   get_module(M),
-  parse_ontology:is_axiom(TRILLAxiom),
+  ontology_parser:is_axiom(TRILLAxiom),
   create_and_assert_axioms(M,TRILLAxiom).
 
 

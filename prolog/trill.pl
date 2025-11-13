@@ -307,7 +307,7 @@ add_q(M,sc,Tableau0,[SubClassEx,SupClassEx],Tableau):- !,
   neg_class(SupClassEx,NSupClassEx),
   query_ind(QInd),
   add_q(M,Tableau0,classAssertion(intersectionOf([SubClassEx,NSupClassEx]),QInd),Tableau1),
-  add_kb_atoms(M,class,[intersectionOf([SubClassEx,NSupClassEx])]), % This is necessary to correctly prune expansion rules %TODO to remove
+  %add_kb_atoms(M,class,[intersectionOf([SubClassEx,NSupClassEx])]), % This is necessary to correctly prune expansion rules %TODO to remove
   add_owlThing_ind(M,Tableau1,QInd,Tableau2),
   add_clash_to_tableau(M,Tableau2,intersectionOf([SubClassEx,NSupClassEx])-QInd,Tableau3),
   update_expansion_queue_in_tableau(M,intersectionOf([SubClassEx,NSupClassEx]),QInd,Tableau3,Tableau).
@@ -375,12 +375,18 @@ collect_individuals(_,it,['inconsistent','kb'],[]):-!.
   check the KB atoms to consider only the necessary expansion rules, pruning the useless ones
 */
 prune_tableau_rules(M):-
-  get_classes_list(M,Classes),
+  get_classes_list(M,Classes0),
+  add_class_from_query_monitor(M,Classes0,Classes),
   setting_trill_default(det_rules,DetRules),
   prune_tableau_rules(Classes,DetRules,PrunedDetRules),
   setting_trill_default(nondet_rules,NondetRules),
   prune_tableau_rules(Classes,NondetRules,PrunedNondetRules),
   set_tableau_expansion_rules(M:PrunedDetRules,PrunedNondetRules).
+
+add_class_from_query_monitor(M,Classes0,[intersectionOf(QueryArgs)|Classes0]):-
+  M:query_option(active_query,[sc,QueryArgs]),!.
+
+add_class_from_query_monitor(_M,Classes0,Classes0):-!.
 
 add_tableau_rules_from_class(M,someValuesFrom(_,_)):-
   M:setting_trill(det_rules,Rules),
@@ -4165,25 +4171,25 @@ sandbox:safe_meta(trill:compute_query_prob(_),[]).
 sandbox:safe_meta(trill:reset_query,[]).
 sandbox:safe_meta(trill:set_tableau_expansion_rules(_,_),[]).
 
-:- use_module(library(parse_ontology)).
+:- use_module(library(ontology_parser)).
 
 user:term_expansion((:- trill),[]):-
   get_module(M),
   set_algorithm(M:trill),
   set_up(M),
-  parse_ontology:set_up_kb_loading(M),
+  ontology_parser:set_up_kb_loading(M),
   add_kb_prefixes(M:[('disponte'='http://ml.unife.it/disponte#'),('owl'='http://www.w3.org/2002/07/owl#')]).
 
 user:term_expansion((:- trillp),[]):-
   get_module(M),
   set_algorithm(M:trillp),
   set_up(M),
-  parse_ontology:set_up_kb_loading(M),
+  ontology_parser:set_up_kb_loading(M),
   add_kb_prefixes(M:['disponte'='http://ml.unife.it/disponte#','owl'='http://www.w3.org/2002/07/owl#']).
 
 user:term_expansion((:- tornado),[]):-
   get_module(M),
   set_algorithm(M:tornado),
   set_up(M),
-  parse_ontology:set_up_kb_loading(M),
+  ontology_parser:set_up_kb_loading(M),
   add_kb_prefixes(M:['disponte'='http://ml.unife.it/disponte#','owl'='http://www.w3.org/2002/07/owl#']).
