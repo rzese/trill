@@ -24,7 +24,7 @@ setting_trill_default(det_rules,[and_rule,unfold_rule,add_exists_rule,forall_rul
 setting_trill_default(nondet_rules,[or_rule]).
 
 set_up(M):-
-  utility_translation:set_up(M),
+  set_up_parser(M),
   M:(dynamic exp_found/2, keep_env/0, tornado_bdd_environment/1, inconsistent_theory_flag/0, setting_trill/2, tab_end/1, query_option/2, tab_util/2),
   retractall(M:setting_trill(_,_)),
   retractall(M:query_option(_,_)),
@@ -35,7 +35,7 @@ set_up(M):-
   %foreach(setting_trill_default(DefaultSetting,DefaultVal),assert(M:setting_trill(DefaultSetting,DefaultVal))).
 
 clean_up(M):-
-  utility_translation:clean_up(M),
+  set_up_parser(M),
   M:(dynamic exp_found/2, keep_env/0, tornado_bdd_environment/1, inconsistent_theory_flag/0, setting_trill/2, tab_end/1, query_option/2),
   retractall(M:exp_found(_,_)),
   retractall(M:keep_env),

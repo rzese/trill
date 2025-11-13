@@ -26,7 +26,7 @@ setting_trill_default(det_rules,[and_rule,unfold_rule,add_exists_rule,forall_rul
 setting_trill_default(nondet_rules,[or_rule]).
 
 set_up(M):-
-  utility_translation:set_up(M),
+  set_up_parser(M),
   M:(dynamic exp_found/2, inconsistent_theory_flag/0, setting_trill/2, tab_end/1, query_option/2, tab_util/2),
   retractall(M:setting_trill(_,_)),
   retractall(M:query_option(_,_)),
@@ -37,7 +37,7 @@ set_up(M):-
   %foreach(setting_trill_default(DefaultSetting,DefaultVal),assert(M:setting_trill(DefaultSetting,DefaultVal))).
 
 clean_up(M):-
-  utility_translation:clean_up(M),
+  set_up_parser(M),
   M:(dynamic exp_found/2, inconsistent_theory_flag/0, setting_trill/2, tab_end/1, query_option/2),
   retractall(M:exp_found(_,_)),
   retractall(M:inconsistent_theory_flag),
@@ -247,20 +247,20 @@ build_abox(M,Tableau,QueryType,QueryArgs):-
   retractall(M:final_abox(_)),
   collect_individuals(M,QueryType,QueryArgs,ConnectedInds),
   ( dif(ConnectedInds,[]) ->
-    ( findall((classAssertion(Class,Individual),*([classAssertion(Class,Individual)])-[]),(member(Individual,ConnectedInds),M:classAssertion(Class,Individual)),LCA),
-      findall((propertyAssertion(Property,Subject, Object),*([propertyAssertion(Property,Subject, Object)])-[]),(member(Subject,ConnectedInds),M:propertyAssertion(Property,Subject, Object),dif('http://www.w3.org/2000/01/rdf-schema#comment',Property)),LPA),
+    ( findall((classAssertion(Class,Individual),*([classAssertion(Class,Individual)])-[]),(member(Individual,ConnectedInds),get_axiom_classAssertion(M,Class,Individual)),LCA),
+      findall((propertyAssertion(Property,Subject, Object),*([propertyAssertion(Property,Subject, Object)])-[]),(member(Subject,ConnectedInds),get_axiom_propertyAssertion(M,Property,Subject, Object),dif('http://www.w3.org/2000/01/rdf-schema#comment',Property)),LPA),
       % findall((propertyAssertion(Property,Subject,Object),[subPropertyOf(SubProperty,Property),propertyAssertion(SubProperty,Subject,Object)]),subProp(M,SubProperty,Property,Subject,Object),LSPA),
-      findall(nominal(NominalIndividual),(member(NominalIndividual,ConnectedInds),M:classAssertion(oneOf(_),NominalIndividual)),LNA),
-      findall((differentIndividuals(Ld),*([differentIndividuals(Ld)])-[]),(M:differentIndividuals(Ld),intersect(Ld,ConnectedInds)),LDIA),
-      findall((sameIndividual(L),*([sameIndividual(L)])-[]),(M:sameIndividual(L),intersect(L,ConnectedInds)),LSIA)
+      findall(nominal(NominalIndividual),(member(NominalIndividual,ConnectedInds),get_axiom_classAssertion(M,oneOf(_),NominalIndividual)),LNA),
+      findall((differentIndividuals(Ld),*([differentIndividuals(Ld)])-[]),(get_axiom_differentIndividuals(M,Ld),intersect(Ld,ConnectedInds)),LDIA),
+      findall((sameIndividual(L),*([sameIndividual(L)])-[]),(get_axiom_sameIndividual(M,L),intersect(L,ConnectedInds)),LSIA)
     )
     ; % all the individuals
-    ( findall((classAssertion(Class,Individual),*([classAssertion(Class,Individual)])-[]),M:classAssertion(Class,Individual),LCA),
-      findall((propertyAssertion(Property,Subject, Object),*([propertyAssertion(Property,Subject, Object)])-[]),(M:propertyAssertion(Property,Subject, Object),dif('http://www.w3.org/2000/01/rdf-schema#comment',Property)),LPA),
+    ( findall((classAssertion(Class,Individual),*([classAssertion(Class,Individual)])-[]),get_axiom_classAssertion(M,Class,Individual),LCA),
+      findall((propertyAssertion(Property,Subject, Object),*([propertyAssertion(Property,Subject, Object)])-[]),(get_axiom_propertyAssertion(M,Property,Subject, Object),dif('http://www.w3.org/2000/01/rdf-schema#comment',Property)),LPA),
       % findall((propertyAssertion(Property,Subject,Object),[subPropertyOf(SubProperty,Property),propertyAssertion(SubProperty,Subject,Object)]),subProp(M,SubProperty,Property,Subject,Object),LSPA),
-      findall(nominal(NominalIndividual),M:classAssertion(oneOf(_),NominalIndividual),LNA),
-      findall((differentIndividuals(Ld),*([differentIndividuals(Ld)])-[]),M:differentIndividuals(Ld),LDIA),
-      findall((sameIndividual(L),*([sameIndividual(L)])-[]),M:sameIndividual(L),LSIA)
+      findall(nominal(NominalIndividual),get_axiom_classAssertion(M,oneOf(_),NominalIndividual),LNA),
+      findall((differentIndividuals(Ld),*([differentIndividuals(Ld)])-[]),get_axiom_differentIndividuals(M,Ld),LDIA),
+      findall((sameIndividual(L),*([sameIndividual(L)])-[]),get_axiom_sameIndividual(M,L),LSIA)
     )
   ),
   new_abox(ABox0),
@@ -660,27 +660,6 @@ find_compatible_or(F1,OrF2,OrF2C,OrF2NC):-
   differenceFML(OrF2,OrF2C,OrF2NC).
   
 remove_duplicates(A,C):-sort(A,C).
-
-/**********************
-
-Hierarchy Explanation Management
-
-***********************/
-
-hier_initial_expl(_M,[]):-!.
-
-hier_empty_expl(_M,[]):-!.
-
-hier_and_f(M,A,B,C):- and_f(M,A,B,C).
-
-hier_or_f(M,Or1,Or2,Or):- or_f(M,Or1,Or2,Or).
-
-hier_or_f_check(M,Or1,Or2,Or):- or_f(M,Or1,Or2,Or).
-
-hier_ax2ex(_M,Ax,*([Ax])):- !.
-  
-get_subclass_explanation(_M,C,D,Expl,Expls):-
-  utility_kb:get_subClass_expl(_,Expls,C,D,Expl).
 
 /**********************
 

@@ -333,8 +333,8 @@ gather_connected_individuals(M,Ind,ConnectedInds):-
   find_predecessors(M,Ind,PredInds),
   append(SuccInds,PredInds,ConnectedInds).
 
-find_successors(M,Ind,List) :- findall(ConnectedInd, (M:propertyAssertion(_,Ind,ConnectedInd)), List).
-find_predecessors(M,Ind,List) :- findall(ConnectedInd, (M:propertyAssertion(_,ConnectedInd,Ind)), List).
+find_successors(M,Ind,List) :- findall(ConnectedInd, (get_axiom_propertyAssertion(M,_,Ind,ConnectedInd)), List).
+find_predecessors(M,Ind,List) :- findall(ConnectedInd, (get_axiom_propertyAssertion(M,_,ConnectedInd,Ind)), List).
 
 intersect([H|_], List) :- member(H, List), !.
 intersect([_|T], List) :- intersect(T, List).
@@ -375,8 +375,7 @@ collect_individuals(_,it,['inconsistent','kb'],[]):-!.
   check the KB atoms to consider only the necessary expansion rules, pruning the useless ones
 */
 prune_tableau_rules(M):-
-  M:kb_atom(KBA),
-  Classes=KBA.class,
+  get_classes_list(M,Classes),
   setting_trill_default(det_rules,DetRules),
   prune_tableau_rules(Classes,DetRules,PrunedDetRules),
   setting_trill_default(nondet_rules,NondetRules),
@@ -388,8 +387,7 @@ add_tableau_rules_from_class(M,someValuesFrom(_,_)):-
   memberchk(exists_rule,Rules),!.
 
 add_tableau_rules_from_class(M,C):-
-  M:kb_atom(KBA),
-  Classes=KBA.class,
+  get_classes_list(M,Classes),
   setting_trill_default(det_rules,DetRules),
   prune_tableau_rules([C|Classes],DetRules,PrunedDetRules),
   setting_trill_default(nondet_rules,NondetRules),
@@ -786,114 +784,6 @@ query_empty_expl(M,Expl):-%gtrace,
   add_choice_point(M,qp,EExpl,Expl).
 
 
-% expands query arguments using prefixes and checks their existence in the kb
-% returns the non-present arguments
-check_query_args(M,QT,QA,QAEx):-
-  from_query_type_to_args_type(QT,AT),
-  check_query_args_1(M,AT,QA,QAExT,NotEx),!,
-  check_query_not_existent_args(QA,QAExT,NotEx,QAEx),!.
-
-check_query_not_existent_args(QA,QAExT,[],QAEx) :- !,
-  ( length(QA,1) -> 
-    QAEx = ['unsat'|QAExT]
-    ;
-    ( length(QA,0) -> QAEx = ['inconsistent','kb'] ; QAEx = QAExT)
-  ).
-check_query_not_existent_args(_QA,_QAExT,NotEx,_QAEx) :-
-  print_message(warning,iri_not_exists(NotEx)),!,fail.
-
-from_query_type_to_args_type(io,[class,ind]):- !.
-from_query_type_to_args_type(pv,[prop,ind,ind]):- !.
-from_query_type_to_args_type(sc,[class,class]):- !.
-from_query_type_to_args_type(un,[class]):- !.
-from_query_type_to_args_type(it,[]):- !.
-
-check_query_args_1(_,_,[],[],[]).
-
-check_query_args_1(M,[ATH|ATT],[H|T],[HEx|TEx],NotEx):-
-  check_query_args_2(M,[ATH],[H],[HEx]),!,
-  check_query_args_1(M,ATT,T,TEx,NotEx).
-
-check_query_args_1(M,[_|ATT],[H|T],TEx,[H|NotEx]):-
-  check_query_args_1(M,ATT,T,TEx,NotEx).
-
-% expands query arguments using prefixes and checks their existence in the kb
-check_query_args_2(M,AT,L,LEx) :-
-  M:ns4query(NSList),
-  expand_all_ns(M,L,NSList,false,LEx), %from internal_parser module
-  check_query_args_presence(M,AT,LEx).
-
-check_query_args_presence(_M,_AT,[]):-!.
-
-check_query_args_presence(M,[class|ATT],['http://www.w3.org/2002/07/owl#Thing'|T]) :-
-  check_query_args_presence(M,ATT,T).
-
-check_query_args_presence(M,[AT|ATT],[H|T]) :-
-  nonvar(H),
-  atomic(H),!,
-  find_atom_in_axioms(M,AT,H),%!,
-  check_query_args_presence(M,ATT,T).
-
-check_query_args_presence(M,[AT|ATT],[H|T]) :-
-  nonvar(H),
-  \+ atomic(H),!,
-  H =.. [CE|L],
-  flatten(L,L1),
-  from_expression_to_args_type(CE,AT,L1,ATs),
-  check_query_args_presence(M,ATs,L1),
-  check_query_args_presence(M,ATT,T).
-
-/*
-check_query_args_presence(M,[_|T]):-
-  check_query_args_presence(M,T).
-*/
-
-% looks for presence of atoms in kb's axioms
-find_atom_in_axioms(M,class,H):-
-  M:kb_atom(L1),
-  ( member(H,L1.class) ),!.
-
-find_atom_in_axioms(M,ind,H):-
-  M:kb_atom(L1),
-  ( member(H,L1.individual) ; member(H,L1.datatype) ),!.
-
-find_atom_in_axioms(M,prop,H):-
-  M:kb_atom(L1),
-  ( member(H,L1.objectProperty) ; member(H,L1.dataProperty) ; member(H,L1.annotationProperty) ),!.
-
-find_atom_in_axioms(_,num,H):-
-  integer(H),!.
-
-from_expression_to_args_type(complementOf,class,_,[class]) :- !.
-from_expression_to_args_type(someValuesFrom,class,_,[prop,class]) :- !.
-from_expression_to_args_type(allValuesFrom,class,_,[prop,class]) :- !.
-from_expression_to_args_type(hasValue,class,_,[prop,ind]) :- !.
-from_expression_to_args_type(hasSelf,class,_,[prop]) :- !.
-from_expression_to_args_type(minCardinality,class,[_,_,_],[num,prop,class]) :- !.
-from_expression_to_args_type(minCardinality,class,[_,_],[num,prop]) :- !.
-from_expression_to_args_type(maxCardinality,class,[_,_,_],[num,prop,class]) :- !.
-from_expression_to_args_type(maxCardinality,class,[_,_],[num,prop]) :- !.
-from_expression_to_args_type(exactCardinality,class,[_,_,_],[num,prop,class]) :- !.
-from_expression_to_args_type(exactCardinality,class,[_,_],[num,prop]) :- !.
-from_expression_to_args_type(inverseOf,prop,_,[prop]) :- !.
-from_expression_to_args_type(ExprList,AT,L1,ATs):-
-  is_expr_list(ExprList,AT,ListType),!,
-  create_list(ListType,L1,ATs).
-
-
-is_expr_list(intersectionOf,class,class).
-is_expr_list(unionOf,class,class).
-is_expr_list(oneOf,class,ind).
-is_expr_list(propertyChain,prop,prop).
-
-create_list([],_,[]).
-
-create_list([_|T],AT,[AT|ATT]):-
-  create_list(T,AT,ATT).
-
-
-
-
 
 
 
@@ -1026,7 +916,7 @@ clash(M,C1-Ind,Tab,Expl):-
   get_abox(Tab,ABox),
   findClassAssertion(C1,Ind,Expl1,ABox),
   %write('clash 7'),nl,
-  M:disjointClasses(L), % TODO use hierarchy
+  get_axiom_disjointClasses(M,L), % TODO use hierarchy
   member(C1,L),
   member(C2,L),
   dif(C1,C2),
@@ -1038,7 +928,7 @@ clash(M,C1-Ind,Tab,Expl):-
   get_abox(Tab,ABox),
   findClassAssertion(C1,Ind,Expl1,ABox),
   %write('clash 8'),nl,
-  M:disjointUnion(Class,L), % TODO use hierarchy
+  get_axiom_disjointUnion(M,Class,L), % TODO use hierarchy
   member(C1,L),
   member(C2,L),
   dif(C1,C2),
@@ -1159,7 +1049,7 @@ check_clash(_,C-sameIndividual(L1),Tab):-
 check_clash(M,C1-Ind,Tab):-
   get_abox(Tab,ABox),
   %write('clash 7'),nl,
-  M:disjointClasses(L), % TODO use hierarchy
+  get_axiom_disjointClasses(M,L), % TODO use hierarchy
   member(C1,L),
   member(C2,L),
   dif(C1,C2),
@@ -1168,7 +1058,7 @@ check_clash(M,C1-Ind,Tab):-
 check_clash(M,C1-Ind,Tab):-
   get_abox(Tab,ABox),
   %write('clash 8'),nl,
-  M:disjointUnion(_Class,L), % TODO use hierarchy
+  get_axiom_disjointUnion(M,_Class,L), % TODO use hierarchy
   member(C1,L),
   member(C2,L),
   dif(C1,C2),
@@ -1358,11 +1248,11 @@ add_exists_rule(M,Tab0,[C,Ind2],Tab):-
 
 /*
 existsInKB(M,R,C):-
-  M:subClassOf(A,B),
+  get_axiom_subClassOf(M,A,B),
   member(someValuesFrom(R,C),[A,B]).
 
 existsInKB(M,R,C):-
-  M:equivalentClasses(L),
+  get_axiom_equivalentClasses(M,L),
   member(someValuesFrom(R,C),L).
 */
 
@@ -1540,15 +1430,15 @@ forall_plus_rule(_,Tab,_,Tab):-!.
 
 % --------------
 find_sub_sup_trans_role(M,R,S,Expl):-
-  M:subPropertyOf(R,S),
-  M:transitiveProperty(R),
+  get_axiom_subPropertyOf(M,R,S),
+  get_axiom_transitiveProperty(M,R),
   initial_expl(M,EExpl),
   and_f_ax(M,subPropertyOf(R,S),EExpl,Expl0),
   and_f_ax(M,transitive(R),Expl0,Expl).
 
 find_sub_sup_trans_role(M,R,S,Expl):-
-  M:subPropertyOf(R,S),
-  \+ M:transitiveProperty(R),
+  get_axiom_subPropertyOf(M,R,S),
+  \+ get_axiom_transitiveProperty(M,R),
   initial_expl(M,EExpl),
   and_f_ax(M,subPropertyOf(R,S),EExpl,Expl).
 
@@ -1752,11 +1642,11 @@ neg_list([complementOf(H)|T],[H|T1]):-
 
 % subClassOf
 find_sub_sup_class(M,C,D,subClassOf(C,D)):-
-  M:subClassOf(C,D).
+  get_axiom_subClassOf(M,C,D).
 
 %equivalentClasses
 find_sub_sup_class(M,C,D,equivalentClasses(L)):-
-  M:equivalentClasses(L),
+  get_axiom_equivalentClasses(M,L),
   member(C,L),
   member(D,L),
   dif(C,D).
@@ -1768,7 +1658,7 @@ find_sub_sup_class(M,allValuesFrom(R,C),allValuesFrom(R,D),Ax):-
 
 %role for concepts allValuesFrom
 find_sub_sup_class(M,allValuesFrom(R,C),allValuesFrom(S,C),subPropertyOf(R,S)):-
-  M:subPropertyOf(R,S).
+  get_axiom_subPropertyOf(M,R,S).
 
 %concept for concepts someValuesFrom
 find_sub_sup_class(M,someValuesFrom(R,C),someValuesFrom(R,D),Ax):-
@@ -1777,7 +1667,7 @@ find_sub_sup_class(M,someValuesFrom(R,C),someValuesFrom(R,D),Ax):-
 
 %role for concepts someValuesFrom
 find_sub_sup_class(M,someValuesFrom(R,C),someValuesFrom(S,C),subPropertyOf(R,S)):-
-  M:subPropertyOf(R,S).
+  get_axiom_subPropertyOf(M,R,S).
 
 
 /*******************
@@ -1787,14 +1677,14 @@ find_sub_sup_class(M,someValuesFrom(R,C),someValuesFrom(S,C),subPropertyOf(R,S))
  *******************/
 /*
 find_sub_sup_class(M,C,'http://www.w3.org/2002/07/owl#Thing',subClassOf(C,'http://www.w3.org/2002/07/owl#Thing')):-
-  M:subClassOf(A,B),
+  get_axiom_subClassOf(M,A,B),
   member(C,[A,B]),!.
 
 find_sub_sup_class(M,C,'http://www.w3.org/2002/07/owl#Thing',subClassOf(C,'http://www.w3.org/2002/07/owl#Thing')):-
-  M:classAssertion(C,_),!.
+  get_axiom_classAssertion(M,C,_),!.
 
 find_sub_sup_class(M,C,'http://www.w3.org/2002/07/owl#Thing',subClassOf(C,'http://www.w3.org/2002/07/owl#Thing')):-
-  M:equivalentClasses(L),
+  get_axiom_equivalentClasses(M,L),
   member(C,L),!.
 
 find_sub_sup_class(M,C,'http://www.w3.org/2002/07/owl#Thing',subClassOf(C,'http://www.w3.org/2002/07/owl#Thing')):-
@@ -1802,23 +1692,23 @@ find_sub_sup_class(M,C,'http://www.w3.org/2002/07/owl#Thing',subClassOf(C,'http:
   member(C,L),!.
 
 find_sub_sup_class(M,C,'http://www.w3.org/2002/07/owl#Thing',subClassOf(C,'http://www.w3.org/2002/07/owl#Thing')):-
-  M:equivalentClasses(L),
+  get_axiom_equivalentClasses(M,L),
   member(someValuesFrom(_,C),L),!.
 
 find_sub_sup_class(M,C,'http://www.w3.org/2002/07/owl#Thing',subClassOf(C,'http://www.w3.org/2002/07/owl#Thing')):-
-  M:equivalentClasses(L),
+  get_axiom_equivalentClasses(M,L),
   member(allValuesFrom(_,C),L),!.
 
 find_sub_sup_class(M,C,'http://www.w3.org/2002/07/owl#Thing',subClassOf(C,'http://www.w3.org/2002/07/owl#Thing')):-
-  M:equivalentClasses(L),
+  get_axiom_equivalentClasses(M,L),
   member(minCardinality(_,_,C),L),!.
 
 find_sub_sup_class(M,C,'http://www.w3.org/2002/07/owl#Thing',subClassOf(C,'http://www.w3.org/2002/07/owl#Thing')):-
-  M:equivalentClasses(L),
+  get_axiom_equivalentClasses(M,L),
   member(maxCardinality(_,_,C),L),!.
 
 find_sub_sup_class(M,C,'http://www.w3.org/2002/07/owl#Thing',subClassOf(C,'http://www.w3.org/2002/07/owl#Thing')):-
-  M:equivalentClasses(L),
+  get_axiom_equivalentClasses(M,L),
   member(exactCardinality(_,_,C),L),!.
 
 */
@@ -1826,21 +1716,21 @@ find_sub_sup_class(M,C,'http://www.w3.org/2002/07/owl#Thing',subClassOf(C,'http:
 %--------------------
 % looks for not atomic concepts descriptions containing class C
 find_not_atomic(M,C,Ax,LC):-
-  M:subClassOf(A,B),
+  get_axiom_subClassOf(M,A,B),
   find_not_atomic_int(C,[A,B],Ax,LC).
 
 find_not_atomic(M,C,Ax,LC):-
-  M:equivalentClasses(L),
+  get_axiom_equivalentClasses(M,L),
   find_not_atomic_int(C,L,Ax,LC).
 
 /*
 find_not_atomic(M,C,unionOf(L1),L1):-
-  M:subClassOf(A,B),
+  get_axiom_subClassOf(M,A,B),
   member(unionOf(L1),[A,B]),
   member(C,L1).
 
 find_not_atomic(M,C,unionOf(L1),L1):-
-  M:equivalentClasses(L),
+  get_axiom_equivalentClasses(M,L),
   member(unionOf(L1),L),
   member(C,L1).
 */
@@ -1889,14 +1779,14 @@ find_class_prop_range_domain(M,P,S,O,O,D,Expl,ABox):-
   findPropertyAssertion(P,S,O,ExplPA,ABox),
   %ind_as_list(IndL,L),
   %member(Ind,L),
-  M:propertyRange(P,D),
+  get_axiom_propertyRange(M,P,D),
   and_f_ax(M,propertyRange(P,D),ExplPA,Expl).
 
 find_class_prop_range_domain(M,P,S,O,S,D,Expl,ABox):-
   findPropertyAssertion(P,S,O,ExplPA,ABox),
   %ind_as_list(IndL,L),
   %member(Ind,L),
-  M:propertyDomain(P,D),
+  get_axiom_propertyDomain(M,P,D),
   and_f_ax(M,propertyDomain(P,D),ExplPA,Expl).
 
 % ----------------
@@ -1949,11 +1839,11 @@ find_superproperties(M,C,L):-
 
 % subPropertyOf
 find_sub_sup_property(M,C,D,subPropertyOf(C,D)):-
-  M:subPropertyOf(C,D).
+  get_axiom_subPropertyOf(M,C,D).
 
 %equivalentProperties
 find_sub_sup_property(M,C,D,equivalentProperties(L)):-
-  M:equivalentProperties(L),
+  get_axiom_equivalentProperties(M,L),
   member(C,L),
   member(D,L),
   dif(C,D).
@@ -1961,19 +1851,19 @@ find_sub_sup_property(M,C,D,equivalentProperties(L)):-
 %-----------------
 %inverseProperties
 find_inverse_property(M,C,D,inverseProperties(C,D)):-
-  M:inverseProperties(C,D).
+  get_axiom_inverseProperties(M,C,D).
 
 find_inverse_property(M,C,D,inverseProperties(D,C)):-
-  M:inverseProperties(D,C).
+  get_axiom_inverseProperties(M,D,C).
 
 %inverseProperties
 find_inverse_property(M,C,C,symmetricProperty(C)):-
-  M:symmetricProperty(C).
+  get_axiom_symmetricProperty(M,C).
 
 %-----------------
 %transitiveProperties
 find_transitive_property(M,C,transitiveProperty(C)):-
-  M:transitiveProperty(C).
+  get_axiom_transitiveProperty(M,C).
 
 % ----------------
 % scan_subinvprop_list
@@ -2017,12 +1907,12 @@ ce_rule(M,Tab0,Tab):-
 
 % ------------------
 find_not_sub_sup_class(M,subClassOf(C,D),unionOf(complementOf(C),D)):-
-  M:subClassOf(C,D),
+  get_axiom_subClassOf(M,C,D),
   \+ atomic(C).
 
 
 find_not_sub_sup_class(M,equivalentClasses(L),unionOf(L1)):-
-  M:equivalentClasses(L),
+  get_axiom_equivalentClasses(M,L),
   member(C,L),
   \+ atomic(C),
   copy_neg_c(C,L,L1).
@@ -2899,7 +2789,7 @@ s_neighbours2(M,SN,[_H|T],T1,ABox):-
 %-----------------
 
 not_same_ind(M,SN,H,_ABox):-
-  M:differentIndividuals(SI),
+  get_axiom_differentIndividuals(M,SI),
   member(H,SI),
   member(H2,SI),
   member(H2,SN),
@@ -2916,7 +2806,7 @@ not_same_ind(M,SN,H,ABox):-
   \+ same_ind(M,SN,H,ABox),!.
 
 same_ind(M,SN,H,_ABox):-
-  M:sameIndividual(SI),
+  get_axiom_sameIndividual(M,SI),
   member(H,SI),
   member(H2,SI),
   member(H2,SN),
@@ -3087,7 +2977,7 @@ compute_prob(M,Explanations,Prob):-
   retractall(na(_,_)),
   retractall(rule_n(_)),
   assert(rule_n(0)),
-  %findall(1,M:annotationAssertion('http://ml.unife.it/disponte#probability',_,_),NAnnAss),length(NAnnAss,NV),
+  %findall(1,get_axiom_annotationAssertion(M,'http://ml.unife.it/disponte#probability',_,_),NAnnAss),length(NAnnAss,NV),
   get_bdd_environment(M,Env),
   build_bdd(M,Env,Explanations,BDD),
   ret_prob(Env,BDD,Prob),
@@ -3161,7 +3051,7 @@ prob_number(ProbAT,ProbA):-
   atom_number(ProbAT,ProbA).
 
 compute_prob_ax(M,Ax,Prob):-%gtrace,
-  findall(ProbA,(disponte_iri(DisponteIri),M:annotationAssertion(DisponteIri,Ax,literal(ProbAT)),prob_number(ProbAT,ProbA)),Probs),
+  findall(ProbA,(disponte_iri(DisponteIri),get_axiom_annotationAssertion(M,DisponteIri,Ax,literal(ProbAT)),prob_number(ProbAT,ProbA)),Probs),
   compute_prob_ax1(Probs,Prob).
 
 compute_prob_ax1([Prob],Prob):-!.
@@ -4281,19 +4171,19 @@ user:term_expansion((:- trill),[]):-
   get_module(M),
   set_algorithm(M:trill),
   set_up(M),
-  internal_parser:set_up_kb_loading(M),
+  parse_ontology:set_up_kb_loading(M),
   add_kb_prefixes(M:[('disponte'='http://ml.unife.it/disponte#'),('owl'='http://www.w3.org/2002/07/owl#')]).
 
 user:term_expansion((:- trillp),[]):-
   get_module(M),
   set_algorithm(M:trillp),
   set_up(M),
-  internal_parser:set_up_kb_loading(M),
+  parse_ontology:set_up_kb_loading(M),
   add_kb_prefixes(M:['disponte'='http://ml.unife.it/disponte#','owl'='http://www.w3.org/2002/07/owl#']).
 
 user:term_expansion((:- tornado),[]):-
   get_module(M),
   set_algorithm(M:tornado),
   set_up(M),
-  internal_parser:set_up_kb_loading(M),
+  parse_ontology:set_up_kb_loading(M),
   add_kb_prefixes(M:['disponte'='http://ml.unife.it/disponte#','owl'='http://www.w3.org/2002/07/owl#']).

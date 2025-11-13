@@ -435,7 +435,7 @@ find_neg_class(maxCardinality(N,R,C),minCardinality(NMin,R,C)):-
 
 %role for concepts exactCardinality
 find_sub_sup_class(M,exactCardinality(N,R),exactCardinality(N,S),subPropertyOf(R,S)):-
-  M:subPropertyOf(R,S).
+  get_axiom_subPropertyOf(M,R,S).
 
 %concept for concepts exactCardinality
 find_sub_sup_class(M,exactCardinality(N,R,C),exactCardinality(N,R,D),Ax):-
@@ -444,11 +444,11 @@ find_sub_sup_class(M,exactCardinality(N,R,C),exactCardinality(N,R,D),Ax):-
 
 %role for concepts exactCardinality
 find_sub_sup_class(M,exactCardinality(N,R,C),exactCardinality(N,S,C),subPropertyOf(R,S)):-
-  M:subPropertyOf(R,S).
+  get_axiom_subPropertyOf(M,R,S).
 
 %role for concepts maxCardinality
 find_sub_sup_class(M,maxCardinality(N,R),maxCardinality(N,S),subPropertyOf(R,S)):-
-  M:subPropertyOf(R,S).
+  get_axiom_subPropertyOf(M,R,S).
 
 %concept for concepts maxCardinality
 find_sub_sup_class(M,maxCardinality(N,R,C),maxCardinality(N,R,D),Ax):-
@@ -457,11 +457,11 @@ find_sub_sup_class(M,maxCardinality(N,R,C),maxCardinality(N,R,D),Ax):-
 
 %role for concepts maxCardinality
 find_sub_sup_class(M,maxCardinality(N,R,C),maxCardinality(N,S,C),subPropertyOf(R,S)):-
-  M:subPropertyOf(R,S).
+  get_axiom_subPropertyOf(M,R,S).
 
 %role for concepts minCardinality
 find_sub_sup_class(M,minCardinality(N,R),minCardinality(N,S),subPropertyOf(R,S)):-
-  M:subPropertyOf(R,S).
+  get_axiom_subPropertyOf(M,R,S).
 
 %concept for concepts minCardinality
 find_sub_sup_class(M,minCardinality(N,R,C),minCardinality(N,R,D),Ax):-
@@ -470,7 +470,7 @@ find_sub_sup_class(M,minCardinality(N,R,C),minCardinality(N,R,D),Ax):-
 
 %role for concepts minCardinality
 find_sub_sup_class(M,minCardinality(N,R,C),minCardinality(N,S,C),subPropertyOf(R,S)):-
-  M:subPropertyOf(R,S).
+  get_axiom_subPropertyOf(M,R,S).
 
 /* ************* */
 
@@ -551,7 +551,7 @@ notDifferentIndividuals(M,X,Y,ABox):-
 
 inAssertDifferentIndividuals(M,differentIndividuals(X),differentIndividuals(Y)):-
   !,
-  M:differentIndividuals(LI),
+  get_axiom_differentIndividuals(M,LI),
   member(X0,X),
   member(X0,LI),
   member(Y0,Y),
@@ -559,20 +559,20 @@ inAssertDifferentIndividuals(M,differentIndividuals(X),differentIndividuals(Y)):
 
 inAssertDifferentIndividuals(M,X,sameIndividual(Y)):-
   !,
-  M:differentIndividuals(LI),
+  get_axiom_differentIndividuals(M,LI),
   member(X,LI),
   member(Y0,Y),
   member(Y0,LI).
 
 inAssertDifferentIndividuals(M,sameIndividual(X),Y):-
   !,
-  M:differentIndividuals(LI),
+  get_axiom_differentIndividuals(M,LI),
   member(X0,X),
   member(X0,LI),
   member(Y,LI).
 
 inAssertDifferentIndividuals(M,X,Y):-
-  M:differentIndividuals(LI),
+  get_axiom_differentIndividuals(M,LI),
   member(X,LI),
   member(Y,LI).
 
@@ -692,18 +692,18 @@ build_abox(M,Tableau,QueryType,QueryArgs):-
 
 get_axioms_of_individuals(M,IndividualsList,LCA,LPA,LNA,LDIA,LSIA):-
   ( dif(IndividualsList,[]) ->
-    ( findall((classAssertion(Class,Individual),[[classAssertion(Class,Individual)]-[]]),(member(Individual,IndividualsList),M:classAssertion(Class,Individual)),LCA),
-      findall((propertyAssertion(Property,Subject, Object),[[propertyAssertion(Property,Subject, Object)]-[]]),(member(Subject,IndividualsList),M:propertyAssertion(Property,Subject, Object),dif('http://www.w3.org/2000/01/rdf-schema#comment',Property)),LPA),
-      findall(nominal(NominalIndividual),(member(NominalIndividual,IndividualsList),M:classAssertion(oneOf(_),NominalIndividual)),LNA),
-      findall((differentIndividuals(Ld),[[differentIndividuals(Ld)]-[]]),(M:differentIndividuals(Ld),intersect(Ld,IndividualsList)),LDIA),
-      findall((sameIndividual(L),[[sameIndividual(L)]-[]]),(M:sameIndividual(L),intersect(L,IndividualsList)),LSIA)
+    ( findall((classAssertion(Class,Individual),[[classAssertion(Class,Individual)]-[]]),(member(Individual,IndividualsList),get_axiom_classAssertion(M,Class,Individual)),LCA),
+      findall((propertyAssertion(Property,Subject, Object),[[propertyAssertion(Property,Subject, Object)]-[]]),(member(Subject,IndividualsList),get_axiom_propertyAssertion(M,Property,Subject, Object),dif('http://www.w3.org/2000/01/rdf-schema#comment',Property)),LPA),
+      findall(nominal(NominalIndividual),(member(NominalIndividual,IndividualsList),get_axiom_classAssertion(M,oneOf(_),NominalIndividual)),LNA),
+      findall((differentIndividuals(Ld),[[differentIndividuals(Ld)]-[]]),(get_axiom_differentIndividuals(M,Ld),intersect(Ld,IndividualsList)),LDIA),
+      findall((sameIndividual(L),[[sameIndividual(L)]-[]]),(get_axiom_sameIndividual(M,L),intersect(L,IndividualsList)),LSIA)
     )
     ; % all the individuals
-    ( findall((classAssertion(Class,Individual),[[classAssertion(Class,Individual)]-[]]),M:classAssertion(Class,Individual),LCA),
-      findall((propertyAssertion(Property,Subject, Object),[[propertyAssertion(Property,Subject, Object)]-[]]),(M:propertyAssertion(Property,Subject, Object),dif('http://www.w3.org/2000/01/rdf-schema#comment',Property)),LPA),
-      findall(nominal(NominalIndividual),M:classAssertion(oneOf(_),NominalIndividual),LNA),
-      findall((differentIndividuals(Ld),[[differentIndividuals(Ld)]-[]]),M:differentIndividuals(Ld),LDIA),
-      findall((sameIndividual(L),[[sameIndividual(L)]-[]]),M:sameIndividual(L),LSIA)
+    ( findall((classAssertion(Class,Individual),[[classAssertion(Class,Individual)]-[]]),get_axiom_classAssertion(M,Class,Individual),LCA),
+      findall((propertyAssertion(Property,Subject, Object),[[propertyAssertion(Property,Subject, Object)]-[]]),(get_axiom_propertyAssertion(M,Property,Subject, Object),dif('http://www.w3.org/2000/01/rdf-schema#comment',Property)),LPA),
+      findall(nominal(NominalIndividual),get_axiom_classAssertion(M,oneOf(_),NominalIndividual),LNA),
+      findall((differentIndividuals(Ld),[[differentIndividuals(Ld)]-[]]),get_axiom_differentIndividuals(M,Ld),LDIA),
+      findall((sameIndividual(L),[[sameIndividual(L)]-[]]),get_axiom_sameIndividual(M,L),LSIA)
     )
   ).
 

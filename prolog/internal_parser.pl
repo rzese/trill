@@ -353,6 +353,168 @@ load_owl_from_stream(S):-
   owl_canonical_parse_3(M,['ont']),
   parse_probabilistic_annotation_assertions(M).
 
+
+% ----------------------
+% CHECK QUERY ARGS
+:- multifile parse_ontology:check_query_args_1/5.
+
+parse_ontology:check_query_args_1(_,_,[],[],[]).
+
+parse_ontology:check_query_args_1(M,[ATH|ATT],[H|T],[HEx|TEx],NotEx):-
+  check_query_args_2(M,[ATH],[H],[HEx]),!,
+  parse_ontology:check_query_args_1(M,ATT,T,TEx,NotEx).
+
+parse_ontology:check_query_args_1(M,[_|ATT],[H|T],TEx,[H|NotEx]):-
+  parse_ontology:check_query_args_1(M,ATT,T,TEx,NotEx).
+
+% expands query arguments using prefixes and checks their existence in the kb
+check_query_args_2(M,AT,L,LEx) :-
+  M:ns4query(NSList),
+  parse_ontology:expand_all_ns(M,L,NSList,false,LEx), %from internal_parser module
+  check_query_args_presence(M,AT,LEx).
+
+check_query_args_presence(_M,_AT,[]):-!.
+
+check_query_args_presence(M,[class|ATT],['http://www.w3.org/2002/07/owl#Thing'|T]) :-
+  check_query_args_presence(M,ATT,T).
+
+check_query_args_presence(M,[AT|ATT],[H|T]) :-
+  nonvar(H),
+  atomic(H),!,
+  find_atom_in_axioms(M,AT,H),%!,
+  check_query_args_presence(M,ATT,T).
+
+check_query_args_presence(M,[AT|ATT],[H|T]) :-
+  nonvar(H),
+  \+ atomic(H),!,
+  H =.. [CE|L],
+  flatten(L,L1),
+  from_expression_to_args_type(CE,AT,L1,ATs),
+  check_query_args_presence(M,ATs,L1),
+  check_query_args_presence(M,ATT,T).
+
+/*
+check_query_args_presence(M,[_|T]):-
+  check_query_args_presence(M,T).
+*/
+
+% looks for presence of atoms in kb's axioms
+find_atom_in_axioms(M,class,H):-
+  M:kb_atom(L1),
+  ( member(H,L1.class) ),!.
+
+find_atom_in_axioms(M,ind,H):-
+  M:kb_atom(L1),
+  ( member(H,L1.individual) ; member(H,L1.datatype) ),!.
+
+find_atom_in_axioms(M,prop,H):-
+  M:kb_atom(L1),
+  ( member(H,L1.objectProperty) ; member(H,L1.dataProperty) ; member(H,L1.annotationProperty) ),!.
+
+find_atom_in_axioms(_,num,H):-
+  integer(H),!.
+
+from_expression_to_args_type(complementOf,class,_,[class]) :- !.
+from_expression_to_args_type(someValuesFrom,class,_,[prop,class]) :- !.
+from_expression_to_args_type(allValuesFrom,class,_,[prop,class]) :- !.
+from_expression_to_args_type(hasValue,class,_,[prop,ind]) :- !.
+from_expression_to_args_type(hasSelf,class,_,[prop]) :- !.
+from_expression_to_args_type(minCardinality,class,[_,_,_],[num,prop,class]) :- !.
+from_expression_to_args_type(minCardinality,class,[_,_],[num,prop]) :- !.
+from_expression_to_args_type(maxCardinality,class,[_,_,_],[num,prop,class]) :- !.
+from_expression_to_args_type(maxCardinality,class,[_,_],[num,prop]) :- !.
+from_expression_to_args_type(exactCardinality,class,[_,_,_],[num,prop,class]) :- !.
+from_expression_to_args_type(exactCardinality,class,[_,_],[num,prop]) :- !.
+from_expression_to_args_type(inverseOf,prop,_,[prop]) :- !.
+from_expression_to_args_type(ExprList,AT,L1,ATs):-
+  is_expr_list(ExprList,AT,ListType),!,
+  create_list(ListType,L1,ATs).
+
+
+is_expr_list(intersectionOf,class,class).
+is_expr_list(unionOf,class,class).
+is_expr_list(oneOf,class,ind).
+is_expr_list(propertyChain,prop,prop).
+
+create_list([],_,[]).
+
+create_list([_|T],AT,[AT|ATT]):-
+  create_list(T,AT,ATT).
+
+%-----------------------
+
+/**
+ * 
+ * AXIOMS SEARCH
+ * 
+ */
+
+:- multifile parse_ontology:get_axiom_subClassOf/3, parse_ontology:get_axiom_subPropertyOf/3,
+             parse_ontology:get_axiom_equivalentClasses/2, parse_ontology:get_axiom_differentIndividuals/2,
+             parse_ontology:get_axiom_sameIndividual/2, parse_ontology:get_axiom_propertyAssertion/4,
+             parse_ontology:get_axiom_classAssertion/3, parse_ontology:get_axiom_propertyRange/3,
+             parse_ontology:get_axiom_propertyDomain/3, parse_ontology:get_axiom_disjointClasses/2,
+             parse_ontology:get_axiom_disjointUnion/3, parse_ontology:get_axiom_transitiveProperty/2,
+             parse_ontology:get_axiom_symmetricProperty/2, parse_ontology:get_axiom_inverseProperties/3,
+             parse_ontology:get_axiom_equivalentProperties/2, parse_ontology:get_axiom_annotationAssertion/4.
+
+
+parse_ontology:get_axiom_subClassOf(M,A,B):-
+  M:subClassOf(A,B).
+
+parse_ontology:get_axiom_subPropertyOf(M,R,S):-
+  M:subPropertyOf(R,S).
+
+parse_ontology:get_axiom_equivalentClasses(M,L):-
+  M:equivalentClasses(L).
+
+parse_ontology:get_axiom_differentIndividuals(M,SI):-
+  M:differentIndividuals(SI).
+
+parse_ontology:get_axiom_sameIndividual(M,SI):-
+  M:sameIndividual(SI).
+
+parse_ontology:get_axiom_propertyAssertion(M,P,S,O):-
+  M:propertyAssertion(P,S,O).
+
+parse_ontology:get_axiom_classAssertion(M,C,I):-
+  M:classAssertion(C,I).
+
+parse_ontology:get_axiom_propertyRange(M,P,D):-
+  M:propertyRange(P,D).
+
+parse_ontology:get_axiom_propertyDomain(M,P,D):-
+  M:propertyDomain(P,D).
+
+parse_ontology:get_axiom_disjointClasses(M,L):-
+  M:disjointClasses(L).
+
+parse_ontology:get_axiom_disjointUnion(M,C,L):-
+  M:disjointUnion(C,L).
+
+parse_ontology:get_axiom_transitiveProperty(M,P):-
+  M:transitiveProperty(P).
+
+parse_ontology:get_axiom_symmetricProperty(M,P):-
+  M:symmetricProperty(P).
+
+parse_ontology:get_axiom_inverseProperties(M,P,S):-
+  M:inverseProperties(P,S).
+
+parse_ontology:get_axiom_equivalentProperties(M,L):-
+  M:equivalentProperties(L).
+
+parse_ontology:get_axiom_annotationAssertion(M,AnnIRI,Ax,AnnVal):-
+  M:annotationAssertion(AnnIRI,Ax,AnnVal).
+
+
+
+:- multifile parse_ontology:get_classes_list/2.
+
+parse_ontology:get_classes_list(M,Classes):-
+  M:kb_atom(KBA),
+  Classes=KBA.class.
+
 /*****************************/
 
 /*****************************
@@ -3786,26 +3948,6 @@ add_expressivity(M,f):-
   M:expressivity(I,[H,R,O,I,Res,F]),
   ( F=1 ; ( retractall(M:expressivity(_,_)),assert(M:expressivity(I,[H,R,O,I,Res,1])))), !.
 
-
-
-
-set_up_kb_loading(M):-
-  retractall(M:kb_atom(_)),
-  init_kb_atom(M),
-  retractall(M:addKBName),
-  assert(M:addKBName),
-  assert(trill_input_mode(M)).
-  %format("Loading knowledge base...~n",[]),
-  %statistics(walltime,[_,_]).
-
-init_kb_atom(M):-
-  assert(M:kb_atom(kbatoms{annotationProperty:[],class:[],dataProperty:[],datatype:[],individual:[],objectProperty:[]})).
-
-init_kb_atom(M,AnnProps,Classes,DataProps,Datatypes,Inds,ObjectProps):-
-  assert(M:kb_atom(kbatoms{annotationProperty:AnnProps,class:Classes,dataProperty:DataProps,datatype:Datatypes,individual:Inds,objectProperty:ObjectProps})).
-
-init_kb_atom(M,KB):-
-  assert(M:kb_atom(kbatoms{annotationProperty:KB.annotationProperties,class:KB.classesName,dataProperty:KB.dataProperties,datatype:KB.datatypes,individual:KB.individuals,objectProperty:KB.objectProperties})).
 
 
 
