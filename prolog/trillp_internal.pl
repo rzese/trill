@@ -66,7 +66,7 @@ prolog:message(and_in_and) -->
 
 % findall
 find_n_explanations(M,QueryType,QueryArgs,Expls,_):- % This will not check the arg max_expl as TRILLP returns a pinpointing formula
-  find_single_explanation(M,QueryType,QueryArgs,Expls),!.
+  find_single_explanation(M,QueryType,QueryArgs,Expls-_),!.
 
 find_n_explanations(_,_,_,Expls,_):-
   empty_expl(_,Expls-_).
@@ -83,7 +83,7 @@ compute_prob_and_close(_M,_,_):-!.
 check_and_close(_,Expl,Expl):-
   dif(Expl,[]).
 
-is_expl(M,Expl-_):-
+is_expl(M,Expl):-
   initial_expl(M,EExpl-_),
   dif(Expl,EExpl).
 

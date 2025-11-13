@@ -67,7 +67,7 @@ prolog:message(and_in_and) -->
 % findall
 find_n_explanations(M,QueryType,QueryArgs,Expls,_):- % This will not check the arg max_expl as TRILLP returns a pinpointing formula
  assert(M:keep_env),
- find_single_explanation(M,QueryType,QueryArgs,Expls),!.
+ find_single_explanation(M,QueryType,QueryArgs,Expls-_),!.
 
 find_n_explanations(M,_,_,Expls,_):-
  initial_expl(M,Expls-_).
@@ -90,7 +90,7 @@ check_and_close(M,Expl,dot(Dot)):-
   create_dot_string(Env,Expl,Dot),
   clean_environment(M,Env).
 
-is_expl(M,Expl-_):-
+is_expl(M,Expl):-
   initial_expl(M,EExpl-_),
   dif(Expl,EExpl).
 
@@ -368,3 +368,12 @@ bdd_and(M,Env,[X],BDDX):-
 
 bdd_and(_M,Env,[_X],BDDX):- !,
   one(Env,BDDX).
+
+
+% TODO use new BDDEM for ret_equation_bdd_c
+get_symbolic_equation(BDD,SEq):-
+  get_module(M),
+  get_bdd_environment(M,Env),
+  findall([VX,AxS,Prob],(na(Ax,AxN),get_var_n(Env,AxN,[],[Prob,_ProbN],VX),term_string(Ax,AxS)),LIndexNameProb),
+  ret_equation_bdd_c(Env,(_,BDD),LIndexNameProb,SEq0),
+  evaluate_expr(SEq0,LIndexNameProb,SEq).
