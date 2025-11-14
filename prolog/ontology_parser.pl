@@ -1,6 +1,7 @@
 /** <module> ontology_parser
 
 This module manages the initialization of the parser for OWL KBs.
+It also serves as interface for a TRILL parser.
 
 @author Riccardo Zese
 @license Artistic License 2.0
@@ -91,40 +92,13 @@ set_augmented_classpath :-
     jpl_set_default_jvm_opts([JVMOpt]).
 
 /*****************************
-  UTILITY PREDICATES
+  ABSTRACT UTILITY PREDICATES
 ******************************/
 
-%defined in internal_parser
-:- multifile kb_prefixes/1,
-             add_kb_prefix/2, add_kb_prefixes/1,
-             remove_kb_prefix/2, remove_kb_prefix/1.
-/**
- * add_kb_prefix(:ShortPref:string,++LongPref:string) is det
- *
- * This predicate registers the alias ShortPref for the prefix defined in LongPref.
- * The empty string '' can be defined as alias.
- */
 
-/**
- * add_kb_prefixes(:Prefixes:list) is det
- *
- * This predicate registers all the alias prefixes contained in Prefixes.
- * The input list must contain pairs alias=prefix, i.e., [('foo'='http://example.foo#')].
- * The empty string '' can be defined as alias.
- */
-
-/**
- * remove_kb_prefix(:ShortPref:string,++LongPref:string) is det
- *
- * This predicate removes from the registered aliases the one given in input.
- */
-
-/**
- * remove_kb_prefix(:Name:string) is det
- *
- * This predicate takes as input a string that can be an alias or a prefix and 
- * removes the pair containing the string from the registered aliases.
- */
+/********************************
+  AXIOMS MANAGEMENT
+*********************************/
 
 :- multifile axiom/1,
              add_axiom/1, add_axioms/1,
@@ -164,27 +138,74 @@ set_augmented_classpath :-
  * The axioms must be defined following the TRILL syntax.
  */
 
+/********************************
+  AXIOMS SEARCH
+*********************************/
+
+:- multifile get_axiom_subClassOf/3, get_axiom_subPropertyOf/3,
+             get_axiom_equivalentClasses/2, get_axiom_differentIndividuals/2,
+             get_axiom_sameIndividual/2, get_axiom_propertyAssertion/4,
+             get_axiom_classAssertion/3, get_axiom_propertyRange/3,
+             get_axiom_propertyDomain/3, get_axiom_disjointClasses/2,
+             get_axiom_disjointUnion/3, get_axiom_transitiveProperty/2,
+             get_axiom_symmetricProperty/2, get_axiom_inverseProperties/3,
+             get_axiom_equivalentProperties/2, get_axiom_annotationAssertion/4.
+
+/********************************
+  CLASSES, PREDICATES AND
+  INDIVIDUALS MANAGEMENT
+*********************************/
+:- multifile get_classes_list/2.
+
+/********************************
+  PREFIXES MANAGEMENT
+*********************************/
+
+%defined in internal_parser
+:- multifile kb_prefixes/1,
+             add_kb_prefix/2, add_kb_prefixes/1,
+             remove_kb_prefix/2, remove_kb_prefix/1.
+/**
+ * kb_prefix(:Prefixes:list) is det
+ *
+ * This predicate returns the list of prefixes used by the parser.
+ */
+
+/**
+ * add_kb_prefix(:ShortPref:string,++LongPref:string) is det
+ *
+ * This predicate registers the alias ShortPref for the prefix defined in LongPref.
+ * The empty string '' can be defined as alias.
+ */
+
+/**
+ * add_kb_prefixes(:Prefixes:list) is det
+ *
+ * This predicate registers all the alias prefixes contained in Prefixes.
+ * The input list must contain pairs alias=prefix, i.e., [('foo'='http://example.foo#')].
+ * The empty string '' can be defined as alias.
+ */
+
+/**
+ * remove_kb_prefix(:ShortPref:string,++LongPref:string) is det
+ *
+ * This predicate removes from the registered aliases the one given in input.
+ */
+
+/**
+ * remove_kb_prefix(:Name:string) is det
+ *
+ * This predicate takes as input a string that can be an alias or a prefix and 
+ * removes the pair containing the string from the registered aliases.
+ */
+
+/********************************
+  LOAD KNOWLEDGE BASE
+*********************************/
+
 :- multifile load_kb/1, load_owl_kb/1, load_owl_kb_from_string/1, expand_all_ns/4, expand_all_ns/5, is_axiom/1.
 
-
-set_up_kb_loading(M):-
-  retractall(M:kb_atom(_)),
-  init_kb_atom(M),
-  retractall(M:addKBName),
-  assert(M:addKBName),
-  assert(trill_input_mode(M)).
-  %format("Loading knowledge base...~n",[]),
-  %statistics(walltime,[_,_]).
-
-init_kb_atom(M):-
-  assert(M:kb_atom(kbatoms{annotationProperty:[],class:[],dataProperty:[],datatype:[],individual:[],objectProperty:[]})).
-
-init_kb_atom(M,AnnProps,Classes,DataProps,Datatypes,Inds,ObjectProps):-
-  assert(M:kb_atom(kbatoms{annotationProperty:AnnProps,class:Classes,dataProperty:DataProps,datatype:Datatypes,individual:Inds,objectProperty:ObjectProps})).
-
-init_kb_atom(M,KB):-
-  assert(M:kb_atom(kbatoms{annotationProperty:KB.annotationProperties,class:KB.classesName,dataProperty:KB.dataProperties,datatype:KB.datatypes,individual:KB.individuals,objectProperty:KB.objectProperties})).
-
+:- multifile set_up_kb_loading/1.
 
 
 % expands query arguments using prefixes and checks their existence in the kb
@@ -210,22 +231,6 @@ from_query_type_to_args_type(un,[class]):- !.
 from_query_type_to_args_type(it,[]):- !.
 
 :- multifile check_query_args_1/5.
-
-/**
- * 
- * AXIOMS SEARCH
- * 
- */
-
-:- multifile get_axiom_subClassOf/3, get_axiom_subPropertyOf/3,
-             get_axiom_equivalentClasses/2, get_axiom_differentIndividuals/2,
-             get_axiom_sameIndividual/2, get_axiom_propertyAssertion/4,
-             get_axiom_classAssertion/3, get_axiom_propertyRange/3,
-             get_axiom_propertyDomain/3, get_axiom_disjointClasses/2,
-             get_axiom_disjointUnion/3, get_axiom_transitiveProperty/2,
-             get_axiom_symmetricProperty/2, get_axiom_inverseProperties/3,
-             get_axiom_equivalentProperties/2, get_axiom_annotationAssertion/4,
-             get_classes_list/2.
 
 % ========================================
 
