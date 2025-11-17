@@ -307,7 +307,6 @@ ontology_parser:remove_kb_prefix(M:A):-
    ).
 
 
-:- multifile ontology_parser:expand_all_ns/4.
 /**
  * expand_all_ns(++Module:string,++Args:list,++NSList:list,--ExpandedArgs:list) is det
  *
@@ -315,10 +314,9 @@ ontology_parser:remove_kb_prefix(M:A):-
  * using the list of prefixes. Finally, it returns the list of expanded strings.
  * It adds names in Args to the list of known elements.
  */
-ontology_parser:expand_all_ns(M,Args,NSList,ExpandedArgs):-
-  ontology_parser:expand_all_ns(M,Args,NSList,true,ExpandedArgs).
+expand_all_ns(M,Args,NSList,ExpandedArgs):-
+  expand_all_ns(M,Args,NSList,true,ExpandedArgs).
 
-:- multifile ontology_parser:expand_all_ns/5.
 /**
  * expand_all_ns(++Module:string,++Args:list,++NSList:list,++AddName:boolean,--ExpandedArgs:list) is det
  *
@@ -326,61 +324,17 @@ ontology_parser:expand_all_ns(M,Args,NSList,ExpandedArgs):-
  * using the list of prefixes. Finally, it returns the list of expanded strings.
  * If AddName is set true it adds names in Args in the list of known elements.
  */
-ontology_parser:expand_all_ns(_M,[],_,_,[]):- !.
+expand_all_ns(_M,[],_,_,[]):- !.
 
-ontology_parser:expand_all_ns(M,[P|T],NSList,AddName,[PNewArgs|NewArgs]):-
+expand_all_ns(M,[P|T],NSList,AddName,[PNewArgs|NewArgs]):-
   is_list(P),!,
-  ontology_parser:expand_all_ns(M,P,NSList,AddName,PNewArgs),
-  ontology_parser:expand_all_ns(M,T,NSList,AddName,NewArgs).
+  expand_all_ns(M,P,NSList,AddName,PNewArgs),
+  expand_all_ns(M,T,NSList,AddName,NewArgs).
 
-ontology_parser:expand_all_ns(M,[P|T],NSList,AddName,[NP|NewArgs]):-
-  expand_argument(M,P,NSList,NP),
-  ontology_parser:expand_all_ns(M,T,NSList,AddName,NewArgs).
-
-/*
 expand_all_ns(M,[P|T],NSList,AddName,[NP|NewArgs]):-
-  compound(P),
-  P =.. [N | Args],!,
-  expand_all_ns(M,Args,NSList,AddName,NewPArgs),
-  NP =.. [N| NewPArgs],
+  expand_argument(M,P,NSList,NP),
   expand_all_ns(M,T,NSList,AddName,NewArgs).
 
-expand_all_ns(M,[H|T],NSList,AddName,[H|NewArgs]):-
-  check_query_arg(M,H),!,
-  expand_all_ns(M,T,NSList,AddName,NewArgs).
-
-expand_all_ns(M,[H|T],NSList,AddName,[NewArg|NewArgs]):-
-  expand_ns4query(M,H,NSList,AddName,NewArg),
-  expand_all_ns(M,T,NSList,AddName,NewArgs).
-
-check_query_arg(M,Arg) :-
-  atomic(Arg),!,
-  trill:axiom(M:Ax),
-  in_axiom(Arg,[Ax]),!,
-  add_kb_atom(M,Arg).
-
-expand_ns4query(M,NS_URL,NSList,AddName, Full_URL):- 
-	nonvar(NS_URL),
-	NS_URL \= literal(_),
-	uri_split(NS_URL,Short_NS,Term, ':'),
-	member((Short_NS=Long_NS),NSList),
-	concat_atom([Long_NS,Term],Full_URL),!,
-	( AddName == true *-> add_kb_atom(M,Full_URL) ; true).
-
-expand_ns4query(M,NS_URL,NSList,AddName, Full_URL):- 
-	nonvar(NS_URL),
-	NS_URL \= literal(_),
-	\+ sub_atom(NS_URL,_,_,_,':'),
-	member(([]=Long_NS),NSList),
-	concat_atom([Long_NS,NS_URL],Full_URL),!,
-	( AddName == true *-> add_kb_atom(M,Full_URL) ; true).
-
-expand_ns4query(_M,URL,_,_,URL).
-*/
-/*
-expand_ns4query(_M,URL,_,_,URL):-
-    var(URL),!.
-*/
 
 
 /********************************
