@@ -422,7 +422,7 @@ ontology_parser:check_query_args_1(M,[_|ATT],[H|T],TEx,[H|NotEx]):-
 % expands query arguments using prefixes and checks their existence in the kb
 check_query_args_2(M,AT,L,LEx) :-
   M:ns4query(NSList),
-  ontology_parser:expand_all_ns(M,L,NSList,false,LEx), %from internal_parser module
+  expand_all_ns(M,L,NSList,false,LEx), %from internal_parser module
   check_query_args_presence(M,AT,LEx).
 
 check_query_args_presence(_M,_AT,[]):-!.

@@ -64,7 +64,7 @@ It also serves as interface for a TRILL parser.
 prolog:message(noJPL) -->
   [ 'JPL not available! Use of old parsing library handling only TRILL syntax and OWL/RDF files.' ].
 
-load_best_library :- 
+load_best_library :- fail,
     use_module(library(jpl)),!,
     set_augmented_classpath,
     use_module(library(javaOWLAPI_parser)).
