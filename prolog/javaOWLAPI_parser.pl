@@ -217,11 +217,23 @@ ontology_parser:get_axiom_annotationAssertion(M,AnnIRI,Ax,AnnVal):-
 
 
 :- multifile ontology_parser:get_classes_list/2.
+/*
+public String[] getClassesList() {
+        Set<OWLClass> classes = ontology.getClassesInSignature();
 
+        // Conversione altamente ottimizzata: Set → String[]
+        // evitando ArrayList temporanei
+        return classes.stream()
+                .map(owlClass -> owlClass.getIRI().toString())
+                .toArray(String[]::new);
+    }
+*/
 ontology_parser:get_classes_list(M,Classes):-
-  M:kb_atom(KBA),
-  Classes=KBA.class.
-
+  get_parser(M,Parser),
+  jpl_call(Parser, 'getClassesList', [], A),
+  jpl_array_to_list(A, Strings),
+  maplist(atom_string, Classes, Strings).
+  
 /********************************
   PREFIXES MANAGEMENT
 *********************************/
@@ -229,8 +241,38 @@ ontology_parser:get_classes_list(M,Classes):-
 % Get the KB's prefixes contained into ns4query
 :- multifile ontology_parser:kb_prefixes/1.
 
-ontology_parser:kb_prefixes(M:L):-
-  M:ns4query(L),!.
+/*
+public Map<String, String> getPrefixes() {
+
+        OWLOntologyManager manager = ontology.getOWLOntologyManager();
+
+        // Ottiene il formato del documento
+        if (manager.getOntologyFormat(ontology) instanceof PrefixDocumentFormat pdf) {
+            return pdf.getPrefixName2PrefixMap();  // ritorna Map<String,String>
+        }
+
+        // Nessun prefisso trovato o formato non compatibile
+        return Map.of();
+    }
+	or better
+
+	public String[] getPrefixesList() {
+    if (ontology.getOWLOntologyManager().getOntologyFormat(ontology) instanceof PrefixDocumentFormat pdf) {
+        Map<String, String> map = pdf.getPrefixName2PrefixMap();
+
+        return map.entrySet().stream()
+                .map(e -> e.getKey() + "=" + e.getValue())
+                .toArray(String[]::new);
+    }
+    return new String[0];
+}
+
+*/
+ontology_parser:kb_prefixes(M:Prefixes):-
+  get_parser(M,Parser),
+  jpl_call(Parser, 'getPrefixesList', [], JavaArray),
+  jpl_array_to_list(JavaArray, Strings),
+  maplist(atom_string, Prefixes, Strings),!.
 
 % Adds a list of kb prefixes into ns4query
 :- multifile ontology_parser:add_kb_prefixes/1.
@@ -244,54 +286,133 @@ ontology_parser:add_kb_prefixes(M:[(H=H1)|T]):-
 % Adds a prefix into ns4query
 :- multifile ontology_parser:add_kb_prefix/2.
 
-ontology_parser:add_kb_prefix(M:'',B):- !,
-  ontology_parser:add_kb_prefix(M:[],B).
+/*
+public boolean addPrefix(String shortPrefix, String iriPrefix) {
 
-ontology_parser:add_kb_prefix(M:A,B):-
-  M:ns4query(L),!,
-  (\+ member((A=_),L) ->
-      (retract(M:ns4query(L)),
-       append(L,[(A=B)],NL),
-       assert(M:ns4query(NL))
-      )
-    ;
-      true
-   ).
+        var manager = ontology.getOWLOntologyManager();
+
+        if (manager.getOntologyFormat(ontology) instanceof PrefixDocumentFormat pdf) {
+
+            // Se lo vuoi sovrascrivere, questo basta
+            pdf.setPrefix(shortPrefix, iriPrefix);
+
+            return true;
+        }
+
+        // L'ontologia non ha un formato con prefissi (es: caricato in NTriples, ecc.)
+        return false;
+    }
+
+	or
+
+	public boolean addPrefix(String shortPrefix, String iriPrefix) {
+
+    var manager = ontology.getOWLOntologyManager();
+
+    if (manager.getOntologyFormat(ontology) instanceof PrefixDocumentFormat pdf) {
+
+        // Prefisso vuoto = default prefix
+        if (shortPrefix == null || shortPrefix.isEmpty()) {
+            pdf.setDefaultPrefix(iriPrefix); // here setDefaultPrefix should be equals to setPrefix("",LongPrefix)
+            return true;
+        }
+
+        // Normalizzazione: se manca ':', aggiungilo
+        if (!shortPrefix.endsWith(":")) {
+            shortPrefix = shortPrefix + ":";
+        }
+
+        pdf.setPrefix(shortPrefix, iriPrefix);
+        return true;
+    }
+
+    return false; // formato ontologia senza supporto prefissi
+}
+	*/
+%% add_prefix(+ShortPrefix, +IriPrefix)
+%% Aggiunge un prefisso all'ontologia tramite Java.
+ontology_parser:add_kb_prefix(M:ShortPrefix,IriPrefix):-
+  get_parser(M,Parser),
+  % Converte gli atomi Prolog in stringhe Java
+    atom_string(ShortPrefix, SP0),
+    atom_string(IriPrefix,   IRI),
+
+    % Caso prefisso vuoto: ""
+    (   SP0 == ""
+    ->  SP = ""                   % lo mandiamo come stringa Java ""
+    ;   % altrimenti assicuriamo che finisca con :
+        ( sub_atom(SP0, _, 1, 0, ":")
+        -> SP = SP0
+        ;  string_concat(SP0, ":", SP)
+        )
+    ),
+
+    % Chiama il metodo Java
+    jpl_call(Parser, 'addPrefix', [SP, IRI], Result),
+
+    ( Result == @true
+    -> true
+    ;  format("WARNING: formato ontologia non supporta prefissi.~n"),
+       fail
+    ).
    
-ontology_parser:add_kb_prefix(M:A,B):-
-  assert(M:ns4query([(A=B)])).
 
 % Removes a prefix from ns4query
+/*
+public boolean removePrefix(String shortPrefix) {
+
+    var manager = ontology.getOWLOntologyManager();
+
+    if (manager.getOntologyFormat(ontology) instanceof PrefixDocumentFormat pdf) {
+
+        // Caso prefisso vuoto (default prefix)
+        if (shortPrefix == null || shortPrefix.isEmpty()) {
+            pdf.clearDefaultPrefix();
+            return true;
+        }
+
+        // Normalizzazione: assicuriamo che il prefisso finisca con ":".
+        if (!shortPrefix.endsWith(":")) {
+            shortPrefix = shortPrefix + ":";
+        }
+
+        // Se il prefisso esiste lo rimuoviamo
+        Map<String, String> map = pdf.getPrefixName2PrefixMap();
+        if (map.containsKey(shortPrefix)) {
+            pdf.clearPrefix(shortPrefix);
+            return true;
+        }
+
+        return false; // prefisso non presente
+    }
+
+    return false; // formato senza gestione prefissi
+}
+*/
 :- multifile ontology_parser:remove_kb_prefix/2.
-ontology_parser:remove_kb_prefix(M:A,B):-
-  M:ns4query(L),!,
-  (member((A=B),L) ->
-      (retract(M:ns4query(L)),
-       delete(L,(A=B),NL),
-       assert(M:ns4query(NL))
-      )
-    ;
-      true
-   ).
+ontology_parser:remove_kb_prefix(M:ShortPrefix,_LongPrefix) :- % TODO check if remove
+  ontology_parser:remove_kb_prefix(M:ShortPrefix).
 
 :- multifile ontology_parser:remove_kb_prefix/1.
 ontology_parser:remove_kb_prefix(M:A):-
-  M:ns4query(L),!,
-  (member((A=B),L) *->
-      (retract(M:ns4query(L)),
-       delete(L,(A=B),NL),
-       assert(M:ns4query(NL))
-      )
-    ;
-      (member((B=A),L),! *->
-        (retract(M:ns4query(L)),
-         delete(L,(B=A),NL),
-         assert(M:ns4query(NL))
+ get_parser(M,Parser),
+    atom_string(ShortPrefix, SP0),
+
+    % Caso prefisso vuoto → default prefix
+    (   SP0 == ""
+    ->  SP = ""
+    ;   % Normalizzazione: deve finire con ":"
+        (   sub_atom(SP0, _, 1, 0, ":")
+        ->  SP = SP0
+        ;   string_concat(SP0, ":", SP)
         )
-      ;
-        true
-     )
-   ).
+    ),
+
+    jpl_call(Parser, 'removePrefix', [SP], Result),
+
+    ( Result == @true
+    -> true
+    ;  fail).
 
 
 /********************************
