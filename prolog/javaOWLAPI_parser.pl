@@ -294,82 +294,6 @@ ontology_parser:remove_kb_prefix(M:A):-
    ).
 
 
-:- multifile ontology_parser:expand_all_ns/4.
-/**
- * expand_all_ns(++Module:string,++Args:list,++NSList:list,--ExpandedArgs:list) is det
- *
- * The predicate takes as input a list containing strings and expands these strings
- * using the list of prefixes. Finally, it returns the list of expanded strings.
- * It adds names in Args to the list of known elements.
- */
-ontology_parser:expand_all_ns(M,Args,NSList,ExpandedArgs):-
-  ontology_parser:expand_all_ns(M,Args,NSList,true,ExpandedArgs).
-
-:- multifile ontology_parser:expand_all_ns/5.
-/**
- * expand_all_ns(++Module:string,++Args:list,++NSList:list,++AddName:boolean,--ExpandedArgs:list) is det
- *
- * The predicate takes as input a list containing strings and expands these strings
- * using the list of prefixes. Finally, it returns the list of expanded strings.
- * If AddName is set true it adds names in Args in the list of known elements.
- */
-ontology_parser:expand_all_ns(_M,[],_,_,[]):- !.
-
-ontology_parser:expand_all_ns(M,[P|T],NSList,AddName,[PNewArgs|NewArgs]):-
-  is_list(P),!,
-  ontology_parser:expand_all_ns(M,P,NSList,AddName,PNewArgs),
-  ontology_parser:expand_all_ns(M,T,NSList,AddName,NewArgs).
-
-ontology_parser:expand_all_ns(M,[P|T],NSList,AddName,[NP|NewArgs]):-
-  expand_argument(M,P,NSList,NP),
-  ontology_parser:expand_all_ns(M,T,NSList,AddName,NewArgs).
-
-/*
-expand_all_ns(M,[P|T],NSList,AddName,[NP|NewArgs]):-
-  compound(P),
-  P =.. [N | Args],!,
-  expand_all_ns(M,Args,NSList,AddName,NewPArgs),
-  NP =.. [N| NewPArgs],
-  expand_all_ns(M,T,NSList,AddName,NewArgs).
-
-expand_all_ns(M,[H|T],NSList,AddName,[H|NewArgs]):-
-  check_query_arg(M,H),!,
-  expand_all_ns(M,T,NSList,AddName,NewArgs).
-
-expand_all_ns(M,[H|T],NSList,AddName,[NewArg|NewArgs]):-
-  expand_ns4query(M,H,NSList,AddName,NewArg),
-  expand_all_ns(M,T,NSList,AddName,NewArgs).
-
-check_query_arg(M,Arg) :-
-  atomic(Arg),!,
-  trill:axiom(M:Ax),
-  in_axiom(Arg,[Ax]),!,
-  add_kb_atom(M,Arg).
-
-expand_ns4query(M,NS_URL,NSList,AddName, Full_URL):- 
-	nonvar(NS_URL),
-	NS_URL \= literal(_),
-	uri_split(NS_URL,Short_NS,Term, ':'),
-	member((Short_NS=Long_NS),NSList),
-	concat_atom([Long_NS,Term],Full_URL),!,
-	( AddName == true *-> add_kb_atom(M,Full_URL) ; true).
-
-expand_ns4query(M,NS_URL,NSList,AddName, Full_URL):- 
-	nonvar(NS_URL),
-	NS_URL \= literal(_),
-	\+ sub_atom(NS_URL,_,_,_,':'),
-	member(([]=Long_NS),NSList),
-	concat_atom([Long_NS,NS_URL],Full_URL),!,
-	( AddName == true *-> add_kb_atom(M,Full_URL) ; true).
-
-expand_ns4query(_M,URL,_,_,URL).
-*/
-/*
-expand_ns4query(_M,URL,_,_,URL):-
-    var(URL),!.
-*/
-
-
 /********************************
   LOAD KNOWLEDGE BASE
 *********************************/
@@ -431,79 +355,18 @@ ontology_parser:check_query_args_1(M,[ATH|ATT],[H|T],[HEx|TEx],NotEx):-
 ontology_parser:check_query_args_1(M,[_|ATT],[H|T],TEx,[H|NotEx]):-
   ontology_parser:check_query_args_1(M,ATT,T,TEx,NotEx).
 
-% expands query arguments using prefixes and checks their existence in the kb
+%% iri_exists_for_entity(+AT, +L, -LEx)
+%  AT  : atom (entity)
+%  L   : atom (input IRI label)
+%  LEx : atom (string form of the resolved IRI)
+%
+%  Succeeds iff OntologyUtils.iriExistsInOntologyGivenEntity(resolveIRI(L), AT)
+%  returns true. Fails otherwise.
 check_query_args_2(M,AT,L,LEx) :-
-  M:ns4query(NSList),
-  ontology_parser:expand_all_ns(M,L,NSList,false,LEx), %from internal_parser module
-  check_query_args_presence(M,AT,LEx).
+  get_parser(M,Parser),
+  expand_IRI(Parser,L,LRef,LRefStr),
+  jpl_call(Parser, 'iriExistsInOntologyGivenEntity', [LRef,AT], @(true)).
 
-check_query_args_presence(_M,_AT,[]):-!.
-
-check_query_args_presence(M,[class|ATT],['http://www.w3.org/2002/07/owl#Thing'|T]) :-
-  check_query_args_presence(M,ATT,T).
-
-check_query_args_presence(M,[AT|ATT],[H|T]) :-
-  nonvar(H),
-  atomic(H),!,
-  find_atom_in_axioms(M,AT,H),%!,
-  check_query_args_presence(M,ATT,T).
-
-check_query_args_presence(M,[AT|ATT],[H|T]) :-
-  nonvar(H),
-  \+ atomic(H),!,
-  H =.. [CE|L],
-  flatten(L,L1),
-  from_expression_to_args_type(CE,AT,L1,ATs),
-  check_query_args_presence(M,ATs,L1),
-  check_query_args_presence(M,ATT,T).
-
-/*
-check_query_args_presence(M,[_|T]):-
-  check_query_args_presence(M,T).
-*/
-
-% looks for presence of atoms in kb's axioms
-find_atom_in_axioms(M,class,H):-
-  M:kb_atom(L1),
-  ( member(H,L1.class) ),!.
-
-find_atom_in_axioms(M,ind,H):-
-  M:kb_atom(L1),
-  ( member(H,L1.individual) ; member(H,L1.datatype) ),!.
-
-find_atom_in_axioms(M,prop,H):-
-  M:kb_atom(L1),
-  ( member(H,L1.objectProperty) ; member(H,L1.dataProperty) ; member(H,L1.annotationProperty) ),!.
-
-find_atom_in_axioms(_,num,H):-
-  integer(H),!.
-
-from_expression_to_args_type(complementOf,class,_,[class]) :- !.
-from_expression_to_args_type(someValuesFrom,class,_,[prop,class]) :- !.
-from_expression_to_args_type(allValuesFrom,class,_,[prop,class]) :- !.
-from_expression_to_args_type(hasValue,class,_,[prop,ind]) :- !.
-from_expression_to_args_type(hasSelf,class,_,[prop]) :- !.
-from_expression_to_args_type(minCardinality,class,[_,_,_],[num,prop,class]) :- !.
-from_expression_to_args_type(minCardinality,class,[_,_],[num,prop]) :- !.
-from_expression_to_args_type(maxCardinality,class,[_,_,_],[num,prop,class]) :- !.
-from_expression_to_args_type(maxCardinality,class,[_,_],[num,prop]) :- !.
-from_expression_to_args_type(exactCardinality,class,[_,_,_],[num,prop,class]) :- !.
-from_expression_to_args_type(exactCardinality,class,[_,_],[num,prop]) :- !.
-from_expression_to_args_type(inverseOf,prop,_,[prop]) :- !.
-from_expression_to_args_type(ExprList,AT,L1,ATs):-
-  is_expr_list(ExprList,AT,ListType),!,
-  create_list(ListType,L1,ATs).
-
-
-is_expr_list(intersectionOf,class,class).
-is_expr_list(unionOf,class,class).
-is_expr_list(oneOf,class,ind).
-is_expr_list(propertyChain,prop,prop).
-
-create_list([],_,[]).
-
-create_list([_|T],AT,[AT|ATT]):-
-  create_list(T,AT,ATT).
 
 /********************************
   PARSER MANAGEMENT
@@ -511,69 +374,20 @@ create_list([_|T],AT,[AT|ATT]):-
 
 :- multifile ontology_parser:set_up_kb_loading/1.
 
-ontology_parser:set_up_kb_loading(M):-
-  retractall(M:kb_atom(_)),
-  init_kb_atom(M),
-  retractall(M:addKBName),
-  assert(M:addKBName),
-  assert(trill_input_mode(M)).
-  %format("Loading knowledge base...~n",[]),
-  %statistics(walltime,[_,_]).
-
-init_kb_atom(M):-
-  assert(M:kb_atom(kbatoms{annotationProperty:[],class:[],dataProperty:[],datatype:[],individual:[],objectProperty:[]})).
-
-init_kb_atom(M,AnnProps,Classes,DataProps,Datatypes,Inds,ObjectProps):-
-  assert(M:kb_atom(kbatoms{annotationProperty:AnnProps,class:Classes,dataProperty:DataProps,datatype:Datatypes,individual:Inds,objectProperty:ObjectProps})).
-
-init_kb_atom(M,KB):-
-  assert(M:kb_atom(kbatoms{annotationProperty:KB.annotationProperties,class:KB.classesName,dataProperty:KB.dataProperties,datatype:KB.datatypes,individual:KB.individuals,objectProperty:KB.objectProperties})).
-
+% Do nothing at the moment
+ontology_parser:set_up_kb_loading(_M).
 
 :- multifile ontology_parser:clean_up_parser/1.
 
 ontology_parser:clean_up_parser(M):-
-  rdf_reset_db,
-  M:(dynamic class/1, datatype/1, objectProperty/1, dataProperty/1, annotationProperty/1),
-  M:(dynamic namedIndividual/1, anonymousIndividual/1, subClassOf/2, equivalentClasses/1, disjointClasses/1, disjointUnion/2),
-  M:(dynamic subPropertyOf/2, equivalentProperties/1, disjointProperties/1, inverseProperties/2, propertyDomain/2, propertyRange/2),
-  M:(dynamic functionalProperty/1, inverseFunctionalProperty/1, reflexiveProperty/1, irreflexiveProperty/1, symmetricProperty/1, asymmetricProperty/1, transitiveProperty/1, hasKey/2),
-  M:(dynamic sameIndividual/1, differentIndividuals/1, classAssertion/2, propertyAssertion/3, negativePropertyAssertion/3),
-  M:(dynamic annotationAssertion/3, annotation/3, ontology/1, ontologyAxiom/2, ontologyImport/2, ontologyVersionInfo/2),
-  M:(dynamic owl/4, owl/3, owl/2, blanknode/3, outstream/1, aNN/3, annotation_r_node/4, axiom_r_node/4, owl_repository/2, trdf_setting/2),
-  M:(dynamic ns4query/1),
-  retractall(M:kb_atom([])),
-  forall(ontology_parser:axiom(M:A),retractall(M:A)),
-  retractall(M:blanknode(_,_,_)),
-  retractall(M:aNN(_,_,_)),
-  retractall(M:annotation_r_node(_,_,_)),
-  retractall(M:axiom_r_node(_,_,_)),
-  retractall(M:annotation(_,_,_)),
-  retractall(M:owl(_,_,_)),
-  retractall(M:owl(_,_,_,_)),
-  retractall(M:owl(_,_)),
-  retractall(M:ontologyAxiom(_,_)),
-  retractall(M:ontologyImport(_,_)),
-  retractall(M:ontologyVersionInfo(_,_)),
-  retractall(M:rdf(_,_,_)).
+  jpl_call(Parser, 'resetParser', [], @(void)),
+  retractall(M:javaOWLAPI_ontology_wrapper(_)).  
 
 
 :- multifile ontology_parser:set_up_parser/1.
 
 ontology_parser:set_up_parser(M):-
-  M:(dynamic class/1, datatype/1, objectProperty/1, dataProperty/1, annotationProperty/1),
-  M:(dynamic namedIndividual/1, anonymousIndividual/1, subClassOf/2, equivalentClasses/1, disjointClasses/1, disjointUnion/2),
-  M:(dynamic subPropertyOf/2, equivalentProperties/1, disjointProperties/1, inverseProperties/2, propertyDomain/2, propertyRange/2),
-  M:(dynamic functionalProperty/1, inverseFunctionalProperty/1, reflexiveProperty/1, irreflexiveProperty/1, symmetricProperty/1, asymmetricProperty/1, transitiveProperty/1, hasKey/2),
-  M:(dynamic sameIndividual/1, differentIndividuals/1, classAssertion/2, propertyAssertion/3, negativePropertyAssertion/3),
-  M:(dynamic annotationAssertion/3, annotation/3, ontology/1, ontologyAxiom/2, ontologyImport/2, ontologyVersionInfo/2),
-  M:(dynamic owl/4, owl/3, owl/2, blanknode/3, outstream/1, aNN/3, annotation_r_node/4, axiom_r_node/4, owl_repository/2, trdf_setting/2),
-  M:(dynamic ns4query/1, addKBName/0),
-  retractall(M:addKBName).
-  %retractall(M:rules(_,_)),
-  %assert(M:rules([],[])),
-  %retractall(M:expressivity(_,_)),
-  %assert(M:expressivity(1,[0,0,0,0,0,0])).
+  internal_parser_init(M).
 
 
 /* ************************************** */
@@ -619,3 +433,8 @@ internal_parser_init(M) :-
   retractall(M:javaOWLAPI_ontology_wrapper(_)),
   jpl_new('it.unife.ml.probowlapi.trill.TRILLOWLAPIOntologyWrapper',[],JRef),
   assert(M:javaOWLAPI_ontology_wrapper(JRef)).
+
+expand_IRI(Parser,L,LRef,LRefStr):-
+  jpl_call(Parser, 'resolveIRI', [L], LRef),
+  jpl_call(LRef, 'toString', [], LRefStr),
+  atom_string(LEx, LRefStr).

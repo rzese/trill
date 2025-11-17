@@ -8,8 +8,7 @@ It also serves as interface for a TRILL parser.
 @copyright Riccardo Zese
 */
 
-:- module(ontology_parser, [expand_all_ns/4, expand_all_ns/5,
-                           is_axiom/1, axiom/1, kb_prefixes/1,
+:- module(ontology_parser, [is_axiom/1, axiom/1, kb_prefixes/1,
                            add_kb_prefix/2, add_kb_prefixes/1, remove_kb_prefix/2, remove_kb_prefix/1,
                            add_axiom/1, add_axioms/1, remove_axiom/1, remove_axioms/1,
                            load_kb/1, load_owl_kb/1, load_owl_kb_from_string/1,
@@ -203,7 +202,7 @@ set_augmented_classpath :-
   LOAD KNOWLEDGE BASE
 *********************************/
 
-:- multifile load_kb/1, load_owl_kb/1, load_owl_kb_from_string/1, expand_all_ns/4, expand_all_ns/5, is_axiom/1.
+:- multifile load_kb/1, load_owl_kb/1, load_owl_kb_from_string/1, is_axiom/1.
 
 :- multifile set_up_kb_loading/1.
 
@@ -244,8 +243,6 @@ from_query_type_to_args_type(it,[]):- !.
 sandbox:safe_primitive(ontology_parser:load_kb(_)).
 sandbox:safe_primitive(ontology_parser:load_owl_kb(_)).
 sandbox:safe_primitive(ontology_parser:load_owl_kb_from_string(_)).
-sandbox:safe_primitive(ontology_parser:expand_all_ns(_,_,_,_)).
-sandbox:safe_primitive(ontology_parser:expand_all_ns(_,_,_,_,_)).
 sandbox:safe_primitive(ontology_parser:is_axiom(_)).
 sandbox:safe_meta(ontology_parser:axiom(_),[]).
 sandbox:safe_meta(ontology_parser:kb_prefixes(_),[]).
