@@ -63,7 +63,7 @@ ontology_parser:add_axiom(M:Ax):-
   %init_kb_atom(M),
   create_and_assert_axioms(M,Ax),!,
   retractall(M:addKBName),
-  ontology_parser:update_tabs(M,Ax),!.
+  trill:update_tabs(M,Ax),!.
 
 prolog:message(axiom_not_added(Ax,M)) -->
   [ 'Problems in adding axiom ~w ~w' -[Ax,M] ].

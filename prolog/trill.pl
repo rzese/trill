@@ -374,6 +374,11 @@ collect_individuals(_,it,['inconsistent','kb'],[]):-!.
 /*
   check the KB atoms to consider only the necessary expansion rules, pruning the useless ones
 */
+prune_tableau_rules(M):-write('dummy prune rule'),!,
+  setting_trill_default(det_rules,DetRules),
+  setting_trill_default(nondet_rules,NondetRules),
+  set_tableau_expansion_rules(M:DetRules,NondetRules).
+
 prune_tableau_rules(M):-
   get_classes_list(M,Classes0),
   add_class_from_query_monitor(M,Classes0,Classes),
@@ -3079,7 +3084,7 @@ unload_all_algorithms :-
 set_algorithm(M:trill):-
   unload_all_algorithms,
   consult(library(trill_internal)),
-  clean_up(M),!.
+  clean_up(M),!,set_up(M).
 
 set_algorithm(M:trillp):-
   unload_all_algorithms,
@@ -4171,7 +4176,7 @@ sandbox:safe_meta(trill:compute_query_prob(_),[]).
 sandbox:safe_meta(trill:reset_query,[]).
 sandbox:safe_meta(trill:set_tableau_expansion_rules(_,_),[]).
 
-:- use_module(library(ontology_parser)).
+:- use_module(library(ontology_parser_test1)).
 
 user:term_expansion((:- trill),[]):-
   get_module(M),

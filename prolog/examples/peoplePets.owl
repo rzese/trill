@@ -1,0 +1,216 @@
+<?xml version="1.0"?>
+<rdf:RDF xmlns="http://cohse.semanticweb.org/ontologies/people#"
+     xml:base="http://cohse.semanticweb.org/ontologies/people"
+     xmlns:owl="http://www.w3.org/2002/07/owl#"
+     xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+     xmlns:xml="http://www.w3.org/XML/1998/namespace"
+     xmlns:xsd="http://www.w3.org/2001/XMLSchema#"
+     xmlns:rdfs="http://www.w3.org/2000/01/rdf-schema#"
+     xmlns:disponte="https://sites.google.com/a/unife.it/ml/disponte#">
+    <owl:Ontology rdf:about="http://cohse.semanticweb.org/ontologies/people"/>
+    
+
+
+    <!-- 
+    ///////////////////////////////////////////////////////////////////////////////////////
+    //
+    // Annotation properties
+    //
+    ///////////////////////////////////////////////////////////////////////////////////////
+     -->
+
+    
+
+
+    <!-- http://cohse.semanticweb.org/ontologies/people#is_animal_of -->
+
+    <owl:AnnotationProperty rdf:about="http://cohse.semanticweb.org/ontologies/people#is_animal_of"/>
+    
+
+
+    <!-- https://sites.google.com/a/unife.it/ml/disponte#probability -->
+
+    <owl:AnnotationProperty rdf:about="https://sites.google.com/a/unife.it/ml/disponte#probability"/>
+    
+
+
+    <!-- 
+    ///////////////////////////////////////////////////////////////////////////////////////
+    //
+    // Object Properties
+    //
+    ///////////////////////////////////////////////////////////////////////////////////////
+     -->
+
+    
+
+
+    <!-- http://cohse.semanticweb.org/ontologies/people#has_animal -->
+
+    <owl:ObjectProperty rdf:about="http://cohse.semanticweb.org/ontologies/people#has_animal">
+        <owl:inverseOf rdf:resource="http://cohse.semanticweb.org/ontologies/people#is_animal_of"/>
+        <rdfs:comment></rdfs:comment>
+        <rdfs:label>has_animal</rdfs:label>
+    </owl:ObjectProperty>
+    
+
+
+    <!-- http://cohse.semanticweb.org/ontologies/people#is_animal_of -->
+
+    <owl:ObjectProperty rdf:about="http://cohse.semanticweb.org/ontologies/people#is_animal_of"/>
+    
+
+
+    <!-- 
+    ///////////////////////////////////////////////////////////////////////////////////////
+    //
+    // Classes
+    //
+    ///////////////////////////////////////////////////////////////////////////////////////
+     -->
+
+    
+
+
+    <!-- http://cohse.semanticweb.org/ontologies/people#cat -->
+
+    <owl:Class rdf:about="http://cohse.semanticweb.org/ontologies/people#cat">
+        <rdfs:subClassOf rdf:resource="http://cohse.semanticweb.org/ontologies/people#pet"/>
+    </owl:Class>
+    
+
+
+    <!-- http://cohse.semanticweb.org/ontologies/people#dinosaur -->
+
+    <owl:Class rdf:about="http://cohse.semanticweb.org/ontologies/people#dinosaur">
+        <rdfs:subClassOf rdf:resource="http://cohse.semanticweb.org/ontologies/people#pet"/>
+    </owl:Class>
+    
+
+
+    <!-- http://cohse.semanticweb.org/ontologies/people#dog -->
+
+    <owl:Class rdf:about="http://cohse.semanticweb.org/ontologies/people#dog">
+        <rdfs:subClassOf rdf:resource="http://cohse.semanticweb.org/ontologies/people#pet"/>
+        <rdfs:comment></rdfs:comment>
+        <rdfs:label>dog</rdfs:label>
+    </owl:Class>
+    
+
+
+    <!-- http://cohse.semanticweb.org/ontologies/people#natureLover -->
+
+    <owl:Class rdf:about="http://cohse.semanticweb.org/ontologies/people#natureLover"/>
+    
+
+
+    <!-- http://cohse.semanticweb.org/ontologies/people#pet -->
+
+    <owl:Class rdf:about="http://cohse.semanticweb.org/ontologies/people#pet"/>
+    
+
+
+    <!-- 
+    ///////////////////////////////////////////////////////////////////////////////////////
+    //
+    // Individuals
+    //
+    ///////////////////////////////////////////////////////////////////////////////////////
+     -->
+
+    
+
+
+    <!-- http://cohse.semanticweb.org/ontologies/people#Dino -->
+
+    <owl:NamedIndividual rdf:about="http://cohse.semanticweb.org/ontologies/people#Dino">
+        <rdf:type rdf:resource="http://cohse.semanticweb.org/ontologies/people#dinosaur"/>
+        <rdfs:comment></rdfs:comment>
+        <rdfs:label>Dino</rdfs:label>
+    </owl:NamedIndividual>
+    
+
+
+    <!-- http://cohse.semanticweb.org/ontologies/people#Fluffy -->
+
+    <owl:NamedIndividual rdf:about="http://cohse.semanticweb.org/ontologies/people#Fluffy">
+        <rdf:type rdf:resource="http://cohse.semanticweb.org/ontologies/people#cat"/>
+        <rdfs:comment></rdfs:comment>
+        <rdfs:label>Fuffy</rdfs:label>
+    </owl:NamedIndividual>
+    <owl:Axiom>
+        <owl:annotatedSource rdf:resource="http://cohse.semanticweb.org/ontologies/people#Fluffy"/>
+        <owl:annotatedProperty rdf:resource="http://www.w3.org/1999/02/22-rdf-syntax-ns#type"/>
+        <owl:annotatedTarget rdf:resource="http://cohse.semanticweb.org/ontologies/people#cat"/>
+        <disponte:probability>0.4</disponte:probability>
+    </owl:Axiom>
+    
+
+
+    <!-- http://cohse.semanticweb.org/ontologies/people#Fred -->
+
+    <owl:NamedIndividual rdf:about="http://cohse.semanticweb.org/ontologies/people#Fred">
+        <has_animal rdf:resource="http://cohse.semanticweb.org/ontologies/people#Dino"/>
+        <rdfs:comment></rdfs:comment>
+        <rdfs:label>Fred</rdfs:label>
+    </owl:NamedIndividual>
+    
+
+
+    <!-- http://cohse.semanticweb.org/ontologies/people#Kevin -->
+
+    <owl:NamedIndividual rdf:about="http://cohse.semanticweb.org/ontologies/people#Kevin">
+        <has_animal rdf:resource="http://cohse.semanticweb.org/ontologies/people#Fluffy"/>
+        <has_animal rdf:resource="http://cohse.semanticweb.org/ontologies/people#Tom"/>
+        <rdfs:comment></rdfs:comment>
+        <rdfs:label>Kevin</rdfs:label>
+    </owl:NamedIndividual>
+    
+
+
+    <!-- http://cohse.semanticweb.org/ontologies/people#Spike -->
+
+    <owl:NamedIndividual rdf:about="http://cohse.semanticweb.org/ontologies/people#Spike">
+        <rdf:type rdf:resource="http://cohse.semanticweb.org/ontologies/people#dog"/>
+        <is_animal_of rdf:resource="http://cohse.semanticweb.org/ontologies/people#Kevin"/>
+        <rdfs:comment></rdfs:comment>
+        <rdfs:label>Spike</rdfs:label>
+    </owl:NamedIndividual>
+    
+
+
+    <!-- http://cohse.semanticweb.org/ontologies/people#Tom -->
+
+    <owl:NamedIndividual rdf:about="http://cohse.semanticweb.org/ontologies/people#Tom">
+        <rdf:type rdf:resource="http://cohse.semanticweb.org/ontologies/people#cat"/>
+        <rdfs:comment></rdfs:comment>
+        <rdfs:label>Tom</rdfs:label>
+    </owl:NamedIndividual>
+    <owl:Axiom>
+        <owl:annotatedSource rdf:resource="http://cohse.semanticweb.org/ontologies/people#Tom"/>
+        <owl:annotatedProperty rdf:resource="http://www.w3.org/1999/02/22-rdf-syntax-ns#type"/>
+        <owl:annotatedTarget rdf:resource="http://cohse.semanticweb.org/ontologies/people#cat"/>
+        <disponte:probability>0.3</disponte:probability>
+    </owl:Axiom>
+    
+
+
+    <!-- 
+    ///////////////////////////////////////////////////////////////////////////////////////
+    //
+    // General axioms
+    //
+    ///////////////////////////////////////////////////////////////////////////////////////
+     -->
+
+    <owl:Restriction>
+        <owl:onProperty rdf:resource="http://cohse.semanticweb.org/ontologies/people#has_animal"/>
+        <owl:someValuesFrom rdf:resource="http://cohse.semanticweb.org/ontologies/people#pet"/>
+        <rdfs:subClassOf rdf:resource="http://cohse.semanticweb.org/ontologies/people#natureLover"/>
+    </owl:Restriction>
+</rdf:RDF>
+
+
+
+<!-- Generated by the OWL API (version 4.5.26.2023-07-17T20:34:13Z) https://github.com/owlcs/owlapi -->
+
