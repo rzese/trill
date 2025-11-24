@@ -24,6 +24,8 @@ http://vangelisv.github.io/thea/
 
 :- use_module(library(trill_utility)).
 
+:- style_check(-discontiguous).
+
 
 /*****************************/
 

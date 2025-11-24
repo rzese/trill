@@ -65,7 +65,6 @@ details.
 :- use_module(library(aggregate)).
 
 :- use_module(library(trill_utility)).
-:-use_module(library(ontology_parser)).
 
 :- reexport(library(bddem)).
 
@@ -96,7 +95,7 @@ disponte_iri('https://ai.unife.it/disponte#probability').
  *                   maintains the referene to the ontology erapper during the entire inference
  *    - wrapper   -> uses Java OWLAPI to parse the ontology and saves the axioms n the Prolog DB
  */
-setting_trill_default(parser,internal).
+setting_trill_default(parser,wrapper).
 
 
 /*****************************
@@ -4243,6 +4242,8 @@ load_parser_module(Parser):- %Fallback to internal
   unload_all_parsers,
   ( dif(Parser,internal) -> print_message(warning, wrong_parser(Parser)) ; true ),
   use_module(library(ontology_parser)),write('ontology_parser').
+
+%:- use_module(library(ontology_parser)).
 
 user:term_expansion((:- trill),[]):-
   init_trill(trill).
