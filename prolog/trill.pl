@@ -23,7 +23,7 @@ details.
                  unsat/1, unsat/2, prob_unsat/2, unsat/3, all_unsat/2,
                  inconsistent_theory/0, inconsistent_theory/1, prob_inconsistent_theory/1, inconsistent_theory/2, all_inconsistent_theory/1,
                  resume_query/1, compute_query_prob/1, reset_query/0,
-                 init_trill/1, set_tableau_expansion_rules/2] ).
+                 init_trill/1, set_tableau_expansion_rules/2, set_parser/1] ).
 
 :- meta_predicate sub_class(:,+).
 :- meta_predicate sub_class(:,+,-).
@@ -53,6 +53,7 @@ details.
 :- meta_predicate compute_query_prob(:).
 :- meta_predicate init_trill(+).
 :- meta_predicate set_tableau_expansion_rules(:,+).
+:- meta_predicate set_parser(:).
 
 :- use_module(library(lists)).
 :- use_module(library(ugraphs)).
@@ -111,6 +112,20 @@ set_tableau_expansion_rules(M:DetRules,NondetRules):-
   retractall(M:setting_trill(nondet_rules,_)),
   assert(M:setting_trill(det_rules,DetRules)),
   assert(M:setting_trill(nondet_rules,NondetRules)).
+
+/**
+ * set_parser(:Parser:atom) is det
+ * 
+ * This predicate set the parser trill uses to read teh ontology files.
+ * - possible values:
+ *    - internal  -> old version of the parser, based on Thea library
+ *    - java      -> newest version, stores the ontology in Java and
+ *                   maintains the referene to the ontology erapper during the entire inference
+ *    - wrapper   -> uses Java OWLAPI to parse the ontology and saves the axioms n the Prolog DB
+ */
+set_parser(M:Parser):-
+  retractall(M:setting_trill(parser,_)),
+  assert(M:setting_trill(parser,Parser)).
 
 /*****************************
   MESSAGES
@@ -4185,19 +4200,19 @@ sandbox:safe_meta(trill:resume_query(_),[]).
 sandbox:safe_meta(trill:compute_query_prob(_),[]).
 sandbox:safe_meta(trill:reset_query,[]).
 sandbox:safe_meta(trill:set_tableau_expansion_rules(_,_),[]).
-
-load_parser :-
-  setting_trill_default(parser,V),
-  load_parser_module(V).
+sandbox:safe_meta(trill:set_parser(_),[]).
 
 load_parser_module(wrapper):-
-  use_module(library(ontology_parser_test1)).
+  use_module(library(ontology_parser_test1)),write('ontology_parser_test1').
 load_parser_module(internal):-
-  use_module(library(ontology_parser)).
-
-:- use_module(library(ontology_parser_test1)).
+  use_module(library(ontology_parser)),write('ontology_parser').
 
 user:term_expansion((:- trill),[]):-
+  init_trill(trill).
+
+user:term_expansion((:- trill(A)),[]):-
+  set_parser(A),
+  load_parser_module(A),
   init_trill(trill).
 
 user:term_expansion((:- trillp),[]):-
