@@ -14,7 +14,7 @@ This module gives utility predicates for all the otehr modules.
 
 sandbox:safe_meta(trill_utility:get_module(),[]).
 
-get_module(M):-
+get_module(M):- 
   pengine_self(Self),
   pengine_property(Self,module(M)),!.  
 get_module(M):- !,

@@ -1,9 +1,12 @@
 :- module(ontology_parser_test1,
-          [ load_owl/1,
-            load_owl_from_string/1,
-            expand_all_ns/4,
-            expand_all_ns/5,
-            is_axiom/1,
+          [ load_kb/1,
+            load_owl_kb/1,
+            load_owl_kb_from_string/1,
+            % ====
+            % expand_all_ns/4,
+            % expand_all_ns/5,
+            % ====
+            axiom/1,
             % multifile API used by trill.pl
             kb_prefixes/1,
             add_kb_prefix/2,
@@ -16,15 +19,18 @@
             remove_axioms/1,
             %---------
             check_query_args/4,
-            set_up_parser/1,clean_up_parser/1,
-            get_axiom_subClassOf/3, get_axiom_subPropertyOf/3,
-                           get_axiom_equivalentClasses/2, get_axiom_differentIndividuals/2,
-                           get_axiom_sameIndividual/2, get_axiom_propertyAssertion/4,
-                           get_axiom_classAssertion/3, get_axiom_propertyRange/3,
-                           get_axiom_propertyDomain/3, get_axiom_disjointClasses/2,
-                           get_axiom_disjointUnion/3, get_axiom_transitiveProperty/2,
-                           get_axiom_symmetricProperty/2, get_axiom_inverseProperties/3,
-                           get_axiom_equivalentProperties/2, get_axiom_annotationAssertion/4
+            set_up_parser/1, clean_up_parser/1,
+            get_axiom_subClassOf/3, get_axiom_equivalentClasses/2,
+            get_axiom_disjointClasses/2, get_axiom_disjointUnion/3,
+            get_axiom_subPropertyOf/3, get_axiom_equivalentProperties/2,
+            get_axiom_differentIndividuals/2, get_axiom_sameIndividual/2,
+            get_axiom_classAssertion/3, get_axiom_propertyAssertion/4,
+            get_axiom_propertyRange/3, get_axiom_propertyDomain/3, 
+            get_axiom_transitiveProperty/2,
+            get_axiom_symmetricProperty/2, get_axiom_inverseProperties/3,
+            get_axiom_annotationAssertion/4,
+            %---------
+            get_classes_list/2
           ]).
 
 /** <module> TRILL translation utilities backed by OWL API (via JPL)
@@ -45,11 +51,44 @@ Requires:
 :- use_module(library(apply)).
 :- use_module(library(readutil)).
 
+:- use_module(library(trill_utility)).
+
+
+:- meta_predicate axiom(:).
+:- meta_predicate kb_prefixes(:).
+:- meta_predicate add_kb_prefix(:,+).
+:- meta_predicate add_kb_prefixes(:).
+:- meta_predicate add_axiom(:).
+:- meta_predicate add_axioms(:).
+:- meta_predicate remove_kb_prefix(:,+).
+:- meta_predicate remove_kb_prefix(:).
+:- meta_predicate remove_axiom(:).
+:- meta_predicate remove_axioms(:).
+:- meta_predicate load_kb(+).
+:- meta_predicate load_owl_kb(+).
+:- meta_predicate load_owl_kb_from_string(+).
+:- meta_predicate check_query_args(+,+,+,-).
+:- meta_predicate get_axiom_subClassOf(+,-,-).
+:- meta_predicate get_axiom_subPropertyOf(+,-,-).
+:- meta_predicate get_axiom_equivalentClasses(+,-).
+:- meta_predicate get_axiom_differentIndividuals(+,-).
+:- meta_predicate get_axiom_sameIndividual(+,-). 
+:- meta_predicate get_axiom_propertyAssertion(+,-,-,-).
+:- meta_predicate get_axiom_classAssertion(+,-,-). 
+:- meta_predicate get_axiom_propertyRange(+,-,-).
+:- meta_predicate get_axiom_propertyDomain(+,-,-). 
+:- meta_predicate get_axiom_disjointClasses(+,-).
+:- meta_predicate get_axiom_disjointUnion(+,-,-). 
+:- meta_predicate get_axiom_transitiveProperty(+,-).
+:- meta_predicate get_axiom_symmetricProperty(+,-). 
+:- meta_predicate get_axiom_inverseProperties(+,-,-).
+:- meta_predicate get_axiom_equivalentProperties(+,-). 
+:- meta_predicate get_axiom_annotationAssertion(+,-,-,-).
 
 init_java_bridge :-
     % Point to your assembled JAR (jar-with-dependencies)
-    NewFolder = './prob-owlapi-2.0.8.jar',
-
+    absolute_file_name(library('prob-owlapi-2.0.8.jar'), NewFolder, [access(read)]),
+    
     % Get existing CLASSPATH env var (not the JVM one, but often aligns)
     (   getenv('CLASSPATH', ExistingCP)
     ->  true
@@ -66,54 +105,59 @@ init_java_bridge :-
 
 % -------- dynamic/multifile datastore (per module) -----------------
 
-:- multifile  axiom/1.
-:- dynamic    axiom/1.
-
 % We store prefixes as kb_prefix/2 and expose them through kb_prefixes/1
-:- dynamic    kb_prefix/2.
 :- multifile  kb_prefixes/1.
 
 % -------- public API expected by trill.pl --------------------------
 % trill.pl declares these as multifile; we define them here to keep the same API
 % See the header of trill.pl for the corresponding meta_predicates. 
 
-kb_prefixes(Pairs) :-
-    findall(S=IRI, kb_prefix(S, IRI), Pairs).
+kb_prefixes(M:Pairs) :-
+    findall(S=IRI, M:kb_prefix(S, IRI), Pairs).
 
-add_kb_prefix(Short, Long) :-
+add_kb_prefix(M:Short, Long) :-
     must_be(atom, Short), must_be(atom, Long),
-    retractall(kb_prefix(Short, _)),
-    assertz(kb_prefix(Short, Long)).
+    retractall(M:kb_prefix(Short, _)),
+    assertz(M:kb_prefix(Short, Long)).
 
-add_kb_prefixes(Pairs) :-
+add_kb_prefixes(M:Pairs) :-
     must_be(list, Pairs),
-    maplist(add_kb_prefix_pair, Pairs).
+    maplist(add_kb_prefix_pair(M), Pairs).
 
-add_kb_prefix_pair(Short=Long) :- add_kb_prefix(Short, Long).
+add_kb_prefix_pair(M, Short=Long) :- add_kb_prefix(M:Short, Long).
 
-remove_kb_prefix(Short, Long) :-
-    retractall(kb_prefix(Short, Long)).
+remove_kb_prefix(M:Short, Long) :-
+    retractall(M:kb_prefix(Short, Long)).
 
-remove_kb_prefix(NameOrIRI) :-
-    (   retractall(kb_prefix(NameOrIRI, _))
-    ;   retractall(kb_prefix(_, NameOrIRI))
+remove_kb_prefix(M:NameOrIRI) :-
+    (   retractall(M:kb_prefix(NameOrIRI, _))
+    ;   retractall(M:kb_prefix(_, NameOrIRI))
     ), !.
 
-add_axiom(Axiom) :-
+add_axiom(M:Axiom) :-
+    M:adb(Axiom),!.
+
+add_axiom(M:Axiom) :-
     is_axiom(Axiom),
-    user:assertz(axiom(Axiom)),
-    trill:update_tabs(user,Axiom).
+    assertz(M:adb(Axiom)),
+    trill:update_tabs(M,Axiom).
 
-add_axioms(Axioms) :-
+add_axiom(M,Axiom) :-
+  is_axiom(Axiom),
+  assertz(M:adb(Axiom)).
+
+add_axioms(M:Axioms) :-
     must_be(list, Axioms),
-    maplist(add_axiom, Axioms).
+    concurrent_maplist(add_axiom(M), Axioms).
 
-remove_axiom(Axiom) :-
-    retractall(user:axiom(Axiom)).
+remove_axiom(M:Axiom) :-
+    retractall(M:adb(Axiom)).
 
-remove_axioms(Axioms) :-
+remove_axiom(M,Axiom) :- remove_axiom(M:Axiom).
+
+remove_axioms(M:Axioms) :-
     must_be(list, Axioms),
-    maplist(remove_axiom, Axioms).
+    concurrent_maplist(remove_axiom(M), Axioms).
 
 % -------- namespace expansion helpers (used by manual and trill) ---
 % These keep the interface provided previously by the Translation Utilities
@@ -133,89 +177,107 @@ ns_expand_term(NSList, TermIn, TermOut) :-
     ->  ns_expand_atomic(NSList, TermIn, TermOut)
     ;   TermIn =.. [F|As],
         maplist(ns_expand_term(NSList), As, AsE),
-        ns_expand_atomic(NSList, F, FE),
-        TermOut =.. [FE|AsE]
+        % ns_expand_atomic(NSList, F, FE), % Expansion of the predicate
+        % TermOut =.. [FE|AsE]
+        TermOut =.. [F|AsE]
     ).
 
 ns_expand_atomic(NSList, A, Out) :-
     (   atom(A),
-        sub_atom(A, B, _, C, ':'), B>0, C>=0
-    ->  sub_atom(A, 0, B, _, Pref),
-        sub_atom(A, _, C, 0, Local),
-        (   memberchk(Pref=IRI, NSList)
-        ->  atomic_list_concat([IRI, Local], Out)
-        ;   Out = A
+        sub_atom(A, B, _, C, ':') 
+        -> (  B>0, C>=0
+            ->  sub_atom(A, 0, B, _, Pref),
+            sub_atom(A, _, C, 0, Local),
+            (   memberchk(Pref=IRI, NSList)
+            ->  atomic_list_concat([IRI, Local], Out)
+            ;   Out = A
+            )
+        ; Out = A
         )
-    ;   Out = A
+    ;   atomic_list_concat([':', A], Out)
     ).
 
 % -------- OWL loader entry points (Java -> Prolog) -----------------
 
 %% load_owl(+FileName:atom) is det.
 %  Parse ontology from a file using Java OWL API and assert axioms/prefixes.
-load_owl(File) :-
+load_kb(File) :-
+    get_module(M),
     must_be(atom, File),
-    retractall(axiom(_)),
-    retractall(kb_prefix(_, _)),
+    %retractall(M:adb(_)),
+    %retractall(M:kb_prefix(_, _)),
     jpl_call('it.unife.ml.probowlapi.trill.TrillTest1',
              'parseOntologyFile',
              [File],
              JRes),
-    bridge_assert_result(JRes).
+    bridge_assert_result(M,JRes).
 
-%% load_owl_from_string(+RDFOrFunctional:atom) is det.
+load_owl_kb(FileName):-
+  load_kb(FileName).
+
+%% load_owl_kb_from_string(+RDFOrFunctional:atom) is det.
 %  Parse ontology from a string (RDF/XML, Turtle, OWL Functional, …) via OWL API.
-load_owl_from_string(String) :-
+load_owl_kb_from_string(String) :-
+    get_module(M),
     must_be(atom, String),
-    retractall(axiom(_)),
-    retractall(kb_prefix(_, _)),
+    %retractall(M:adb(_)),
+    %retractall(M:kb_prefix(_, _)),
     jpl_call('it.unife.ml.probowlapi.trill.TrillTest1',
              'parseOntologyString',
              [String],
              JRes),
-    bridge_assert_result(JRes).
+    bridge_assert_result(M, JRes).
 
 % -------- bridge result decoding -----------------------------------
 
 % JRes is an instance of it.unife.ml.probowlapi.trill.TrillTest1$Result
 % with public fields: axioms (String[]), prefixes (String[] of "short=IRI")
-bridge_assert_result(JRes) :-
+bridge_assert_result(M,JRes) :-
     % prefixes
     jpl_get(JRes, prefixes, JPrefArray),
     jpl_array_to_list(JPrefArray, PrefListJava),
-    maplist(assert_prefix_from_java, PrefListJava),
+    maplist(assert_prefix_from_java(M), PrefListJava),
     % axioms
     jpl_get(JRes, axioms, JAxiomArray),
     jpl_array_to_list(JAxiomArray, AxiomStrings),
-    maplist(assert_axiom_from_string, AxiomStrings),
+    maplist(assert_axiom_from_string(M), AxiomStrings),
     % entity
     jpl_get(JRes, classes, JClassArray),
     jpl_array_to_list(JClassArray, ClassStrings),
-    maplist(atom_to_term,ClassStrings,ClassStringsT,_),
+    concurrent_maplist(atom_to_term,ClassStrings,ClassStringsT,_),
     jpl_get(JRes, properties, JPropArray),
     jpl_array_to_list(JPropArray, PropStrings),
-    maplist(atom_to_term,PropStrings,PropStringsT,_),
+    concurrent_maplist(atom_to_term,PropStrings,PropStringsT,_),
     jpl_get(JRes, individuals, JIndArray),
     jpl_array_to_list(JIndArray, IndStrings),
-    maplist(atom_to_term,IndStrings,IndStringsT,_),
-    assert(user:kb_atom(kbatoms{annotationProperty:[],class:ClassStringsT,dataProperty:[],datatype:[],individual:IndStringsT,objectProperty:PropStringsT})).
+    concurrent_maplist(atom_to_term,IndStrings,IndStringsT,_),
+    jpl_get(JRes, annotationProperty, JAnPropArray),
+    jpl_array_to_list(JAnPropArray, AnPropStrings),
+    concurrent_maplist(atom_to_term,AnPropStrings,AnPropStringsT,_),
+    jpl_get(JRes, dataProperty, JDataPropArray),
+    jpl_array_to_list(JDataPropArray, DataPropStrings),
+    concurrent_maplist(atom_to_term,DataPropStrings,DataPropStringsT,_),
+    jpl_get(JRes, datatype, JDTArray),
+    jpl_array_to_list(JDTArray, DTStrings),
+    concurrent_maplist(atom_to_term,DTStrings,DTStringsT,_),
+    assert(M:kb_atom(kbatoms{annotationProperty:AnPropStringsT,class:ClassStringsT,dataProperty:DataPropStringsT,datatype:DTStringsT,individual:IndStringsT,objectProperty:PropStringsT})).
 
-assert_prefix_from_java(JStr) :-
+assert_prefix_from_java(M,JStr) :-
     %jpl_call(JStr, 'toString', [], S), % ensure an atom/string
     atom_string(A, JStr),
     (   sub_atom(A, B, 1, _, '=')
     ->  sub_atom(A, 0, B, _, Short),
         succ(B, C0), sub_atom(A, C0, _, 0, IRI),
-        add_kb_prefix(Short, IRI)
+        add_kb_prefix(M:Short, IRI)
     ;   true
     ).
 
-assert_axiom_from_string(JStr) :-
+assert_axiom_from_string(M,JStr) :-
     %jpl_call(JStr, 'toString', [], S),
     atom_string(A, JStr),
     % turn the textual TRILL term into a real Prolog term and assert it
     atom_to_term(A, Term, _Bindings),
-    add_axiom(Term).
+    add_axiom(M:Term).
 
 % -------- Recognized TRILL axiom functors --------------------------
 % This is used by add_axiom/1 to quickly validate shape.  Keep in sync with
@@ -223,6 +285,8 @@ assert_axiom_from_string(JStr) :-
 % propertyRange, transitiveProperty, inverseProperties, symmetricProperty,
 % sameIndividual, differentIndividuals, classAssertion, propertyAssertion,
 % annotationAssertion, plus concept descriptions used inside axioms. 
+
+axiom(M:A) :- M:adb(A).
 
 is_axiom(subClassOf(_,_)).
 is_axiom(equivalentClasses(_)).
@@ -288,7 +352,9 @@ check_query_args_1(M,[_|ATT],[H|T],TEx,[H|NotEx]):-
   check_query_args_1(M,ATT,T,TEx,NotEx).
 
 % expands query arguments using prefixes and checks their existence in the kb
-check_query_args_2(M,AT,LEx,LEx) :-
+check_query_args_2(M,AT,L,LEx) :-
+  kb_prefixes(NSList),
+  expand_all_ns(M,L,NSList,false,LEx), %from internal_parser module
   check_query_args_presence(M,AT,LEx).
 
 check_query_args_presence(_M,_AT,[]):-!.
@@ -360,58 +426,73 @@ create_list([_|T],AT,[AT|ATT]):-
   create_list(T,AT,ATT).
 
 
+get_classes_list(M,Classes):-
+  M:kb_atom(KBA),
+  Classes=KBA.class.
+
 set_up_parser(M):-
-  M:(dynamic axiom/1,kb_atom/1).
+  M:(dynamic adb/1, kb_atom/1, kb_prefix/2),
+  init_java_bridge.
 
 clean_up_parser(M):-
-  M:(dynamic axiom/1,kb_atom/1),
+  M:(dynamic adb/1, kb_atom/1, kb_prefix/2),
   retractall(M:kb_atom(_)).
 
-
 get_axiom_subClassOf(M,A,B):-
-  M:axiom(subClassOf(A,B)).
+  M:adb(subClassOf(A,B)).
 
 get_axiom_subPropertyOf(M,R,S):-
-  M:axiom(subPropertyOf(R,S)).
+  M:adb(subPropertyOf(R,S)).
 
 get_axiom_equivalentClasses(M,L):-
-  M:axiom(equivalentClasses(L)).
+  M:adb(equivalentClasses(L)).
 
 get_axiom_differentIndividuals(M,SI):-
-  M:axiom(differentIndividuals(SI)).
+  M:adb(differentIndividuals(SI)).
 
 get_axiom_sameIndividual(M,SI):-
-  M:axiom(sameIndividual(SI)).
+  M:adb(sameIndividual(SI)).
 
 get_axiom_propertyAssertion(M,P,S,O):-
-  M:axiom(propertyAssertion(P,S,O)).
+  M:adb(propertyAssertion(P,S,O)).
 
 get_axiom_classAssertion(M,C,I):-
-  M:axiom(classAssertion(C,I)).
+  M:adb(classAssertion(C,I)).
 
 get_axiom_propertyRange(M,P,D):-
-  M:axiom(propertyRange(P,D)).
+  M:adb(propertyRange(P,D)).
 
 get_axiom_propertyDomain(M,P,D):-
-  M:axiom(propertyDomain(P,D)).
+  M:adb(propertyDomain(P,D)).
 
 get_axiom_disjointClasses(M,L):-
-  M:axiom(disjointClasses(L)).
+  M:adb(disjointClasses(L)).
 
 get_axiom_disjointUnion(M,C,L):-
-  M:axiom(disjointUnion(C,L)).
+  M:adb(disjointUnion(C,L)).
 
 get_axiom_transitiveProperty(M,P):-
-  M:axiom(transitiveProperty(P)).
+  M:adb(transitiveProperty(P)).
 
 get_axiom_symmetricProperty(M,P):-
-  M:axiom(symmetricProperty(P)).
+  M:adb(symmetricProperty(P)).
 
 get_axiom_inverseProperties(M,P,S):-
-  M:axiom(inverseProperties(P,S)).
+  M:adb(inverseProperties(P,S)).
 
 get_axiom_equivalentProperties(M,L):-
-  M:axiom(equivalentProperties(L)).
+  M:adb(equivalentProperties(L)).
 
 get_axiom_annotationAssertion(M,AnnIRI,Ax,AnnVal):-
-  M:axiom(annotationAssertion(AnnIRI,Ax,AnnVal)).
+  M:adb(annotationAssertion(AnnIRI,Ax,AnnVal)).
+
+user:term_expansion(owl_rdf(String),[]):-
+  load_owl_kb_from_string(String),!.
+
+user:term_expansion(TRILLAxiom,[]):-
+  is_axiom(TRILLAxiom),
+  get_module(M),
+  kb_prefixes(NSList),
+  ns_expand_term(NSList, TRILLAxiom, TRILLAxiomExpanded),
+  assertz(M:adb(TRILLAxiomExpanded)).
+

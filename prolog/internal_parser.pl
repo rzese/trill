@@ -497,9 +497,7 @@ create_list([_|T],AT,[AT|ATT]):-
   PARSER MANAGEMENT
 *********************************/ 
 
-:- multifile ontology_parser:set_up_kb_loading/1.
-
-ontology_parser:set_up_kb_loading(M):-
+set_up_kb_loading(M):-
   retractall(M:kb_atom(_)),
   init_kb_atom(M),
   retractall(M:addKBName),
@@ -557,7 +555,8 @@ ontology_parser:set_up_parser(M):-
   M:(dynamic annotationAssertion/3, annotation/3, ontology/1, ontologyAxiom/2, ontologyImport/2, ontologyVersionInfo/2),
   M:(dynamic owl/4, owl/3, owl/2, blanknode/3, outstream/1, aNN/3, annotation_r_node/4, axiom_r_node/4, owl_repository/2, trdf_setting/2),
   M:(dynamic ns4query/1, addKBName/0),
-  retractall(M:addKBName).
+  retractall(M:addKBName),
+  set_up_kb_loading(M).
   %retractall(M:rules(_,_)),
   %assert(M:rules([],[])),
   %retractall(M:expressivity(_,_)),

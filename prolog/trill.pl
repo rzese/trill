@@ -51,7 +51,6 @@ details.
 :- meta_predicate prob_inconsistent_theory(:).
 :- meta_predicate resume_query(:).
 :- meta_predicate compute_query_prob(:).
-:- meta_predicate set_algorithm(:).
 :- meta_predicate init_trill(+).
 :- meta_predicate set_tableau_expansion_rules(:,+).
 
@@ -84,6 +83,17 @@ disponte_iri('https://ai.unife.it/disponte#probability').
   SETTINGS
 *********************************/
 :- multifile setting_trill_default/2.
+
+/**
+ * Parser to use
+ * - default: wrapper
+ * - possible values:
+ *    - internal  -> old version of the parser, based on Thea library
+ *    - java      -> newest version, stores the ontology in Java and
+ *                   maintains the referene to the ontology erapper during the entire inference
+ *    - wrapper   -> uses Java OWLAPI to parse the ontology and saves the axioms n the Prolog DB
+ */
+setting_trill_default(parser,java).
 
 
 /*****************************
@@ -274,7 +284,6 @@ reset_open_query_monitor(M):-
 /* *************** */
 
 set_up_reasoner(M):-
-  set_up(M),
   retractall(M:exp_found(_,_)),
   retractall(M:exp_found(_,_,_)),
   retractall(M:trillan_idx(_)),
@@ -374,11 +383,12 @@ collect_individuals(_,it,['inconsistent','kb'],[]):-!.
 /*
   check the KB atoms to consider only the necessary expansion rules, pruning the useless ones
 */
+/*
 prune_tableau_rules(M):-write('dummy prune rule'),!,
   setting_trill_default(det_rules,DetRules),
   setting_trill_default(nondet_rules,NondetRules),
   set_tableau_expansion_rules(M:DetRules,NondetRules).
-
+*/
 prune_tableau_rules(M):-
   get_classes_list(M,Classes0),
   add_class_from_query_monitor(M,Classes0,Classes),
@@ -3081,17 +3091,17 @@ unload_all_algorithms :-
   unload_file(library(trillp_internal)),
   unload_file(library(tornado_internal)).
 
-set_algorithm(M:trill):-
+set_algorithm(M,trill):-
   unload_all_algorithms,
   consult(library(trill_internal)),
-  clean_up(M),!,set_up(M).
+  clean_up(M),!.
 
-set_algorithm(M:trillp):-
+set_algorithm(M,trillp):-
   unload_all_algorithms,
   consult(library(trillp_internal)),
   clean_up(M),!.
 
-set_algorithm(M:tornado):-
+set_algorithm(M,tornado):-
   unload_all_algorithms,
   consult(library(tornado_internal)),
   clean_up(M),!.
@@ -3104,10 +3114,10 @@ set_algorithm(M:tornado):-
  */
 init_trill(Alg):-
   get_module(M),
-  set_algorithm(M:Alg),
+  set_algorithm(M,Alg),
   set_up(M),
-  internal_parser:set_up_kb_loading(M),
-  add_kb_prefixes(M:[('disponte'='http://ml.unife.it/disponte#'),('owl'='http://www.w3.org/2002/07/owl#')]).
+  set_up_parser(M),
+  add_kb_prefixes(M:[('disponte'='http://ai.unife.it/disponte#'),('owl'='http://www.w3.org/2002/07/owl#')]).
 
 /**************/
 /*get_trill_current_module('internal_parser'):-
@@ -3940,13 +3950,13 @@ substitute_individual(_,I,_,I):-!.
 % NEW STUFF
 % ====================================================
 
-update_tabs(M,Axiom) :-
+update_tabs(M,Axiom) :- 
+  findall(Tab,M:tab_end(Tab),TabsL),
+  dif(TabsL,[]),!,
   functor(Axiom,Pred,Arity),
   member(Pred/Arity,[subClassOf/2, equivalentClasses/1, disjointClasses/1, disjointUnion/2,
     subPropertyOf/2, equivalentProperties/1, disjointProperties/1, inverseProperties/2, propertyDomain/2, propertyRange/2,
     symmetricProperty/1, transitiveProperty/1, sameIndividual/1, differentIndividuals/1, classAssertion/2, propertyAssertion/3]),
-  !,
-  findall(Tab,M:tab_end(Tab),TabsL),
   retractall(M:tab_end(_)),
   update_tabs_int(M,Axiom,TabsL).
 
@@ -4176,25 +4186,22 @@ sandbox:safe_meta(trill:compute_query_prob(_),[]).
 sandbox:safe_meta(trill:reset_query,[]).
 sandbox:safe_meta(trill:set_tableau_expansion_rules(_,_),[]).
 
+load_parser :-
+  setting_trill_default(parser,V),
+  load_parser_module(V).
+
+load_parser_module(wrapper):-
+  use_module(library(ontology_parser_test1)).
+load_parser_module(internal):-
+  use_module(library(ontology_parser)).
+
 :- use_module(library(ontology_parser_test1)).
 
 user:term_expansion((:- trill),[]):-
-  get_module(M),
-  set_algorithm(M:trill),
-  set_up(M),
-  ontology_parser:set_up_kb_loading(M),
-  add_kb_prefixes(M:[('disponte'='http://ml.unife.it/disponte#'),('owl'='http://www.w3.org/2002/07/owl#')]).
+  init_trill(trill).
 
 user:term_expansion((:- trillp),[]):-
-  get_module(M),
-  set_algorithm(M:trillp),
-  set_up(M),
-  ontology_parser:set_up_kb_loading(M),
-  add_kb_prefixes(M:['disponte'='http://ml.unife.it/disponte#','owl'='http://www.w3.org/2002/07/owl#']).
+  init_trill(trillp).
 
 user:term_expansion((:- tornado),[]):-
-  get_module(M),
-  set_algorithm(M:tornado),
-  set_up(M),
-  ontology_parser:set_up_kb_loading(M),
-  add_kb_prefixes(M:['disponte'='http://ml.unife.it/disponte#','owl'='http://www.w3.org/2002/07/owl#']).
+  init_trill(tornado).

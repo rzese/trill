@@ -73,6 +73,13 @@ owl_rdf('<?xml version="1.0"?>
         <rdfs:label>has_animal</rdfs:label>
         <rdfs:comment></rdfs:comment>
     </owl:ObjectProperty>
+
+    <!-- http://cohse.semanticweb.org/ontologies/people#is_animal_of -->
+
+    <owl:ObjectProperty rdf:about="http://cohse.semanticweb.org/ontologies/people#is_animal_of">
+        <rdfs:label>is_animal_of</rdfs:label>
+        <rdfs:comment></rdfs:comment>
+    </owl:ObjectProperty>
     
 
 

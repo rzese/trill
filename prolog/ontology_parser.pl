@@ -8,23 +8,40 @@ It also serves as interface for a TRILL parser.
 @copyright Riccardo Zese
 */
 
-:- module(ontology_parser, [is_axiom/1, axiom/1, kb_prefixes/1,
-                           add_kb_prefix/2, add_kb_prefixes/1, remove_kb_prefix/2, remove_kb_prefix/1,
-                           add_axiom/1, add_axioms/1, remove_axiom/1, remove_axioms/1,
-                           load_kb/1, load_owl_kb/1, load_owl_kb_from_string/1,
-                           check_query_args/4,
-                           get_axiom_subClassOf/3, get_axiom_subPropertyOf/3,
-                           get_axiom_equivalentClasses/2, get_axiom_differentIndividuals/2,
-                           get_axiom_sameIndividual/2, get_axiom_propertyAssertion/4,
-                           get_axiom_classAssertion/3, get_axiom_propertyRange/3,
-                           get_axiom_propertyDomain/3, get_axiom_disjointClasses/2,
-                           get_axiom_disjointUnion/3, get_axiom_transitiveProperty/2,
-                           get_axiom_symmetricProperty/2, get_axiom_inverseProperties/3,
-                           get_axiom_equivalentProperties/2, get_axiom_annotationAssertion/4,
-                           get_classes_list/2, set_up_parser/1, clean_up_parser/1]).
-
-:- initialization(load_best_library).
-
+:- module(ontology_parser,
+          [ load_kb/1,
+            load_owl_kb/1,
+            load_owl_kb_from_string/1,
+            % ====
+            % expand_all_ns/4,
+            % expand_all_ns/5,
+            % ====
+            axiom/1,
+            % multifile API used by trill.pl
+            kb_prefixes/1,
+            add_kb_prefix/2,
+            add_kb_prefixes/1,
+            remove_kb_prefix/1,
+            remove_kb_prefix/2,
+            add_axiom/1,
+            add_axioms/1,
+            remove_axiom/1,
+            remove_axioms/1,
+            %---------
+            check_query_args/4,
+            set_up_parser/1, clean_up_parser/1,
+            get_axiom_subClassOf/3, get_axiom_equivalentClasses/2,
+            get_axiom_disjointClasses/2, get_axiom_disjointUnion/3,
+            get_axiom_subPropertyOf/3, get_axiom_equivalentProperties/2,
+            get_axiom_differentIndividuals/2, get_axiom_sameIndividual/2,
+            get_axiom_classAssertion/3, get_axiom_propertyAssertion/4,
+            get_axiom_propertyRange/3, get_axiom_propertyDomain/3, 
+            get_axiom_transitiveProperty/2,
+            get_axiom_symmetricProperty/2, get_axiom_inverseProperties/3,
+            get_axiom_annotationAssertion/4,
+            %---------
+            get_classes_list/2
+          ]).
 
 :- meta_predicate axiom(:).
 :- meta_predicate kb_prefixes(:).
@@ -203,9 +220,6 @@ set_augmented_classpath :-
 *********************************/
 
 :- multifile load_kb/1, load_owl_kb/1, load_owl_kb_from_string/1, is_axiom/1.
-
-:- multifile set_up_kb_loading/1.
-
 
 % expands query arguments using prefixes and checks their existence in the kb
 % returns the non-present arguments
