@@ -65,6 +65,7 @@ details.
 :- use_module(library(aggregate)).
 
 :- use_module(library(trill_utility)).
+:-use_module(library(ontology_parser)).
 
 :- reexport(library(bddem)).
 
@@ -95,7 +96,7 @@ disponte_iri('https://ai.unife.it/disponte#probability').
  *                   maintains the referene to the ontology erapper during the entire inference
  *    - wrapper   -> uses Java OWLAPI to parse the ontology and saves the axioms n the Prolog DB
  */
-setting_trill_default(parser,java).
+setting_trill_default(parser,internal).
 
 
 /*****************************
@@ -150,6 +151,10 @@ prolog:message(timeout_reached) -->
 
 prolog:message(unknown_query_option(Option)) -->
   [ 'Unknown query option: ~w' -[Option] ].
+
+prolog:message(wrong_parser(Parser)) -->
+  [ 'Unknown parser: ~w' -[Parser] ].
+
 
 /*****************************
   QUERY OPTIONS
@@ -3107,21 +3112,20 @@ unload_all_algorithms :-
   unload_file(library(trillp_internal)),
   unload_file(library(tornado_internal)).
 
-set_algorithm(M,trill):-
+set_algorithm(trill):-
   unload_all_algorithms,
-  consult(library(trill_internal)),
-  clean_up(M),!.
+  consult(library(trill_internal)),!.
 
-set_algorithm(M,trillp):-
+set_algorithm(trillp):-
   unload_all_algorithms,
-  consult(library(trillp_internal)),
-  clean_up(M),!.
+  consult(library(trillp_internal)),!.
 
-set_algorithm(M,tornado):-
+set_algorithm(tornado):-
   unload_all_algorithms,
-  consult(library(tornado_internal)),
-  clean_up(M),!.
+  consult(library(tornado_internal)),!.
 
+load_default_settings(M):-
+  foreach(setting_trill_default(DefaultSetting,DefaultVal),assert(M:setting_trill(DefaultSetting,DefaultVal))).
 
 /**
  * init_trill(++Alg:reasoner)
@@ -3130,10 +3134,12 @@ set_algorithm(M,tornado):-
  */
 init_trill(Alg):-
   get_module(M),
-  set_algorithm(M,Alg),
+  set_algorithm(Alg),
+  load_default_settings(M),
+  load_default_parser(M),
+  clean_up(M),
   set_up(M),
   add_kb_prefixes(M:[('disponte'='http://ai.unife.it/disponte#'),('owl'='http://www.w3.org/2002/07/owl#')]),
-  load_default_parser(M),
   set_up_parser(M).
 /**
  * init_trill(++Alg:reasoner,++Parser:parser)
@@ -3142,12 +3148,14 @@ init_trill(Alg):-
  */
  init_trill(Alg,Parser):-
   get_module(M),
-  set_algorithm(M,Alg),
-  set_up(M),
-  add_kb_prefixes(M:[('disponte'='http://ai.unife.it/disponte#'),('owl'='http://www.w3.org/2002/07/owl#')]), ,
+  set_algorithm(Alg),
+  load_default_settings(M),
   set_parser(Parser),
   load_parser_module(Parser),
-  set_up_parser(M)
+  clean_up(M),
+  set_up(M),
+  add_kb_prefixes(M:[('disponte'='http://ai.unife.it/disponte#'),('owl'='http://www.w3.org/2002/07/owl#')]),
+  set_up_parser(M).
 
 /**************/
 /*get_trill_current_module('internal_parser'):-
@@ -4217,13 +4225,23 @@ sandbox:safe_meta(trill:reset_query,[]).
 sandbox:safe_meta(trill:set_tableau_expansion_rules(_,_),[]).
 sandbox:safe_meta(trill:set_parser(_),[]).
 
+unload_all_parsers :-
+  unload_file(library(ontology_parser_test1)),
+  unload_file(library(ontology_parser)).
+
 load_default_parser(M):-
-  M:trill_setting(parser,Parser),
+  M:setting_trill(parser,Parser),
   load_parser_module(Parser).
 
-load_parser_module(wrapper):-
+load_parser_module(java):-!,
+  unload_all_parsers,
   use_module(library(ontology_parser_test1)),write('ontology_parser_test1').
-load_parser_module(internal):-
+load_parser_module(wrapper):-!,
+  unload_all_parsers,
+  use_module(library(ontology_parser_test1)),write('ontology_parser_test1').
+load_parser_module(Parser):- %Fallback to internal
+  unload_all_parsers,
+  ( dif(Parser,internal) -> print_message(warning, wrong_parser(Parser)) ; true ),
   use_module(library(ontology_parser)),write('ontology_parser').
 
 user:term_expansion((:- trill),[]):-

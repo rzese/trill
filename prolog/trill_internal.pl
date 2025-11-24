@@ -30,8 +30,7 @@ set_up(M):-
   retractall(M:setting_trill(_,_)),
   retractall(M:query_option(_,_)),
   retractall(M:tab_end(_)),
-  retractall(M:tab_util(_,_)),
-  foreach(setting_trill_default(DefaultSetting,DefaultVal),assert(M:setting_trill(DefaultSetting,DefaultVal))).
+  retractall(M:tab_util(_,_)).
 
 clean_up(M):-
   clean_up_parser(M),
