@@ -23,7 +23,7 @@ details.
                  unsat/1, unsat/2, prob_unsat/2, unsat/3, all_unsat/2,
                  inconsistent_theory/0, inconsistent_theory/1, prob_inconsistent_theory/1, inconsistent_theory/2, all_inconsistent_theory/1,
                  resume_query/1, compute_query_prob/1, reset_query/0,
-                 init_trill/1, set_tableau_expansion_rules/2, set_parser/1] ).
+                 init_trill/1, init_trill/2, set_tableau_expansion_rules/2, set_parser/1] ).
 
 :- meta_predicate sub_class(:,+).
 :- meta_predicate sub_class(:,+,-).
@@ -52,6 +52,7 @@ details.
 :- meta_predicate resume_query(:).
 :- meta_predicate compute_query_prob(:).
 :- meta_predicate init_trill(+).
+:- meta_predicate init_trill(+,+).
 :- meta_predicate set_tableau_expansion_rules(:,+).
 :- meta_predicate set_parser(:).
 
@@ -3131,8 +3132,22 @@ init_trill(Alg):-
   get_module(M),
   set_algorithm(M,Alg),
   set_up(M),
-  set_up_parser(M),
-  add_kb_prefixes(M:[('disponte'='http://ai.unife.it/disponte#'),('owl'='http://www.w3.org/2002/07/owl#')]).
+  add_kb_prefixes(M:[('disponte'='http://ai.unife.it/disponte#'),('owl'='http://www.w3.org/2002/07/owl#')]),
+  load_default_parser(M),
+  set_up_parser(M).
+/**
+ * init_trill(++Alg:reasoner,++Parser:parser)
+ * 
+ * It initializes the algorithms Alg with parser Parser
+ */
+ init_trill(Alg,Parser):-
+  get_module(M),
+  set_algorithm(M,Alg),
+  set_up(M),
+  add_kb_prefixes(M:[('disponte'='http://ai.unife.it/disponte#'),('owl'='http://www.w3.org/2002/07/owl#')]), ,
+  set_parser(Parser),
+  load_parser_module(Parser),
+  set_up_parser(M)
 
 /**************/
 /*get_trill_current_module('internal_parser'):-
@@ -4202,6 +4217,10 @@ sandbox:safe_meta(trill:reset_query,[]).
 sandbox:safe_meta(trill:set_tableau_expansion_rules(_,_),[]).
 sandbox:safe_meta(trill:set_parser(_),[]).
 
+load_default_parser(M):-
+  M:trill_setting(parser,Parser),
+  load_parser_module(Parser).
+
 load_parser_module(wrapper):-
   use_module(library(ontology_parser_test1)),write('ontology_parser_test1').
 load_parser_module(internal):-
@@ -4211,9 +4230,7 @@ user:term_expansion((:- trill),[]):-
   init_trill(trill).
 
 user:term_expansion((:- trill(A)),[]):-
-  set_parser(A),
-  load_parser_module(A),
-  init_trill(trill).
+  init_trill(trill,A).
 
 user:term_expansion((:- trillp),[]):-
   init_trill(trillp).
