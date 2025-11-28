@@ -9,12 +9,16 @@ It also serves as interface for a TRILL parser.
 */
 
 :- module(ontology_parser,
-          [ load_kb/1,
+          [ % parser loading
+            unload_all_parsers/0,
+            load_default_parser/1,
+            load_parser_module/1,
+            % KB loading
+            load_kb/1,
             load_owl_kb/1,
             load_owl_kb_from_string/1,
             % ====
             % expand_all_ns/4,
-            % expand_all_ns/5,
             % ====
             axiom/1,
             % multifile API used by trill.pl
@@ -77,11 +81,15 @@ It also serves as interface for a TRILL parser.
 /*****************************
   LOADING PARSER
 ******************************/
-:- initialization(load_best_library).
+%:- initialization(load_best_library).
 
 prolog:message(no_jpl) -->
   [ 'JPL not available! Use of old parsing library handling only TRILL syntax and OWL/RDF files.' ].
 
+prolog:message(wrong_parser(Parser)) -->
+  [ 'Unknown parser: ~w' -[Parser] ].
+
+/*
 load_best_library :- fail,
     use_module(library(jpl)),!,
     set_augmented_classpath,
@@ -107,6 +115,26 @@ set_augmented_classpath :-
 
     % Set JVM options
     jpl_set_default_jvm_opts([JVMOpt]).
+*/
+
+unload_all_parsers :-
+  unload_file(library(ontology_parser_test1)),
+  unload_file(library(internal_parser)).
+
+load_default_parser(M):-
+  M:setting_trill(parser,Parser),
+  load_parser_module(Parser).
+
+load_parser_module(java):-!,
+  unload_all_parsers,
+  use_module(library(ontology_parser_test1)),write('ontology_parser_test1').
+load_parser_module(wrapper):-!,
+  unload_all_parsers,
+  use_module(library(wrapper_parser)),write('wrapper_parser').
+load_parser_module(Parser):- %Fallback to internal
+  unload_all_parsers,
+  ( dif(Parser,internal) -> print_message(warning, wrong_parser(Parser)) ; true ),
+  use_module(library(internal_parser)),write('internal_parser').
 
 /*****************************
   ABSTRACT UTILITY PREDICATES

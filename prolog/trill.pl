@@ -151,9 +151,6 @@ prolog:message(timeout_reached) -->
 prolog:message(unknown_query_option(Option)) -->
   [ 'Unknown query option: ~w' -[Option] ].
 
-prolog:message(wrong_parser(Parser)) -->
-  [ 'Unknown parser: ~w' -[Parser] ].
-
 
 /*****************************
   QUERY OPTIONS
@@ -4224,26 +4221,7 @@ sandbox:safe_meta(trill:reset_query,[]).
 sandbox:safe_meta(trill:set_tableau_expansion_rules(_,_),[]).
 sandbox:safe_meta(trill:set_parser(_),[]).
 
-unload_all_parsers :-
-  unload_file(library(ontology_parser_test1)),
-  unload_file(library(ontology_parser)).
-
-load_default_parser(M):-
-  M:setting_trill(parser,Parser),
-  load_parser_module(Parser).
-
-load_parser_module(java):-!,
-  unload_all_parsers,
-  use_module(library(ontology_parser_test1)),write('ontology_parser_test1').
-load_parser_module(wrapper):-!,
-  unload_all_parsers,
-  use_module(library(ontology_parser_test1)),write('ontology_parser_test1').
-load_parser_module(Parser):- %Fallback to internal
-  unload_all_parsers,
-  ( dif(Parser,internal) -> print_message(warning, wrong_parser(Parser)) ; true ),
-  use_module(library(ontology_parser)),write('ontology_parser').
-
-%:- use_module(library(ontology_parser)).
+:- use_module(library(ontology_parser)).
 
 user:term_expansion((:- trill),[]):-
   init_trill(trill).

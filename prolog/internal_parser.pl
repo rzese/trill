@@ -104,11 +104,11 @@ ontology_parser:remove_axiom(M:Ax):-
   ( M:ns4query(NSList) *-> true; NSList = []),
   Ax =.. [P|Args],
   ( (length(Args,1), Args = [IntArgs], is_list(IntArgs)) -> 
-       ( expand_all_ns(M,IntArgs,NSList,false,ArgsExp),
+       ( expand_all_ns(M,IntArgs,NSList,ArgsExp),
          AxEx =.. [P,ArgsExp]
        )
      ;
-       ( expand_all_ns(M,Args,NSList,false,ArgsExp),
+       ( expand_all_ns(M,Args,NSList,ArgsExp),
          AxEx =.. [P|ArgsExp]
        )
   ),
@@ -316,26 +316,16 @@ ontology_parser:remove_kb_prefix(M:A):-
  * using the list of prefixes. Finally, it returns the list of expanded strings.
  * It adds names in Args to the list of known elements.
  */
-expand_all_ns(M,Args,NSList,ExpandedArgs):-
-  expand_all_ns(M,Args,NSList,true,ExpandedArgs).
+expand_all_ns(_M,[],_,[]):- !.
 
-/**
- * expand_all_ns(++Module:string,++Args:list,++NSList:list,++AddName:boolean,--ExpandedArgs:list) is det
- *
- * The predicate takes as input a list containing strings and expands these strings
- * using the list of prefixes. Finally, it returns the list of expanded strings.
- * If AddName is set true it adds names in Args in the list of known elements.
- */
-expand_all_ns(_M,[],_,_,[]):- !.
-
-expand_all_ns(M,[P|T],NSList,AddName,[PNewArgs|NewArgs]):-
+expand_all_ns(M,[P|T],NSList,[PNewArgs|NewArgs]):-
   is_list(P),!,
-  expand_all_ns(M,P,NSList,AddName,PNewArgs),
-  expand_all_ns(M,T,NSList,AddName,NewArgs).
+  expand_all_ns(M,P,NSList,PNewArgs),
+  expand_all_ns(M,T,NSList,NewArgs).
 
-expand_all_ns(M,[P|T],NSList,AddName,[NP|NewArgs]):-
+expand_all_ns(M,[P|T],NSList,[NP|NewArgs]):-
   expand_argument(M,P,NSList,NP),
-  expand_all_ns(M,T,NSList,AddName,NewArgs).
+  expand_all_ns(M,T,NSList,NewArgs).
 
 
 
@@ -424,7 +414,7 @@ ontology_parser:check_query_args_1(M,[_|ATT],[H|T],TEx,[H|NotEx]):-
 % expands query arguments using prefixes and checks their existence in the kb
 check_query_args_2(M,AT,L,LEx) :-
   M:ns4query(NSList),
-  expand_all_ns(M,L,NSList,false,LEx), %from internal_parser module
+  expand_all_ns(M,L,NSList,LEx), %from internal_parser module
   check_query_args_presence(M,AT,LEx).
 
 check_query_args_presence(_M,_AT,[]):-!.
@@ -3982,6 +3972,25 @@ add_expressivity(M,f):-
 
 
 
+
+% ----------------------------
+
+
+/* ************************************** */
+
+
+
+
+/*****************************/
+
+/************************************
+ * 
+ * TERM EXPANSION
+ * 
+ * 
+ ************************************/
+
+/******************************/
 
 user:term_expansion(kb_prefix(A,B),[]):-
   get_module(M),
