@@ -26,38 +26,8 @@ Requires:
 
 :- use_module(library(trill_utility)).
 
-/*
-:- meta_predicate axiom(:).
-:- meta_predicate kb_prefixes(:).
-:- meta_predicate add_kb_prefix(:,+).
-:- meta_predicate add_kb_prefixes(:).
-:- meta_predicate add_axiom(:).
-:- meta_predicate add_axioms(:).
-:- meta_predicate remove_kb_prefix(:,+).
-:- meta_predicate remove_kb_prefix(:).
-:- meta_predicate remove_axiom(:).
-:- meta_predicate remove_axioms(:).
-:- meta_predicate load_kb(+).
-:- meta_predicate load_owl_kb(+).
-:- meta_predicate load_owl_kb_from_string(+).
-:- meta_predicate check_query_args(+,+,+,-).
-:- meta_predicate get_axiom_subClassOf(+,-,-).
-:- meta_predicate get_axiom_subPropertyOf(+,-,-).
-:- meta_predicate get_axiom_equivalentClasses(+,-).
-:- meta_predicate get_axiom_differentIndividuals(+,-).
-:- meta_predicate get_axiom_sameIndividual(+,-). 
-:- meta_predicate get_axiom_propertyAssertion(+,-,-,-).
-:- meta_predicate get_axiom_classAssertion(+,-,-). 
-:- meta_predicate get_axiom_propertyRange(+,-,-).
-:- meta_predicate get_axiom_propertyDomain(+,-,-). 
-:- meta_predicate get_axiom_disjointClasses(+,-).
-:- meta_predicate get_axiom_disjointUnion(+,-,-). 
-:- meta_predicate get_axiom_transitiveProperty(+,-).
-:- meta_predicate get_axiom_symmetricProperty(+,-). 
-:- meta_predicate get_axiom_inverseProperties(+,-,-).
-:- meta_predicate get_axiom_equivalentProperties(+,-). 
-:- meta_predicate get_axiom_annotationAssertion(+,-,-,-).
-*/
+jar_file('prob-owlapi-2.0.8.jar').
+wrapper_class('it.unife.ml.probowlapi.trill.TrillKBParserWrapper')
 
 /*****************************/
 
@@ -313,10 +283,7 @@ trill:load_kb(File) :-
     must_be(atom, File),
     %retractall(M:adb(_)),
     %retractall(M:kb_prefix(_, _)),
-    jpl_call('it.unife.ml.probowlapi.trill.TrillTest1',
-             'parseOntologyFile',
-             [File],
-             JRes),
+    parse_file(File,JRes),
     bridge_assert_result(M,JRes).
 
 
@@ -341,10 +308,7 @@ trill:load_owl_kb_from_string(String):-
   must_be(atom, String),
   %retractall(M:adb(_)),
   %retractall(M:kb_prefix(_, _)),
-  jpl_call('it.unife.ml.probowlapi.trill.TrillTest1',
-            'parseOntologyString',
-            [String],
-            JRes),
+  parse_string(String,JRes),
   bridge_assert_result(M, JRes).
 
 
@@ -531,7 +495,8 @@ ontology_parser:set_up_parser(M):-
   ****************************************/
 init_java_bridge :-
     % Point to your assembled JAR (jar-with-dependencies)
-    absolute_file_name(library('prob-owlapi-2.0.8.jar'), NewFolder, [access(read)]),
+    jar_file(JarFile),
+    absolute_file_name(library(JarFile), NewFolder, [access(read)]),
     
     % Get existing CLASSPATH env var (not the JVM one, but often aligns)
     (   getenv('CLASSPATH', ExistingCP)
@@ -547,6 +512,20 @@ init_java_bridge :-
     jpl_set_default_jvm_opts([JVMOpt]).
 
 
+
+parse_file(File,JRes):-
+  wrapper_class(WrapperClass),
+  jpl_call(WrapperClass,
+          'parseOntologyFile',
+          [File],
+          JRes).
+
+parse_string(String,Jres):-
+  wrapper_class(WrapperClass),
+  jpl_call(WrapperClass,
+          'parseOntologyString',
+          [String],
+          JRes).
 
 /****************************************
   AXIOMS
