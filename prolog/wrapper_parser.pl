@@ -1,4 +1,4 @@
-/** <module> javaOWLAPI_parser
+/** <module> wrapper_parser
 
 This module implements the ontology_parser interface.
 It uses Java OWL API and JPL to parse an OWL ontology.
@@ -64,8 +64,7 @@ trill:add_axiom(M:Axiom) :-
     M:adb(Axiom),!.
 
 trill:add_axiom(M:Axiom) :-
-    trill:is_axiom(Axiom),
-    assertz(M:adb(Axiom)),
+    add_axiom(M,Axiom),
     trill:update_tabs(M,Axiom).
 
 add_axiom(M,Axiom) :-
@@ -76,7 +75,7 @@ add_axiom(M,Axiom) :-
 :- multifile trill:add_axioms/1.
 trill:add_axioms(M:Axioms) :-
     must_be(list, Axioms),
-    concurrent_maplist(trill:add_axiom(M), Axioms).
+    concurrent_maplist(wrapper_parser:add_axiom(M), Axioms).
 
 
 :- multifile trill:remove_axiom/1.
@@ -89,7 +88,7 @@ remove_axiom(M,Axiom) :- trill:remove_axiom(M:Axiom).
 :- multifile trill:remove_axioms/1.
 trill:remove_axioms(M:Axioms) :-
     must_be(list, Axioms),
-    concurrent_maplist(trill:remove_axiom(M), Axioms).
+    concurrent_maplist(wrapper_parser:remove_axiom(M), Axioms).
 
 
 :- multifile trill:is_axiom/1.
@@ -195,39 +194,38 @@ ontology_parser:get_classes_list(M,Classes):-
 % We store prefixes as kb_prefix/2 and expose them through kb_prefixes/1
 :- multifile trill:kb_prefixes/1.
 trill:kb_prefixes(M:Pairs) :-
-    findall(S=IRI, M:kb_prefix(S, IRI), Pairs).
+  findall(S=IRI, M:kb_prefix(S, IRI), Pairs).
 
 
 :- multifile trill:add_kb_prefix/2.
 trill:add_kb_prefix(M:Short, Long) :-
-    must_be(atom, Short), must_be(atom, Long),
-    retractall(M:kb_prefix(Short, _)),
-    assertz(M:kb_prefix(Short, Long)).
+  must_be(atom, Short), must_be(atom, Long),
+  retractall(M:kb_prefix(Short, _)),
+  assertz(M:kb_prefix(Short, Long)).
 
 
 % Adds a list of kb prefixes into ns4query
 :- multifile trill:add_kb_prefixes/1.
 trill:add_kb_prefixes(M:Pairs) :-
-    must_be(list, Pairs),
-    maplist(wrapper_parser:add_kb_prefix_pair(M), Pairs).
+  must_be(list, Pairs),
+  maplist(wrapper_parser:add_kb_prefix_pair(M), Pairs).
 
 add_kb_prefix_pair(M, Short=Long) :- trill:add_kb_prefix(M:Short, Long).
 
 
 :- multifile trill:remove_kb_prefix/2.
 trill:remove_kb_prefix(M:Short, Long) :-
-    retractall(M:kb_prefix(Short, Long)).
+  retractall(M:kb_prefix(Short, Long)).
 
+:- multifile trill:remove_kb_prefix/1.
 trill:remove_kb_prefix(M:NameOrIRI) :-
-    (   retractall(M:kb_prefix(NameOrIRI, _))
-    ;   retractall(M:kb_prefix(_, NameOrIRI))
-    ), !.
+  (   retractall(M:kb_prefix(NameOrIRI, _))
+  ;   retractall(M:kb_prefix(_, NameOrIRI))
+  ), !.
 
 
 
-% -------- namespace expansion helpers (used by manual and trill) ---
-% These keep the interface provided previously by the Translation Utilities
-% (used to expand prefixes inside atoms/lists in queries / axioms). 
+% -------- namespace expansion helpers ---
 
 /**
  * expand_all_ns(++Module:string,++Args:list,++NSList:list,--ExpandedArgs:list) is det
@@ -237,20 +235,20 @@ trill:remove_kb_prefix(M:NameOrIRI) :-
  * It adds names in Args to the list of known elements.
  */
 expand_all_ns(_M, Args, NSList, Expanded) :-
-    % NSList is a list of Short=IRI pairs (atoms)
-    must_be(list, Args),
-    must_be(list, NSList),
-    maplist(wrapper_parser:ns_expand_term(NSList), Args, Expanded).
+  % NSList is a list of Short=IRI pairs (atoms)
+  must_be(list, Args),
+  must_be(list, NSList),
+  maplist(wrapper_parser:ns_expand_term(NSList), Args, Expanded).
 
 ns_expand_term(NSList, TermIn, TermOut) :-
-    (   atomic(TermIn)
-    ->  ns_expand_atomic(NSList, TermIn, TermOut)
-    ;   TermIn =.. [F|As],
-        maplist(wrapper_parser:ns_expand_term(NSList), As, AsE),
-        % ns_expand_atomic(NSList, F, FE), % Expansion of the predicate
-        % TermOut =.. [FE|AsE]
-        TermOut =.. [F|AsE]
-    ).
+  (   atomic(TermIn)
+  ->  ns_expand_atomic(NSList, TermIn, TermOut)
+  ;   TermIn =.. [F|As],
+      maplist(wrapper_parser:ns_expand_term(NSList), As, AsE),
+      % ns_expand_atomic(NSList, F, FE), % Expansion of the predicate
+      % TermOut =.. [FE|AsE]
+      TermOut =.. [F|AsE]
+  ).
 
 ns_expand_atomic(NSList, A, Out) :-
     (   atom(A),
@@ -279,12 +277,12 @@ ns_expand_atomic(NSList, A, Out) :-
  * 
  */
 trill:load_kb(File) :-
-    get_module(M),
-    must_be(atom, File),
-    %retractall(M:adb(_)),
-    %retractall(M:kb_prefix(_, _)),
-    parse_file(File,JRes),
-    bridge_assert_result(M,JRes).
+  get_module(M),
+  must_be(atom, File),
+  %retractall(M:adb(_)),
+  %retractall(M:kb_prefix(_, _)),
+  parse_file(File,JRes),
+  bridge_assert_result(M,JRes).
 
 
 /**
@@ -509,7 +507,7 @@ init_java_bridge :-
     atomic_list_concat(['-Djava.class.path=', FullCP], JVMOpt),
 
     % Set JVM options
-    jpl_set_default_jvm_opts([JVMOpt]).
+    jpl_set_default_jvm_opts(['-Xms128m','-Xmx1g', JVMOpt]).
 
 
 
