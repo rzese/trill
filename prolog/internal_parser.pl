@@ -49,18 +49,18 @@ http://vangelisv.github.io/thea/
 %% axiom(:Axiom)
 % The main component of an OWL 2 ontology is a set of axioms - statements that say what is true in the domain being modeled.
 % @see classAxiom/1, propertyAxiom/1, fact/1
-:- multifile ontology_parser:axiom/1.
+:- multifile trill:axiom/1.
 
-ontology_parser:axiom(M:A) :- classAxiom(M:A).
-ontology_parser:axiom(M:A) :- propertyAxiom(M:A).
-ontology_parser:axiom(M:hasKey(A,B)) :- M:hasKey(A,B).
-ontology_parser:axiom(M:A) :- fact(M:A).
-ontology_parser:axiom(M:A) :- declarationAxiom(M:A).
+trill:axiom(M:A) :- classAxiom(M:A).
+trill:axiom(M:A) :- propertyAxiom(M:A).
+trill:axiom(M:hasKey(A,B)) :- M:hasKey(A,B).
+trill:axiom(M:A) :- fact(M:A).
+trill:axiom(M:A) :- declarationAxiom(M:A).
 %axiom(annotation(A,B,C)) :-
 %	annotation(A,B,C). % CJM-treat annotations as axioms
 
-:- multifile ontology_parser:add_axiom/1.
-ontology_parser:add_axiom(M:Ax):-
+:- multifile trill:add_axiom/1.
+trill:add_axiom(M:Ax):-
   assert(M:addKBName),
   %init_kb_atom(M),
   create_and_assert_axioms(M,Ax),!,
@@ -70,18 +70,18 @@ ontology_parser:add_axiom(M:Ax):-
 prolog:message(axiom_not_added(Ax,M)) -->
   [ 'Problems in adding axiom ~w ~w' -[Ax,M] ].
 
-ontology_parser:add_axiom(M:Ax):-
+trill:add_axiom(M:Ax):-
   print_message(warning,axiom_not_added(Ax,M)).
 
-:- multifile ontology_parser:add_axioms/1.
-ontology_parser:add_axioms(_:[]).
+:- multifile trill:add_axioms/1.
+trill:add_axioms(_:[]).
 
-ontology_parser:add_axioms(M:[H|T]) :-
-  ontology_parser:add_axiom(M:H),
-  ontology_parser:add_axioms(M:T).
+trill:add_axioms(M:[H|T]) :-
+  trill:add_axiom(M:H),
+  trill:add_axioms(M:T).
 
-:- multifile ontology_parser:remove_axiom/1.
-ontology_parser:remove_axiom(M:Ax):-
+:- multifile trill:remove_axiom/1.
+trill:remove_axiom(M:Ax):-
   %print_message(warning,under_development),
   ( M:ns4query(NSList) -> true; NSList = []),
   expand_axiom(M,Ax,NSList,ExpAx),
@@ -91,7 +91,7 @@ ontology_parser:remove_axiom(M:Ax):-
 
 
 /*
-ontology_parser:remove_axiom(M:subClassOf(C,D)):-
+trill:remove_axiom(M:subClassOf(C,D)):-
   print_message(warning,under_development),
   ( M:ns4query(NSList) -> true; NSList = []),
   expand_axiom(M,subClassOf(C,D),NSList,subClassOf(ExpC,ExpD)),
@@ -99,7 +99,7 @@ ontology_parser:remove_axiom(M:subClassOf(C,D)):-
   retract_axiom(M,subClassOf(ExpC,ExpD)),
   retractall(M:owl(subClassOf(ExpC,ExpD),'ont')),!.
 
-ontology_parser:remove_axiom(M:Ax):-
+trill:remove_axiom(M:Ax):-
   print_message(warning,under_development),
   ( M:ns4query(NSList) *-> true; NSList = []),
   Ax =.. [P|Args],
@@ -116,12 +116,12 @@ ontology_parser:remove_axiom(M:Ax):-
   retractall(M:owl(AxEx,'ont')),!.
 */
 
-:- multifile ontology_parser:remove_axioms/1.
-ontology_parser:remove_axioms(_:[]):-!.
+:- multifile trill:remove_axioms/1.
+trill:remove_axioms(_:[]):-!.
 
-ontology_parser:remove_axioms(M:[H|T]) :-
-  ontology_parser:remove_axiom(M:H),
-  ontology_parser:remove_axioms(M:T).
+trill:remove_axioms(M:[H|T]) :-
+  trill:remove_axiom(M:H),
+  trill:remove_axioms(M:T).
 
 test_and_assert(M,Ax,O):-
   (\+ M:owl(Ax,O) ->
@@ -152,14 +152,14 @@ create_and_assert_axioms(M,Axiom) :-
   test_and_assert(M,ExpAxiom,'ont').
 
 
-:- multifile ontology_parser:is_axiom/1.
+:- multifile trill:is_axiom/1.
 /**
  * is_axiom(?Axiom:string) is det
  *
  * This predicate unifies Pred with one of the possible type of axioms managed by TRILL and 
  * by the translation module.
  */
-ontology_parser:is_axiom(Axiom) :-
+trill:is_axiom(Axiom) :-
 	functor(Axiom,Pred,Arity),
 	axiompred(Pred/Arity),!.
 
@@ -242,27 +242,27 @@ ontology_parser:get_classes_list(M,Classes):-
 *********************************/
 
 % Get the KB's prefixes contained into ns4query
-:- multifile ontology_parser:kb_prefixes/1.
+:- multifile trill:kb_prefixes/1.
 
-ontology_parser:kb_prefixes(M:L):-
+trill:kb_prefixes(M:L):-
   M:ns4query(L),!.
 
 % Adds a list of kb prefixes into ns4query
-:- multifile ontology_parser:add_kb_prefixes/1.
+:- multifile trill:add_kb_prefixes/1.
 
-ontology_parser:add_kb_prefixes(_:[]):-!.
+trill:add_kb_prefixes(_:[]):-!.
 
-ontology_parser:add_kb_prefixes(M:[(H=H1)|T]):-
-  ontology_parser:add_kb_prefix(M:H,H1),
-  ontology_parser:add_kb_prefixes(M:T).
+trill:add_kb_prefixes(M:[(H=H1)|T]):-
+  trill:add_kb_prefix(M:H,H1),
+  trill:add_kb_prefixes(M:T).
 
 % Adds a prefix into ns4query
-:- multifile ontology_parser:add_kb_prefix/2.
+:- multifile trill:add_kb_prefix/2.
 
-ontology_parser:add_kb_prefix(M:'',B):- !,
-  ontology_parser:add_kb_prefix(M:[],B).
+trill:add_kb_prefix(M:'',B):- !,
+  trill:add_kb_prefix(M:[],B).
 
-ontology_parser:add_kb_prefix(M:A,B):-
+trill:add_kb_prefix(M:A,B):-
   M:ns4query(L),!,
   (\+ member((A=_),L) ->
       (retract(M:ns4query(L)),
@@ -273,12 +273,12 @@ ontology_parser:add_kb_prefix(M:A,B):-
       true
    ).
    
-ontology_parser:add_kb_prefix(M:A,B):-
+trill:add_kb_prefix(M:A,B):-
   assert(M:ns4query([(A=B)])).
 
 % Removes a prefix from ns4query
-:- multifile ontology_parser:remove_kb_prefix/2.
-ontology_parser:remove_kb_prefix(M:A,B):-
+:- multifile trill:remove_kb_prefix/2.
+trill:remove_kb_prefix(M:A,B):-
   M:ns4query(L),!,
   (member((A=B),L) ->
       (retract(M:ns4query(L)),
@@ -289,8 +289,8 @@ ontology_parser:remove_kb_prefix(M:A,B):-
       true
    ).
 
-:- multifile ontology_parser:remove_kb_prefix/1.
-ontology_parser:remove_kb_prefix(M:A):-
+:- multifile trill:remove_kb_prefix/1.
+trill:remove_kb_prefix(M:A):-
   M:ns4query(L),!,
   (member((A=B),L) *->
       (retract(M:ns4query(L)),
@@ -332,7 +332,7 @@ expand_all_ns(M,[P|T],NSList,[NP|NewArgs]):-
 /********************************
   LOAD KNOWLEDGE BASE
 *********************************/
-:- multifile ontology_parser:load_kb/1, ontology_parser:load_owl_kb/1, ontology_parser:load_owl_kb_from_string/1.
+:- multifile trill:load_kb/1, trill:load_owl_kb/1, trill:load_owl_kb_from_string/1.
 /**
  * load_kb(++FileName:kb_file_name) is det
  *
@@ -340,7 +340,7 @@ expand_all_ns(M,[P|T],NSList,[NP|NewArgs]):-
  * The knowledge base must be defined in TRILL format, to use also OWL/RDF format
  * use the predicate owl_rdf/1.
  */
-ontology_parser:load_kb(FileName):-
+trill:load_kb(FileName):-
   user:consult(FileName).
 
 /**
@@ -349,7 +349,7 @@ ontology_parser:load_kb(FileName):-
  * The predicate loads the knowledge base contained in the given file. 
  * The knowledge base must be defined in pure OWL/RDF format.
  */
-ontology_parser:load_owl_kb(FileName):-
+trill:load_owl_kb(FileName):-
   load_owl(FileName).
 
 /**
@@ -358,7 +358,7 @@ ontology_parser:load_owl_kb(FileName):-
  * The predicate loads the knowledge base contained in the given string. 
  * The knowledge base must be defined in pure OWL/RDF format.
  */
-ontology_parser:load_owl_kb_from_string(String):-
+trill:load_owl_kb_from_string(String):-
   load_owl_from_string(String).
 
 /**
@@ -389,7 +389,7 @@ load_owl_from_stream(S):-
   retractall(M:trdf_setting(_,_)),
   process_rdf(stream(S), assert_list(M), [namespaces(NSList)]),
   close(S),
-  ontology_parser:add_kb_prefixes(M:NSList),
+  trill:add_kb_prefixes(M:NSList),
   rdf_2_owl(M,'ont'),
   internal_parser_init(M),
   owl_canonical_parse_3(M,['ont']),
@@ -521,7 +521,7 @@ ontology_parser:clean_up_parser(M):-
   M:(dynamic owl/4, owl/3, owl/2, blanknode/3, outstream/1, aNN/3, annotation_r_node/4, axiom_r_node/4, owl_repository/2, trdf_setting/2),
   M:(dynamic ns4query/1),
   retractall(M:kb_atom([])),
-  forall(ontology_parser:axiom(M:A),retractall(M:A)),
+  forall(trill:axiom(M:A),retractall(M:A)),
   retractall(M:blanknode(_,_,_)),
   retractall(M:aNN(_,_,_)),
   retractall(M:annotation_r_node(_,_,_)),
@@ -827,14 +827,14 @@ expand_axiom(M,anonymousIndividual(A),NSList,anonymousIndividual(A_full_URL)) :-
 % @see axiom/1, annotation/1, ontology/1
 :- meta_predicate costruct(:).
 
-construct(M:A) :- ontology_parser:axiom(M:A).
+construct(M:A) :- trill:axiom(M:A).
 construct(M:A) :- annotation(M:A).
 construct(M:A) :- M:ontology(A).
 axiom_arguments(construct,[iri]).
 valid_axiom(construct(A)) :- subsumed_by([A],[iri]).
 
 axiom_arguments(axiom,[axiom]).
-valid_axiom(ontology_parser:axiom(A)) :- subsumed_by([A],[axiom]).
+valid_axiom(trill:axiom(A)) :- subsumed_by([A],[axiom]).
 
 %% classAxiom(:Axiom)
 % OWL 2 provides axioms that allow relationships to be established between class expressions. This predicate reifies the actual axiom
@@ -2007,20 +2007,20 @@ labelAnnotation_value(X,Val) :-
 % e.g. axiom_directly_about( propertyAssertion(P,X,_), X).
 %
 axiom_directly_about(Ax,About) :-
-        ontology_parser:axiom(Ax),
+        trill:axiom(Ax),
         Ax =.. [_,Arg1|_],
         (   is_list(Arg1)
         ->  member(About,Arg1)
         ;   About=Arg1).
 axiom_directly_about(Ax,About) :-
 	Ax=propertyAssertion(_,About,_),
-        ontology_parser:axiom(Ax).
+        trill:axiom(Ax).
 axiom_directly_about(Ax,About) :-
 	Ax=annotationAssertion(_,About,_),
-        ontology_parser:axiom(Ax).
+        trill:axiom(Ax).
 axiom_directly_about(Ax,About) :-
 	Ax=classAssertion(_,About),
-        ontology_parser:axiom(Ax).
+        trill:axiom(Ax).
 
 
 %% axiom_directly_references(?Ax:axiom,?Ref)
@@ -2030,7 +2030,7 @@ axiom_directly_about(Ax,About) :-
 %  - a named entity
 %  - an expression
 axiom_directly_references(Ax,Ref) :-
-        ontology_parser:axiom(Ax),
+        trill:axiom(Ax),
         axiom_or_expression_references(Ax,Ref).
 
 axiom_or_expression_references(X,Ref) :-
@@ -2056,7 +2056,7 @@ axiom_references(Ax,Ref) :-
 axiom_contains_expression(Ax,Ex) :-
         axiom_contains_expression(Ax,Ex,_).
 axiom_contains_expression(Ax,Ex,D) :-
-        ontology_parser:axiom(Ax),
+        trill:axiom(Ax),
         expression_has_subexpression(Ax,Ex,[],Chain),
         length(Chain,D).
 
@@ -2166,7 +2166,7 @@ retract_axiom(M,Axiom,Ontology) :-
 
 
 retract_all_axioms(M) :-
-        findall(M:A,ontology_parser:axiom(M:A),Axioms),
+        findall(M:A,trill:axiom(M:A),Axioms),
         maplist(retract,Axioms),
         findall(M:ontologyAxiom(O,A),M:ontologyAxiom(O,A),OAxioms),
         maplist(retract,OAxioms),
@@ -3995,7 +3995,7 @@ add_expressivity(M,f):-
 user:term_expansion(kb_prefix(A,B),[]):-
   get_module(M),
   assert(M:addKBName),
-  ontology_parser:add_kb_prefix(M:A,B).
+  trill:add_kb_prefix(M:A,B).
 
 user:term_expansion(owl_rdf(String),[]):-
   parse_rdf_from_owl_rdf_pred(String).
@@ -4028,7 +4028,7 @@ user:term_expansion(end_of_file, end_of_file) :-
 
 user:term_expansion(TRILLAxiom,[]):-
   get_module(M),
-  ontology_parser:is_axiom(TRILLAxiom),
+  trill:is_axiom(TRILLAxiom),
   create_and_assert_axioms(M,TRILLAxiom).
 
 

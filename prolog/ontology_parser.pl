@@ -13,25 +13,9 @@ It also serves as interface for a TRILL parser.
             unload_all_parsers/0,
             load_default_parser/1,
             load_parser_module/1,
-            % KB loading
-            load_kb/1,
-            load_owl_kb/1,
-            load_owl_kb_from_string/1,
             % ====
             % expand_all_ns/4,
-            % ====
-            axiom/1,
-            % multifile API used by trill.pl
-            kb_prefixes/1,
-            add_kb_prefix/2,
-            add_kb_prefixes/1,
-            remove_kb_prefix/1,
-            remove_kb_prefix/2,
-            add_axiom/1,
-            add_axioms/1,
-            remove_axiom/1,
-            remove_axioms/1,
-            %---------
+            % ====     
             check_query_args/4,
             set_up_parser/1, clean_up_parser/1,
             get_axiom_subClassOf/3, get_axiom_equivalentClasses/2,
@@ -47,19 +31,8 @@ It also serves as interface for a TRILL parser.
             get_classes_list/2
           ]).
 
-:- meta_predicate axiom(:).
-:- meta_predicate kb_prefixes(:).
-:- meta_predicate add_kb_prefix(:,+).
-:- meta_predicate add_kb_prefixes(:).
-:- meta_predicate add_axiom(:).
-:- meta_predicate add_axioms(:).
-:- meta_predicate remove_kb_prefix(:,+).
-:- meta_predicate remove_kb_prefix(:).
-:- meta_predicate remove_axiom(:).
-:- meta_predicate remove_axioms(:).
-:- meta_predicate load_kb(+).
-:- meta_predicate load_owl_kb(+).
-:- meta_predicate load_owl_kb_from_string(+).
+
+
 :- meta_predicate check_query_args(+,+,+,-).
 :- meta_predicate get_axiom_subClassOf(+,-,-).
 :- meta_predicate get_axiom_subPropertyOf(+,-,-).
@@ -142,48 +115,6 @@ load_parser_module(Parser):- %Fallback to internal
 
 
 /********************************
-  AXIOMS MANAGEMENT
-*********************************/
-
-:- multifile axiom/1,
-             add_axiom/1, add_axioms/1,
-             remove_axiom/1, remove_axioms/1.
-
-/**
- * axiom(:Axiom:axiom) is det
- *
- * This predicate searches in the loaded knowledge base axioms that unify with Axiom.
- */
-
-/**
- * add_axiom(:Axiom:axiom) is det
- *
- * This predicate adds the given axiom to the knowledge base.
- * The axiom must be defined following the TRILL syntax.
- */
-
-/**
- * add_axioms(:Axioms:list) is det
- *
- * This predicate adds the axioms of the list to the knowledge base.
- * The axioms must be defined following the TRILL syntax.
- */
-
-/**
- * remove_axiom(:Axiom:axiom) is det
- *
- * This predicate removes the given axiom from the knowledge base.
- * The axiom must be defined following the TRILL syntax.
- */
-
-/**
- * remove_axioms(++Axioms:list) is det
- *
- * This predicate removes the axioms of the list from the knowledge base.
- * The axioms must be defined following the TRILL syntax.
- */
-
-/********************************
   AXIOMS SEARCH
 *********************************/
 
@@ -201,54 +132,6 @@ load_parser_module(Parser):- %Fallback to internal
   INDIVIDUALS MANAGEMENT
 *********************************/
 :- multifile get_classes_list/2.
-
-/********************************
-  PREFIXES MANAGEMENT
-*********************************/
-
-%defined in internal_parser
-:- multifile kb_prefixes/1,
-             add_kb_prefix/2, add_kb_prefixes/1,
-             remove_kb_prefix/2, remove_kb_prefix/1.
-/**
- * kb_prefix(:Prefixes:list) is det
- *
- * This predicate returns the list of prefixes used by the parser.
- */
-
-/**
- * add_kb_prefix(:ShortPref:string,++LongPref:string) is det
- *
- * This predicate registers the alias ShortPref for the prefix defined in LongPref.
- * The empty string '' can be defined as alias.
- */
-
-/**
- * add_kb_prefixes(:Prefixes:list) is det
- *
- * This predicate registers all the alias prefixes contained in Prefixes.
- * The input list must contain pairs alias=prefix, i.e., [('foo'='http://example.foo#')].
- * The empty string '' can be defined as alias.
- */
-
-/**
- * remove_kb_prefix(:ShortPref:string,++LongPref:string) is det
- *
- * This predicate removes from the registered aliases the one given in input.
- */
-
-/**
- * remove_kb_prefix(:Name:string) is det
- *
- * This predicate takes as input a string that can be an alias or a prefix and 
- * removes the pair containing the string from the registered aliases.
- */
-
-/********************************
-  LOAD KNOWLEDGE BASE
-*********************************/
-
-:- multifile load_kb/1, load_owl_kb/1, load_owl_kb_from_string/1, is_axiom/1.
 
 % expands query arguments using prefixes and checks their existence in the kb
 % returns the non-present arguments
@@ -283,20 +166,6 @@ from_query_type_to_args_type(it,[]):- !.
 
 :- multifile sandbox:safe_primitive/1.
 
-sandbox:safe_primitive(ontology_parser:load_kb(_)).
-sandbox:safe_primitive(ontology_parser:load_owl_kb(_)).
-sandbox:safe_primitive(ontology_parser:load_owl_kb_from_string(_)).
-sandbox:safe_primitive(ontology_parser:is_axiom(_)).
-sandbox:safe_meta(ontology_parser:axiom(_),[]).
-sandbox:safe_meta(ontology_parser:kb_prefixes(_),[]).
-sandbox:safe_meta(ontology_parser:add_kb_prefix(_,_),[]).
-sandbox:safe_meta(ontology_parser:add_kb_prefixes(_),[]).
-sandbox:safe_meta(ontology_parser:remove_kb_prefix(_,_),[]).
-sandbox:safe_meta(ontology_parser:remove_kb_prefix(_),[]).
-sandbox:safe_meta(ontology_parser:add_axiom(_),[]).
-sandbox:safe_meta(ontology_parser:add_axioms(_),[]).
-sandbox:safe_meta(ontology_parser:load_kb(_),[]).
-sandbox:safe_meta(ontology_parser:load_owl_kb(_),[]).
 sandbox:safe_primitive(ontology_parser:check_query_args(_,_,_,_)).
 sandbox:safe_meta(get_axiom_subClassOf(_,_,_),[]).
 sandbox:safe_meta(get_axiom_subPropertyOf(_,_,_),[]).

@@ -85,64 +85,64 @@ Requires:
 % propertyRange, transitiveProperty, inverseProperties, symmetricProperty,
 % sameIndividual, differentIndividuals, classAssertion, propertyAssertion,
 % annotationAssertion, plus concept descriptions used inside axioms. 
-:- multifile ontology_parser:axiom/1.
-ontology_parser:axiom(M:A) :- M:adb(A).
+:- multifile trill:axiom/1.
+trill:axiom(M:A) :- M:adb(A).
 
 
-:- multifile ontology_parser:add_axiom/1.
-ontology_parser:add_axiom(M:Axiom) :-
+:- multifile trill:add_axiom/1.
+trill:add_axiom(M:Axiom) :-
     M:adb(Axiom),!.
 
-ontology_parser:add_axiom(M:Axiom) :-
-    ontology_parser:is_axiom(Axiom),
+trill:add_axiom(M:Axiom) :-
+    trill:is_axiom(Axiom),
     assertz(M:adb(Axiom)),
     trill:update_tabs(M,Axiom).
 
 add_axiom(M,Axiom) :-
-  ontology_parser:is_axiom(Axiom),
+  trill:is_axiom(Axiom),
   assertz(M:adb(Axiom)).
 
 
-:- multifile ontology_parser:add_axioms/1.
-ontology_parser:add_axioms(M:Axioms) :-
+:- multifile trill:add_axioms/1.
+trill:add_axioms(M:Axioms) :-
     must_be(list, Axioms),
-    concurrent_maplist(ontology_parser:add_axiom(M), Axioms).
+    concurrent_maplist(trill:add_axiom(M), Axioms).
 
 
-:- multifile ontology_parser:remove_axiom/1.
-ontology_parser:remove_axiom(M:Axiom) :-
+:- multifile trill:remove_axiom/1.
+trill:remove_axiom(M:Axiom) :-
     retractall(M:adb(Axiom)).
 
-remove_axiom(M,Axiom) :- ontology_parser:remove_axiom(M:Axiom).
+remove_axiom(M,Axiom) :- trill:remove_axiom(M:Axiom).
 
 
-:- multifile ontology_parser:remove_axioms/1.
-ontology_parser:remove_axioms(M:Axioms) :-
+:- multifile trill:remove_axioms/1.
+trill:remove_axioms(M:Axioms) :-
     must_be(list, Axioms),
-    concurrent_maplist(ontology_parser:remove_axiom(M), Axioms).
+    concurrent_maplist(trill:remove_axiom(M), Axioms).
 
 
-:- multifile ontology_parser:is_axiom/1.
+:- multifile trill:is_axiom/1.
 /**
  * is_axiom(?Axiom:string) is det
  *
  * This predicate unifies Axiom with one of the possible type of axioms managed by TRILL.
  */
-ontology_parser:is_axiom(subClassOf(_,_)).
-ontology_parser:is_axiom(equivalentClasses(_)).
-ontology_parser:is_axiom(disjointClasses(_)).
-ontology_parser:is_axiom(subPropertyOf(_,_)).
-ontology_parser:is_axiom(equivalentProperties(_)).
-ontology_parser:is_axiom(propertyDomain(_,_)).
-ontology_parser:is_axiom(propertyRange(_,_)).
-ontology_parser:is_axiom(transitiveProperty(_)).
-ontology_parser:is_axiom(inverseProperties(_,_)).
-ontology_parser:is_axiom(symmetricProperty(_)).
-ontology_parser:is_axiom(sameIndividual(_)).
-ontology_parser:is_axiom(differentIndividuals(_)).
-ontology_parser:is_axiom(classAssertion(_,_)).
-ontology_parser:is_axiom(propertyAssertion(_,_,_)).
-ontology_parser:is_axiom(annotationAssertion(_,_,_)).
+trill:is_axiom(subClassOf(_,_)).
+trill:is_axiom(equivalentClasses(_)).
+trill:is_axiom(disjointClasses(_)).
+trill:is_axiom(subPropertyOf(_,_)).
+trill:is_axiom(equivalentProperties(_)).
+trill:is_axiom(propertyDomain(_,_)).
+trill:is_axiom(propertyRange(_,_)).
+trill:is_axiom(transitiveProperty(_)).
+trill:is_axiom(inverseProperties(_,_)).
+trill:is_axiom(symmetricProperty(_)).
+trill:is_axiom(sameIndividual(_)).
+trill:is_axiom(differentIndividuals(_)).
+trill:is_axiom(classAssertion(_,_)).
+trill:is_axiom(propertyAssertion(_,_,_)).
+trill:is_axiom(annotationAssertion(_,_,_)).
 
 
 /********************************
@@ -223,32 +223,32 @@ ontology_parser:get_classes_list(M,Classes):-
 
 % Get the KB's prefixes contained into ns4query
 % We store prefixes as kb_prefix/2 and expose them through kb_prefixes/1
-:- multifile ontology_parser:kb_prefixes/1.
-ontology_parser:kb_prefixes(M:Pairs) :-
+:- multifile trill:kb_prefixes/1.
+trill:kb_prefixes(M:Pairs) :-
     findall(S=IRI, M:kb_prefix(S, IRI), Pairs).
 
 
-:- multifile ontology_parser:add_kb_prefix/2.
-ontology_parser:add_kb_prefix(M:Short, Long) :-
+:- multifile trill:add_kb_prefix/2.
+trill:add_kb_prefix(M:Short, Long) :-
     must_be(atom, Short), must_be(atom, Long),
     retractall(M:kb_prefix(Short, _)),
     assertz(M:kb_prefix(Short, Long)).
 
 
 % Adds a list of kb prefixes into ns4query
-:- multifile ontology_parser:add_kb_prefixes/1.
-ontology_parser:add_kb_prefixes(M:Pairs) :-
+:- multifile trill:add_kb_prefixes/1.
+trill:add_kb_prefixes(M:Pairs) :-
     must_be(list, Pairs),
     maplist(wrapper_parser:add_kb_prefix_pair(M), Pairs).
 
-add_kb_prefix_pair(M, Short=Long) :- ontology_parser:add_kb_prefix(M:Short, Long).
+add_kb_prefix_pair(M, Short=Long) :- trill:add_kb_prefix(M:Short, Long).
 
 
-:- multifile ontology_parser:remove_kb_prefix/2.
-ontology_parser:remove_kb_prefix(M:Short, Long) :-
+:- multifile trill:remove_kb_prefix/2.
+trill:remove_kb_prefix(M:Short, Long) :-
     retractall(M:kb_prefix(Short, Long)).
 
-ontology_parser:remove_kb_prefix(M:NameOrIRI) :-
+trill:remove_kb_prefix(M:NameOrIRI) :-
     (   retractall(M:kb_prefix(NameOrIRI, _))
     ;   retractall(M:kb_prefix(_, NameOrIRI))
     ), !.
@@ -301,14 +301,14 @@ ns_expand_atomic(NSList, A, Out) :-
 /********************************
   LOAD KNOWLEDGE BASE
 *********************************/
-:- multifile ontology_parser:load_kb/1, ontology_parser:load_owl_kb/1, ontology_parser:load_owl_kb_from_string/1.
+:- multifile trill:load_kb/1, trill:load_owl_kb/1, trill:load_owl_kb_from_string/1.
 /**
  * load_kb(++FileName:atom) is det
  *
  * Parse ontology from a file using Java OWL API and assert axioms/prefixes. 
  * 
  */
-ontology_parser:load_kb(File) :-
+trill:load_kb(File) :-
     get_module(M),
     must_be(atom, File),
     %retractall(M:adb(_)),
@@ -326,8 +326,8 @@ ontology_parser:load_kb(File) :-
  * The predicate performs the same operations as load_kb.
  * Maintained for compatibility with internal_parser.
  */
-ontology_parser:load_owl_kb(FileName):-
-  ontology_parser:load_kb(FileName).
+trill:load_owl_kb(FileName):-
+  trill:load_kb(FileName).
 
 
 /**
@@ -336,7 +336,7 @@ ontology_parser:load_owl_kb(FileName):-
  * Parse ontology from a string (RDF/XML, Turtle, OWL Functional, …) via OWL API. 
  * The knowledge base can be defined in every OWL format known by Java OWL API.
  */
-ontology_parser:load_owl_kb_from_string(String):-
+trill:load_owl_kb_from_string(String):-
   get_module(M),
   must_be(atom, String),
   %retractall(M:adb(_)),
@@ -388,7 +388,7 @@ assert_prefix_from_java(M,JStr) :-
     (   sub_atom(A, B, 1, _, '=')
     ->  sub_atom(A, 0, B, _, Short),
         succ(B, C0), sub_atom(A, C0, _, 0, IRI),
-        ontology_parser:add_kb_prefix(M:Short, IRI)
+        trill:add_kb_prefix(M:Short, IRI)
     ;   true
     ).
 
@@ -397,7 +397,7 @@ assert_axiom_from_string(M,JStr) :-
     atom_string(A, JStr),
     % turn the textual TRILL term into a real Prolog term and assert it
     atom_to_term(A, Term, _Bindings),
-    ontology_parser:add_axiom(M:Term).
+    trill:add_axiom(M:Term).
 
 
 /********************************
@@ -589,12 +589,12 @@ is_concept(T) :-
 /******************************/
 
 user:term_expansion(owl_rdf(String),[]):-
-  ontology_parser:load_owl_kb_from_string(String),!.
+  trill:load_owl_kb_from_string(String),!.
 
 user:term_expansion(TRILLAxiom,[]):-
-  ontology_parser:is_axiom(TRILLAxiom),
+  trill:is_axiom(TRILLAxiom),
   get_module(M),
-  ontology_parser:kb_prefixes(NSList),
+  trill:kb_prefixes(NSList),
   ns_expand_term(NSList, TRILLAxiom, TRILLAxiomExpanded),
   assertz(M:adb(TRILLAxiomExpanded)).
 

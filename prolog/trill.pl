@@ -23,7 +23,23 @@ details.
                  unsat/1, unsat/2, prob_unsat/2, unsat/3, all_unsat/2,
                  inconsistent_theory/0, inconsistent_theory/1, prob_inconsistent_theory/1, inconsistent_theory/2, all_inconsistent_theory/1,
                  resume_query/1, compute_query_prob/1, reset_query/0,
-                 init_trill/1, init_trill/2, set_tableau_expansion_rules/2, set_parser/1] ).
+                 init_trill/1, init_trill/2, set_tableau_expansion_rules/2, set_parser/1,
+                 % KB loading
+                 load_kb/1,
+                 load_owl_kb/1,
+                 load_owl_kb_from_string/1,
+                 %---------
+                 axiom/1,
+                 % multifile API used by trill.pl
+                 kb_prefixes/1,
+                 add_kb_prefix/2,
+                 add_kb_prefixes/1,
+                 remove_kb_prefix/1,
+                 remove_kb_prefix/2,
+                 add_axiom/1,
+                 add_axioms/1,
+                 remove_axiom/1,
+                 remove_axioms/1] ).
 
 :- meta_predicate sub_class(:,+).
 :- meta_predicate sub_class(:,+,-).
@@ -55,6 +71,17 @@ details.
 :- meta_predicate init_trill(+,+).
 :- meta_predicate set_tableau_expansion_rules(:,+).
 :- meta_predicate set_parser(:).
+
+:- meta_predicate axiom(:).
+:- meta_predicate kb_prefixes(:).
+:- meta_predicate add_kb_prefix(:,+).
+:- meta_predicate add_kb_prefixes(:).
+:- meta_predicate remove_kb_prefix(:,+).
+:- meta_predicate remove_kb_prefix(:).
+:- meta_predicate add_axiom(:).
+:- meta_predicate add_axioms(:).
+:- meta_predicate remove_axiom(:).
+:- meta_predicate remove_axioms(:).
 
 :- use_module(library(lists)).
 :- use_module(library(ugraphs)).
@@ -97,6 +124,96 @@ disponte_iri('https://ai.unife.it/disponte#probability').
  */
 setting_trill_default(parser,wrapper).
 
+
+/********************************
+  AXIOMS MANAGEMENT
+*********************************/
+
+:- multifile axiom/1,
+             add_axiom/1, add_axioms/1,
+             remove_axiom/1, remove_axioms/1.
+
+/**
+ * axiom(:Axiom:axiom) is det
+ *
+ * This predicate searches in the loaded knowledge base axioms that unify with Axiom.
+ */
+
+/**
+ * add_axiom(:Axiom:axiom) is det
+ *
+ * This predicate adds the given axiom to the knowledge base.
+ * The axiom must be defined following the TRILL syntax.
+ */
+
+/**
+ * add_axioms(:Axioms:list) is det
+ *
+ * This predicate adds the axioms of the list to the knowledge base.
+ * The axioms must be defined following the TRILL syntax.
+ */
+
+/**
+ * remove_axiom(:Axiom:axiom) is det
+ *
+ * This predicate removes the given axiom from the knowledge base.
+ * The axiom must be defined following the TRILL syntax.
+ */
+
+/**
+ * remove_axioms(++Axioms:list) is det
+ *
+ * This predicate removes the axioms of the list from the knowledge base.
+ * The axioms must be defined following the TRILL syntax.
+ */
+
+/********************************
+  PREFIXES MANAGEMENT
+*********************************/
+
+%defined in internal_parser
+:- multifile kb_prefixes/1,
+             add_kb_prefix/2, add_kb_prefixes/1,
+             remove_kb_prefix/2, remove_kb_prefix/1.
+/**
+ * kb_prefix(:Prefixes:list) is det
+ *
+ * This predicate returns the list of prefixes used by the parser.
+ */
+
+/**
+ * add_kb_prefix(:ShortPref:string,++LongPref:string) is det
+ *
+ * This predicate registers the alias ShortPref for the prefix defined in LongPref.
+ * The empty string '' can be defined as alias.
+ */
+
+/**
+ * add_kb_prefixes(:Prefixes:list) is det
+ *
+ * This predicate registers all the alias prefixes contained in Prefixes.
+ * The input list must contain pairs alias=prefix, i.e., [('foo'='http://example.foo#')].
+ * The empty string '' can be defined as alias.
+ */
+
+/**
+ * remove_kb_prefix(:ShortPref:string,++LongPref:string) is det
+ *
+ * This predicate removes from the registered aliases the one given in input.
+ */
+
+/**
+ * remove_kb_prefix(:Name:string) is det
+ *
+ * This predicate takes as input a string that can be an alias or a prefix and 
+ * removes the pair containing the string from the registered aliases.
+ */
+
+/********************************
+  LOAD KNOWLEDGE BASE
+*********************************/
+
+:- multifile load_kb/1, load_owl_kb/1, load_owl_kb_from_string/1, is_axiom/1.
 
 /*****************************
   UTILITY PREDICATES
@@ -4220,6 +4337,23 @@ sandbox:safe_meta(trill:compute_query_prob(_),[]).
 sandbox:safe_meta(trill:reset_query,[]).
 sandbox:safe_meta(trill:set_tableau_expansion_rules(_,_),[]).
 sandbox:safe_meta(trill:set_parser(_),[]).
+
+sandbox:safe_meta(trill:axiom(_),[]).
+sandbox:safe_meta(trill:kb_prefixes(_),[]).
+sandbox:safe_meta(trill:add_kb_prefix(_,_),[]).
+sandbox:safe_meta(trill:add_kb_prefixes(_),[]).
+sandbox:safe_meta(trill:remove_kb_prefix(_,_),[]).
+sandbox:safe_meta(trill:remove_kb_prefix(_),[]).
+sandbox:safe_primitive(trill:is_axiom(_)).
+sandbox:safe_meta(trill:add_axiom(_),[]).
+sandbox:safe_meta(trill:add_axioms(_),[]).
+sandbox:safe_meta(trill:remove_axiom(_),[]).
+sandbox:safe_meta(trill:remove_axioms(_),[]).
+
+sandbox:safe_primitive(trill:load_kb(_)).
+sandbox:safe_primitive(trill:load_owl_kb(_)).
+sandbox:safe_primitive(trill:load_owl_kb_from_string(_)).
+
 
 :- use_module(library(ontology_parser)).
 
