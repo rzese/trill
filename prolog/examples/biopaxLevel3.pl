@@ -1,11 +1,71 @@
+/** <module> biopaxLevel3
+
+This example demonstrates TRILL's ability to reason over complex
+biomedical ontologies with probabilistic annotations.
+
+## Knowledge Base Description
+
+This is a simplified version of the BioPAX Level 3 ontology for 
+biological pathway exchange. BioPAX is a standard for representing
+biological pathway data including metabolic pathways, signaling pathways,
+and regulatory networks.
+
+More information: http://www.biopax.org/
+
+## Ontology Structure
+
+The BioPAX ontology includes:
+
+### Core Classes
+- **Entity**: Base class for all biological entities
+- **PhysicalEntity**: Molecules and complexes (Protein, DNA, RNA, SmallMolecule)
+- **Interaction**: Relationships between entities (Conversion, Control, etc.)
+- **Pathway**: Collection of related interactions
+
+### Entity Types
+- PhysicalEntity (Protein, Complex, DNA, RNA, SmallMolecule)
+- Gene
+- Pathway
+
+### Interaction Types
+- Conversion (BiochemicalReaction, Transport, ComplexAssembly)
+- Control (Catalysis, Modulation, TemplateReactionRegulation)
+- GeneticInteraction
+- MolecularInteraction
+- TemplateReaction
+
+## Probabilistic Annotations
+
+Several axioms have DISPONTE probability annotations:
+- P(GeneticInteraction subClassOf Interaction) = 0.7
+- P(Interaction disjointWith Pathway) = 0.89
+- P(Pathway subClassOf Entity) = 0.9
+- P(TransportWithBiochemicalReaction subClassOf BiochemicalReaction) = 0.9
+- P(TransportWithBiochemicalReaction subClassOf Transport) = 0.8
+
+## Example Queries
+
+```prolog
+?- prob_sub_class('TransportWithBiochemicalReaction', 'Entity', Prob).
+% Computes the probability of the subsumption
+
+?- sub_class('TransportWithBiochemicalReaction', 'Entity', ListExpl).
+% Returns explanations for the subsumption
+```
+
+## Reference
+
+BioPAX is licensed under LGPL.
+See http://www.gnu.org/copyleft/lesser.html
+
+@author Riccardo Zese
+@license Artistic License 2.0
+@copyright Riccardo Zese
+*/
+
 :-use_module(library(trill)).
 
 :- trill. % or :- trillp. or :- tornado.
-
-/*
-Model of metabolic pathways.
-http://www.biopax.org/
-*/
 
 /** <examples>
 
@@ -14,6 +74,7 @@ http://www.biopax.org/
 
 */
 
+% The embedded OWL/RDF ontology
 owl_rdf('<?xml version="1.0"?>
 
 <!DOCTYPE rdf:RDF [

@@ -1,14 +1,68 @@
 /** <module> wrapper_parser
 
-This module implements the ontology_parser interface.
-It uses Java OWL API and JPL to parse an OWL ontology.
-It translates OWL axioms into TRILL's Prolog syntax and asserts them as
-`adb/1` facts, preserving the public predicates used by `trill.pl`.
+This module implements the ontology_parser interface using Java's OWL API
+through JPL (Java-Prolog bidirectional interface).
 
-Requires:
-  - Java 11+
-  - JPL 7.6.1
-  - A JAR on the JVM classpath containing it.unife.ml.probowlapi.trill.TrillTest1
+## Overview
+
+The wrapper_parser module provides a hybrid Java-Prolog approach to parsing
+OWL ontologies. It leverages the powerful and standards-compliant Java OWL API
+for parsing while maintaining the axioms in Prolog format for reasoning.
+
+## Architecture
+
+1. **Java Side**: Uses the prob-owlapi library (it.unife.ml.probowlapi) to:
+   - Parse OWL/RDF files
+   - Extract axioms in a standardized format
+   - Handle namespace resolution
+
+2. **Prolog Side**: 
+   - Receives axioms from Java
+   - Asserts them as `adb/1` facts
+   - Provides the ontology_parser interface predicates
+
+## Requirements
+
+- **Java 11+**: Required for the OWL API
+- **JPL 7.6.1+**: Java-Prolog interface
+- **prob-owlapi-2.0.8.jar**: Contains the TrillKBParserWrapper class
+
+## Key Features
+
+1. **Full OWL Support**: Leverages Java OWL API for complete OWL parsing
+2. **Streaming Loading**: Parses and asserts axioms incrementally
+3. **Prefix Management**: Handles namespace prefixes via Java
+4. **Concurrent Operations**: Uses concurrent_maplist for batch operations
+
+## Main Predicates
+
+### Axiom Management
+- axiom/1: Query axioms (via adb/1 facts)
+- add_axiom/1: Add single axiom
+- add_axioms/1: Add list of axioms (concurrent)
+- remove_axiom/1: Remove single axiom
+- remove_axioms/1: Remove list of axioms (concurrent)
+- is_axiom/1: Validate axiom format
+
+### KB Loading
+- load_kb/1: Load KB from Prolog file
+- load_owl_kb/1: Load KB from OWL file (via Java)
+- load_owl_kb_from_string/1: Load KB from OWL string
+
+### Prefix Management
+- kb_prefixes/1: Get registered prefixes
+- add_kb_prefix/2: Register namespace prefix
+- remove_kb_prefix/1, remove_kb_prefix/2: Remove prefix
+
+## Axiom Types Supported
+
+The module recognizes all standard OWL axiom types:
+- Class axioms: subClassOf, equivalentClasses, disjointClasses
+- Property axioms: subPropertyOf, propertyDomain, propertyRange
+- Property characteristics: transitiveProperty, symmetricProperty, etc.
+- Individual axioms: classAssertion, propertyAssertion
+- Identity: sameIndividual, differentIndividuals
+- Annotations: annotationAssertion
 
 @author Riccardo Zese
 @license Artistic License 2.0
