@@ -1,14 +1,61 @@
+/** <module> peoplePets
+
+This is a classic probabilistic ontology example demonstrating TRILL's
+DISPONTE (DIstribution Semantics for Probabilistic ONTologiEs) reasoning
+capabilities.
+
+## Knowledge Base Description
+
+This knowledge base models people and their pet relationships, inspired by
+the people+pets ontology from:
+  Patel-Schneider, P.F., Horrocks, I., and Bechhofer, S. 2003. Tutorial on OWL.
+
+The ontology defines:
+  - **Classes**: cat, dog, dinosaur, pet, natureLover
+  - **Properties**: has_animal, is_animal_of (inverse properties)
+  - **Individuals**: Kevin, Tom, Fluffy, Dino, Fred, Spike
+
+## Probabilistic Annotations
+
+Several axioms have DISPONTE probability annotations:
+  - P(cat subClassOf pet) = 0.6
+  - P(dog subClassOf pet) = 0.8
+  - P(Fluffy is a cat) = 0.4
+  - P(Tom is a cat) = 0.3
+
+## Reasoning Task
+
+The key inference is: "Are individuals who own a pet considered nature lovers?"
+
+The rule encoded is: someValuesFrom(has_animal, pet) subClassOf natureLover
+
+Since Kevin owns Fluffy, Tom, and Spike, and these may be pets with certain
+probabilities, we can compute the probability that Kevin is a nature lover.
+
+## Example Queries
+
+```prolog
+?- prob_instanceOf('natureLover', 'Kevin', Prob).
+% Returns the probability that Kevin is a nature lover
+
+?- instanceOf('natureLover', 'Kevin', ListExpl).
+% Returns explanations for why Kevin is a nature lover
+```
+
+## Reference
+
+Zese, R.: Reasoning with Probabilistic Logics. ArXiv e-prints 1405.0915v3.
+Doctoral Consortium of the 30th International Conference on Logic Programming
+(ICLP 2014), July 19-22, Vienna, Austria.
+
+@author Riccardo Zese
+@license Artistic License 2.0
+@copyright Riccardo Zese
+*/
+
 :-use_module(library(trill)).
 
 :- trill. % or :- trillp. or :- tornado.
-
-/*
-This knowledge base is inpired by the people+pets ontology from
-Patel-Schneider, P, F., Horrocks, I., and Bechhofer, S. 2003. Tutorial on OWL.
-The knowledge base indicates that the individuals that own an animal which is a pet are nature lovers, from
-Zese, R.: Reasoning with Probabilistic Logics. ArXiv e-prints 1405.0915v3. 
-Doctoral Consortium of the 30th International Conference on Logic Programming (ICLP 2014), July 19-22, Vienna, Austria.
-*/
 
 /** <examples>
 
@@ -17,6 +64,7 @@ Doctoral Consortium of the 30th International Conference on Logic Programming (I
 
 */
 
+% OWL/RDF ontology definition embedded as string
 owl_rdf('<?xml version="1.0"?>
 
 <!DOCTYPE rdf:RDF [
@@ -239,9 +287,19 @@ owl_rdf('<?xml version="1.0"?>
     </owl:Axiom>
 </rdf:RDF>').
 
+% =============================================================================
+% Native TRILL Syntax Axioms
+% =============================================================================
+
+% Cat is a subclass of pet with probability 0.6
 subClassOf('cat','pet').
+
+% Dinosaur is a subclass of pet (for Fred's pet Dino)
 subClassOf('dinosaur','pet').
+
+% DISPONTE probabilistic annotations for class subsumption
 annotationAssertion('disponte:probability',subClassOf('cat','pet'),literal('0.6')).
 annotationAssertion('disponte:probability',subClassOf('dog','pet'),literal('0.8')).
 
+% has_animal and is_animal_of are inverse properties
 inverseProperties('has_animal','is_animal_of').
