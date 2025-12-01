@@ -1,11 +1,67 @@
+/** <module> DBPedia
+
+This example demonstrates TRILL reasoning over the DBPedia ontology,
+a large-scale structured knowledge base extracted from Wikipedia.
+
+## Knowledge Base Description
+
+This is an extract of the DBPedia ontology that contains structured
+information from Wikipedia. DBPedia is one of the largest publicly
+available knowledge graphs.
+
+More information: http://dbpedia.org/
+
+## Ontology Version
+
+This extract is based on DBPedia Version 3.5.
+
+## Ontology Structure
+
+The DBPedia ontology includes hierarchies for:
+
+### Places and Geography
+- Place, PopulatedPlace, Mountain, Lake, Stream, Canal
+- Planet, LunarCrater
+
+### Organizations
+- GeopoliticalOrganisation, School
+
+### Infrastructure
+- Infrastructure, Building, Bridge
+
+### Transportation
+- MeanOfTransportation, Automobile, AutomobileEngine
+- Spacecraft, SpaceShuttle, Rocket, SpaceStation, SpaceMission
+
+### Science
+- ChemicalCompound, Drug
+
+### Other
+- Person, Astronaut, Work, Software, Weapon, GrandPrix
+
+## Probabilistic Annotations
+
+The ontology includes DISPONTE probability annotations on various
+subsumption axioms.
+
+## Example Queries
+
+```prolog
+?- prob_sub_class('Place', 'PopulatedPlace', Prob).
+% Computes the probability that Place is a subclass of PopulatedPlace
+
+?- sub_class('Place', 'PopulatedPlace', ListExpl).
+% Returns explanations for the subsumption relationship
+```
+
+@author Riccardo Zese
+@license Artistic License 2.0
+@copyright Riccardo Zese
+*/
+
 :-use_module(library(trill)).
 
 :- trill. % or :- trillp. or :- tornado.
-
-/*
-An extract of the DBPedia ontology, it contains structured information from Wikipedia.
-http://dbpedia.org/
-*/
 
 /** <examples>
 
@@ -14,6 +70,7 @@ http://dbpedia.org/
 
 */
 
+% Embedded OWL/RDF ontology
 owl_rdf('<?xml version="1.0"?>
 
 <!DOCTYPE rdf:RDF [
