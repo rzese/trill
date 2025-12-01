@@ -1,15 +1,63 @@
-/* trill predicates
+/** <module> trill_internal
 
-This module performs reasoning over probabilistic description logic knowledge bases.
-It reads probabilistic knowledge bases in RDF format or in Prolog format, a functional-like
-sintax based on definitions of Thea library, and answers queries by finding the set 
-of explanations or computing the probability.
+This module implements the core tableau reasoning algorithms for the TRILL system.
+It provides the main inference engine for probabilistic description logic knowledge bases.
 
-[1] http://vangelisv.github.io/thea/
+## Overview
+
+TRILL (Tableau Reasoner for descrIption Logics in Prolog) uses tableau-based
+algorithms to perform reasoning over OWL ontologies with probabilistic annotations
+(DISPONTE - DIstribution Semantics for Probabilistic ONTologiEs).
+
+This module provides:
+
+1. **Query Processing**: Finding explanations for queries
+2. **Tableau Rules**: Expansion rules for the completion graph
+3. **Clash Detection**: Identifying contradictions (proofs by refutation)
+4. **ABox Management**: Handling assertion box operations
+5. **Explanation Management**: Combining and filtering explanations
+6. **Choice Point Management**: Tracking non-deterministic rule applications
+7. **BDD-based Probability Computation**: Computing probabilities from explanations
+
+## Main Query Types
+
+- **instanceOf**: Check if an individual belongs to a class
+- **sub_class**: Check subsumption between classes
+- **property_value**: Check property assertions
+- **unsat**: Check if a class is unsatisfiable
+- **inconsistent_theory**: Check if the KB is inconsistent
+
+## Tableau Rules
+
+The tableau uses both deterministic and non-deterministic expansion rules:
+
+### Deterministic Rules
+- o_rule: Handles oneOf (nominal) assertions
+- and_rule: Expands intersection (conjunctions)
+- unfold_rule: Applies subsumption axioms
+- add_exists_rule: Handles existential restrictions
+- forall_rule: Handles universal restrictions
+- forall_plus_rule: Universal restriction with role hierarchy
+- exists_rule: Creates new individuals for existential restrictions
+- min_rule: Handles minimum cardinality restrictions
+
+### Non-deterministic Rules
+- or_rule: Handles union (disjunction) - creates choice points
+- max_rule: Handles maximum cardinality - creates choice points for merging
+- ch_rule: Handles choose rule
+
+## Explanation Structure
+
+Explanations are represented as pairs: Expl-CPs where:
+- Expl: List of axioms forming the explanation
+- CPs: List of choice points (for handling non-deterministic choices)
+
+## References
 
 See https://github.com/rzese/trill/blob/master/doc/manual.pdf or
-http://ds.ing.unife.it/~rzese/software/trill/manual.html for
-details.
+http://ds.ing.unife.it/~rzese/software/trill/manual.html for details.
+
+[1] Thea OWL library: http://vangelisv.github.io/thea/
 
 @author Riccardo Zese
 @license Artistic License 2.0

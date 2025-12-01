@@ -1,13 +1,76 @@
+/** <module> BRCA
+
+This example demonstrates TRILL's probabilistic reasoning capabilities using
+a real-world medical ontology about breast cancer risk factors.
+
+## Knowledge Base Description
+
+This ontology models risk factors for breast cancer (BRC), including genetic,
+lifestyle, and medical history factors. It is based on:
+
+  Klinov, P., Parsia, B.: Optimization and evaluation of reasoning in probabilistic
+  description logic: Towards a systematic approach. In: International Semantic Web
+  Conference. LNCS, vol. 5318, pp. 213-228. Springer (2008)
+
+## Ontology Structure
+
+The knowledge base includes:
+
+### Risk Categories
+- **AbsoluteBRCRisk**: Lifetime and short-term breast cancer risk
+- **RelativeBRCRisk**: Increased or reduced risk relative to baseline
+- **RiskCategory**: Classification of risk increase/decrease strength
+
+### Risk Factors
+- **Genetic**: BRCA1/BRCA2 mutations, family history
+- **Hormonal**: Estrogen levels, menopause timing, hormone therapy
+- **Lifestyle**: Alcohol, exercise, obesity
+- **Medical**: Personal history, benign breast disease, radiation exposure
+
+### Key Classes
+- Woman, WomanWithRiskFactors, WomanUnderLifetimeBRCRisk
+- PostmenopausalWoman, PremenopausalWoman
+- WomanWithBRCAMutation, WomanWithFamilyBRCHistory
+
+## Probabilistic Annotations
+
+Several axioms have DISPONTE probability annotations, e.g.:
+- P(Woman subClassOf WomanUnderLifetimeBRCRisk) = 0.123 (baseline risk)
+- P(WomanWithBRCAMutation subClassOf WomanUnderLifetimeBRCRisk) = 0.85
+- P(AshkenaziJewishWoman subClassOf WomanWithBRCAMutation) = 0.025
+
+## Example Individual
+
+Helen is defined as:
+- A Woman
+- Taking Estrogen (WomanTakingEstrogen)
+- Postmenopausal (PostmenopausalWoman)
+- Aged 30-40 (WomanAged3040)
+
+## Example Queries
+
+```prolog
+?- prob_instanceOf('WomanUnderLifetimeBRCRisk', 'Helen', Prob).
+% Computes the probability that Helen is under lifetime BRC risk
+
+?- instanceOf('WomanUnderLifetimeBRCRisk', 'Helen', ListExpl).
+% Returns all explanations for why Helen is under lifetime BRC risk
+
+?- prob_sub_class('WomanAged3040', 'WomanUnderLifetimeBRCRisk', Prob).
+% Computes probability that women aged 30-40 are under lifetime BRC risk
+
+?- sub_class('WomanAged3040', 'WomanUnderLifetimeBRCRisk', ListExpl).
+% Returns explanations for the subclass relationship
+```
+
+@author Riccardo Zese
+@license Artistic License 2.0
+@copyright Riccardo Zese
+*/
+
 :-use_module(library(trill)).
 
 :- trill. % or :- trillp. or :- tornado.
-
-/*
-Model of risk factor of breast cancer, from
-Klinov, P., Parsia, B.: Optimization and evaluation of reasoning in probabilistic
-description logic: Towards a systematic approach. In: International Semantic Web
-Conference. LNCS, vol. 5318, pp. 213-228. Springer (2008)
-*/
 
 /** <examples>
 
@@ -19,7 +82,9 @@ Conference. LNCS, vol. 5318, pp. 213-228. Springer (2008)
 
 */
 
-% Axioms
+% =============================================================================
+% Equivalent Class Definitions
+% =============================================================================
 equivalentClasses(['WomanUnderLifetimeBRCRisk',intersectionOf(['Woman',someValuesFrom('hasRisk','LifetimeBRCRisk')])]).
 equivalentClasses(['WomanUnderModeratelyIncreasedBRCRisk',intersectionOf(['WomanUnderIncreasedBRCRisk',someValuesFrom('hasRisk','ModeratelyIncreasedBRCRisk')])]).
 equivalentClasses(['WomanUnderModeratelyReducedBRCRisk',someValuesFrom('hasRisk','ModeratelyReducedBRCRisk')]).
