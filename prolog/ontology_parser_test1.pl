@@ -1,3 +1,65 @@
+/** <module> ontology_parser_test1
+
+TRILL translation utilities backed by OWL API (via JPL).
+
+## Overview
+
+This module is an alternative implementation of the ontology_parser interface
+that uses the Java OWL API via JPL. It is similar to wrapper_parser but provides
+a slightly different API structure.
+
+## Purpose
+
+This module serves as a test/alternative implementation for the parser system.
+It demonstrates how to integrate the Java OWL API with TRILL's axiom storage
+format.
+
+## Features
+
+- Parses OWL ontologies using Java OWL API
+- Stores axioms as `adb/1` facts (same as wrapper_parser)
+- Provides full prefix management
+- Supports both file and string-based ontology loading
+- Exports getter predicates for all axiom types
+
+## Requirements
+
+- Java 11+
+- JPL 7.6.1+
+- prob-owlapi-2.0.8.jar with TrillTest1 class
+
+## Main Predicates
+
+### Loading
+- load_kb/1: Load from Prolog file
+- load_owl_kb/1: Load from OWL file
+- load_owl_kb_from_string/1: Load from string
+
+### Prefix Management
+- kb_prefixes/1: Get all registered prefixes
+- add_kb_prefix/2: Register a prefix
+- remove_kb_prefix/1, remove_kb_prefix/2: Remove prefix
+
+### Axiom Management
+- axiom/1: Query axioms
+- add_axiom/1, add_axioms/1: Add axiom(s)
+- remove_axiom/1, remove_axioms/1: Remove axiom(s)
+
+### Query Validation
+- check_query_args/4: Validate and expand query arguments
+
+### Axiom Getters
+- get_axiom_subClassOf/3
+- get_axiom_equivalentClasses/2
+- get_axiom_classAssertion/3
+- get_axiom_propertyAssertion/4
+- (and many more...)
+
+@author Riccardo Zese
+@license Artistic License 2.0
+@copyright Riccardo Zese
+*/
+
 :- module(ontology_parser_test1,
           [ load_kb/1,
             load_owl_kb/1,
@@ -32,18 +94,6 @@
             %---------
             get_classes_list/2
           ]).
-
-/** <module> TRILL translation utilities backed by OWL API (via JPL)
-
-This module replaces the old Thea-based loader with a Java OWL API bridge.
-It translates OWL axioms into TRILL's Prolog syntax and asserts them as
-`axiom/1` facts, preserving the public predicates used by `trill.pl`.
-
-Requires:
-  - Java 11+
-  - JPL 7.6.1
-  - A JAR on the JVM classpath containing it.unife.ml.probowlapi.trill.TrillTest1
-*/
 
 :- use_module(library(lists)).
 :- use_module(library(jpl)).             % JPL 7.x

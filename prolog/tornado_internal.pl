@@ -1,15 +1,67 @@
-/* tornado predicates
+/** <module> tornado_internal
 
-This module performs reasoning over probabilistic description logic knowledge bases.
-It reads probabilistic knowledge bases in RDF format or in Prolog format, a functional-like
-sintax based on definitions of Thea library, and answers queries by finding the set 
-of explanations or computing the probability.
+This module implements TORNADO (Trill OveR BDDs for Approximate reasoning
+in Description logics with Or), a BDD-based probabilistic reasoning engine.
 
-[1] http://vangelisv.github.io/thea/
+## Overview
+
+TORNADO extends TRILL's tableau algorithm by building Binary Decision
+Diagrams (BDDs) incrementally during the completion process. This approach
+enables efficient computation of probabilities for queries over large
+probabilistic knowledge bases.
+
+## Key Features
+
+1. **Incremental BDD Construction**: BDDs are built during tableau expansion
+   rather than after finding all explanations
+
+2. **Environment Management**: BDD environment (via CUDD library) is managed
+   throughout the query lifecycle
+
+3. **Simplified Tableau Rules**: Uses same rule configuration as TRILL^P
+   - Deterministic: and_rule, unfold_rule, add_exists_rule, forall_rule,
+     forall_plus_rule, exists_rule
+   - Non-deterministic: or_rule
+
+4. **DOT Export**: Can export BDD structure as DOT format for visualization
+
+## BDD Structure
+
+- Uses the bddem library for BDD operations
+- Maintains a global BDD environment per query
+- Combines explanations using AND/OR operations on BDDs
+
+## Main Predicates
+
+### Environment Management
+- get_bdd_environment/2: Gets/creates BDD environment
+- clean_environment/2: Cleans up BDD environment
+- keep_env: Flag to keep environment between calls
+
+### Query Processing
+- find_n_explanations/5: Computes BDD for a query
+- find_expls_from_tab_list/3: Extracts BDD from completed tableaux
+
+### Explanation Management
+- and_f/4: AND two BDDs
+- or_f/3: OR two BDDs
+- initial_expl/2: Initial BDD (one)
+
+### Output
+- check_and_close/3: Returns BDD or DOT string
+
+## Differences from TRILL^P
+
+While TRILL^P uses CLP(B) for symbolic manipulation, TORNADO uses
+actual BDD data structures (via CUDD). This can be more efficient
+for certain types of queries but requires more careful memory management.
+
+## References
 
 See https://github.com/rzese/trill/blob/master/doc/manual.pdf or
-http://ds.ing.unife.it/~rzese/software/trill/manual.html for
-details.
+http://ds.ing.unife.it/~rzese/software/trill/manual.html for details.
+
+[1] Thea OWL library: http://vangelisv.github.io/thea/
 
 @author Riccardo Zese
 @license Artistic License 2.0

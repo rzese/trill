@@ -1,15 +1,57 @@
-/* trillp predicates
+/** <module> trillp_internal
 
-This module performs reasoning over probabilistic description logic knowledge bases.
-It reads probabilistic knowledge bases in RDF format or in Prolog format, a functional-like
-sintax based on definitions of Thea library, and answers queries by finding the set 
-of explanations or computing the probability.
+This module implements the pinpointing-based probabilistic reasoning engine
+for TRILL^P (TRILL with Pinpointing formulas).
 
-[1] http://vangelisv.github.io/thea/
+## Overview
+
+TRILL^P extends the standard TRILL tableau algorithm by computing pinpointing
+formulas instead of individual explanations. A pinpointing formula is a Boolean
+formula over axiom labels that represents all possible explanations compactly.
+
+## Key Differences from Standard TRILL
+
+1. **Pinpointing Formulas**: Instead of maintaining sets of explanations,
+   TRILL^P builds Boolean formulas using CLP(B) (Constraint Logic Programming
+   over Boolean domains)
+
+2. **Simplified Tableau Rules**: Only uses deterministic rules plus or_rule
+   - Deterministic: and_rule, unfold_rule, add_exists_rule, forall_rule,
+     forall_plus_rule, exists_rule
+   - Non-deterministic: or_rule (disjunction is encoded in the formula)
+
+3. **Probability Computation**: Uses SAT-based techniques to compute probability
+   from the pinpointing formula directly
+
+## Boolean Formula Structure
+
+The pinpointing formulas use CLP(B) syntax:
+- `*` (and): Conjunction of conditions
+- `+` (or): Disjunction of alternatives
+- `~` (not): Negation
+
+## Main Predicates
+
+### Query Processing
+- find_n_explanations/5: Computes the pinpointing formula for a query
+- find_expls_from_tab_list/3: Extracts explanations from completed tableaux
+
+### Explanation Management
+- and_f/4: Conjunction of two formulas
+- or_f/3: Disjunction of two formulas
+- and_f_ax/4: Add an axiom to a formula
+- initial_expl/2: Initial empty formula
+
+### Probability Computation
+- compute_prob/3: Computes probability from pinpointing formula
+- build_bdd/4: Builds BDD from pinpointing formula
+
+## References
 
 See https://github.com/rzese/trill/blob/master/doc/manual.pdf or
-http://ds.ing.unife.it/~rzese/software/trill/manual.html for
-details.
+http://ds.ing.unife.it/~rzese/software/trill/manual.html for details.
+
+[1] Thea OWL library: http://vangelisv.github.io/thea/
 
 @author Riccardo Zese
 @license Artistic License 2.0

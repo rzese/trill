@@ -1,11 +1,54 @@
+/** <module> vicodi
+
+This example demonstrates TRILL reasoning over a cultural heritage
+knowledge base with probabilistic annotations.
+
+## Knowledge Base Description
+
+This knowledge base is an extract of the VICODI (Visual Contextualisation
+of Digital Content) ontology that contains information on European history.
+VICODI provides a rich representation of historical entities, roles,
+events, and their relationships.
+
+More information: http://www.vicodi.org/
+
+## Ontology Structure
+
+The VICODI ontology includes:
+- **Individual**: Historical persons (e.g., Anthony-van-Dyck)
+- **Role**: Professions and occupations (e.g., Painter)
+- **Location**: Geographic entities (e.g., Flanders)
+- **Time-Dependent**: Entities that change over time
+
+## Example Individual
+
+Anthony van Dyck is represented with his role as a Painter in Flanders.
+The role relationship has probabilistic annotations.
+
+## Example Queries
+
+```prolog
+?- prob_instanceOf('vicodi:Role', 'vicodi:Anthony-van-Dyck-is-Painter-in-Flanders', Prob).
+% Computes probability that the role assertion holds
+
+?- instanceOf('vicodi:Role', 'vicodi:Anthony-van-Dyck-is-Painter-in-Flanders', ListExpl).
+% Returns explanations for the role membership
+
+?- prob_sub_class('vicodi:Painter', 'vicodi:Role', Prob).
+% Computes probability that Painter is a subclass of Role
+
+?- sub_class('vicodi:Painter', 'vicodi:Role', ListExpl).
+% Returns explanations for the subsumption
+```
+
+@author Riccardo Zese
+@license Artistic License 2.0
+@copyright Riccardo Zese
+*/
+
 :-use_module(library(trill)).
 
 :- trill. % or :- trillp. or :- tornado.
-
-/*
-This knowledge base is an extract of the Vicodi knowledge base that contains information on European history.
-http://www.vicodi.org/
-*/
 
 /** <examples>
 
@@ -17,6 +60,7 @@ http://www.vicodi.org/
 
 */
 
+% Embedded OWL/RDF ontology
 owl_rdf('<?xml version="1.0"?>
 
 <!DOCTYPE rdf:RDF [

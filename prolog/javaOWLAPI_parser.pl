@@ -1,7 +1,41 @@
 /** <module> javaOWLAPI_parser
 
-This module implements the ontology_parser interface.
-It uses Java OWL API and JPL to parse an ONWL ontology.
+This module implements the ontology_parser interface using Java's OWL API
+through JPL (Java-Prolog bidirectional interface).
+
+## Overview
+
+The javaOWLAPI_parser module provides a Java-based approach to parsing and
+managing OWL ontologies. Unlike the wrapper_parser which stores axioms in
+Prolog format, this parser maintains a tighter integration with the Java
+OWL API for certain operations.
+
+## Architecture
+
+This module uses the ontology_parser multifile predicates, allowing TRILL
+to switch between different parser backends. The Java side handles:
+- Ontology parsing and loading
+- Axiom management
+- Namespace resolution
+
+## Main Components
+
+### Axiom Management
+- axiom/1: Query axioms via classAxiom, propertyAxiom, fact, declarationAxiom
+- add_axiom/1: Add axiom through Java bridge
+- remove_axiom/1: Remove axiom from the KB
+
+### Axiom Categories
+- classAxiom: Class hierarchy axioms (subClassOf, equivalentClasses, etc.)
+- propertyAxiom: Property axioms (subPropertyOf, propertyDomain, etc.)
+- fact: ABox assertions (classAssertion, propertyAssertion)
+- declarationAxiom: Entity declarations
+
+## Notes
+
+This parser is an alternative to the wrapper_parser and internal_parser.
+It provides deeper Java integration but requires the JPL library and
+prob-owlapi JAR to be properly configured.
 
 @author Riccardo Zese
 @license Artistic License 2.0

@@ -1,7 +1,79 @@
+/** <module> test_trill
+
+Test suite for the standard TRILL algorithm.
+
+## Overview
+
+This module contains PLUnit tests for the TRILL (Tableau Reasoner for
+descrIption Logics in Prolog) algorithm. It tests various types of
+queries across multiple knowledge bases.
+
+## Test Categories
+
+### trill_biopax
+Tests subsumption queries on the BioPAX metabolic pathways ontology.
+- Probabilistic subsumption queries
+- Explanation extraction
+- All explanations collection
+
+### trill_dbpedia
+Tests on the DBPedia Wikipedia extract ontology.
+
+### trill_brca
+Tests on the breast cancer risk factor ontology.
+- Instance checking with probabilities
+- Subsumption queries
+
+### trill_commander
+Tests universal restrictions (allValuesFrom) and equivalent classes.
+
+### trill_johnEmployee
+Tests basic instance checking and class membership.
+
+### trill_peoplePets
+Tests probabilistic instance checking with property chains.
+
+### trill_vicodi
+Tests on the VICODI European history ontology.
+
+### trill_pizza
+Tests unsatisfiability detection and inconsistency checking.
+
+### non_det
+Tests non-deterministic rule application (or_rule).
+
+### non_det_max
+Tests maximum cardinality restrictions (max_rule).
+
+### local_cons
+Tests local consistency vs global inconsistency.
+
+## Running Tests
+
+```prolog
+?- test_trill.
+```
+
+Or run individual test groups:
+```prolog
+?- run_tests([trill_brca]).
+```
+
+@author Riccardo Zese
+@license Artistic License 2.0
+@copyright Riccardo Zese
+*/
+
 :- module(test_trill,
   [test_trill/0]).
 :- use_module(library(plunit)).
 
+/**
+ * test_trill is det
+ *
+ * Runs all TRILL algorithm tests.
+ * Sets the algorithm to 'trill' and executes all test groups.
+ */
 test_trill:-
     trill:set_algorithm(trill),
     run_tests([trill_biopax,
@@ -19,6 +91,9 @@ test_trill:-
 
 :- use_module(library(trill_test/trill_test)).
 
+% =============================================================================
+% BRCA Tests - Breast Cancer Risk Factor Ontology
+% =============================================================================
 :- begin_tests(trill_brca, []).
 
 :- consult(library('examples/BRCA.pl')).
@@ -34,7 +109,9 @@ test(ne_wa_wulbrcr):-
 
 :- end_tests(trill_brca).
 
-
+% =============================================================================
+% VICODI Tests - European History Ontology
+% =============================================================================
 :- begin_tests(trill_vicodi, []).
 
 :- consult(library(examples/vicodi)).
@@ -46,7 +123,9 @@ test(p_p_r):-
 
 :- end_tests(trill_vicodi).
 
-
+% =============================================================================
+% Commander Tests - Universal Restrictions
+% =============================================================================
 :- begin_tests(trill_commander, []).
 
 :- consult(library(examples/commander)).
@@ -58,7 +137,9 @@ test(e_c_j):-
 
 :- end_tests(trill_commander).
 
-
+% =============================================================================
+% PeoplePets Tests - Probabilistic Reasoning
+% =============================================================================
 :- begin_tests(trill_peoplePets, []).
 
 :- consult(library(examples/peoplePets)).
@@ -70,7 +151,9 @@ test(ne_nl_k):-
 
 :- end_tests(trill_peoplePets).
 
-
+% =============================================================================
+% BioPAX Tests - Metabolic Pathways
+% =============================================================================
 :- begin_tests(trill_biopax, []).
 
 :- consult(library(examples/biopaxLevel3)).

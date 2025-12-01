@@ -1,10 +1,48 @@
 /** <module> internal_parser
 
-This module implements the ontology_parser interface.
-It translates OWL/RDF axioms into TRILL format and 
-loads the knowledge base to be queried by TRILL.
+This module implements the internal OWL ontology parser for TRILL.
+It provides the core parsing functionality based on the Thea OWL library,
+translating OWL/RDF axioms into TRILL's internal format.
 
-The translation form OWL/RDF is based on the Thea OWL library.
+## Overview
+
+The internal_parser module serves as a concrete implementation of the
+ontology_parser interface. It provides:
+
+1. **OWL/RDF Translation**: Converts OWL/RDF triples to TRILL format axioms
+2. **Axiom Management**: Add, remove, and query axioms in the knowledge base
+3. **Prefix Management**: Namespace prefix expansion and resolution
+4. **Query Argument Validation**: Checks query arguments against KB entities
+5. **Term Expansion**: Prolog term expansion for loading KB files
+
+## Parser Architecture
+
+The parser works in several phases:
+1. RDF triples are loaded using the SWI-Prolog RDF library
+2. OWL constructs are identified from RDF patterns (Tables 10-18 from OWL spec)
+3. Axioms are translated to TRILL's functional-style syntax
+4. Probabilistic annotations are extracted (DISPONTE annotations)
+
+## Key Predicates
+
+### Axiom Management
+- axiom/1: Query axioms in the knowledge base
+- add_axiom/1, add_axioms/1: Add axioms to the KB
+- remove_axiom/1, remove_axioms/1: Remove axioms from the KB
+
+### Prefix Management  
+- kb_prefixes/1: Get registered namespace prefixes
+- add_kb_prefix/2: Register a namespace prefix
+- expand_all_ns/4: Expand IRIs using namespace prefixes
+
+### KB Loading
+- load_kb/1: Load KB from file in TRILL format
+- load_owl_kb/1: Load KB from OWL/RDF file
+- load_owl_kb_from_string/1: Load KB from OWL/RDF string
+
+## Based On
+
+The RDF-to-OWL translation is based on the Thea OWL library.
 Thea OWL library is available under the GNU/GPL license.
 http://vangelisv.github.io/thea/
 
