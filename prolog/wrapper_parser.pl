@@ -27,7 +27,7 @@ Requires:
 :- use_module(library(trill_utility)).
 
 jar_file('prob-owlapi-2.0.8.jar').
-wrapper_class('it.unife.ml.probowlapi.trill.TrillKBParserWrapper')
+wrapper_class('it.unife.ml.probowlapi.trill.TrillKBParserWrapper').
 
 /*****************************/
 

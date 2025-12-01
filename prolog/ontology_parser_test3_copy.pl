@@ -11,14 +11,107 @@ JPL version: 7.6.1  |  Java: 11
 
 */
 
-:- module(utility_translation, [
-    set_up/1,          % +M
-    clean_up/1         % +M
-]).
+:- module(java_parser_3, []).
 
 :- use_module(library(lists)).
+:- use_module(library(jpl)).             % JPL 7.x
 :- use_module(library(error)).
-:- use_module(library(jpl)).
+:- use_module(library(apply)).
+:- use_module(library(readutil)).
+
+:- use_module(library(trill_utility)).
+
+jar_file('prob-owlapi-2.0.8.jar').
+wrapper_class('it.unife.ml.probowlapi.trill.TrillKBParserWrapper').
+
+/*****************************/
+
+/************************************
+ * 
+ * ABSTRACT PREDICATES FROM
+ * ontology_parser
+ * 
+ * In the following there is the
+ * implementation of the abstract
+ * predicates of the ontology_parser
+ * interface.
+ * 
+ ************************************/
+
+/******************************/
+
+/********************************
+  AXIOMS MANAGEMENT
+*********************************/
+
+% TRILL declares: :- meta_predicate axiom(:).
+% We implement axiom(M:Pattern) by:
+%  1) generating overlay axioms,
+%  2) asking Java for the axiom KIND and enumerating,
+%  3) letting Prolog unification handle Pattern (variables are okay).
+
+:- multifile trill:axiom/1.
+trill:axiom(M:Pattern) :-
+    module_atom(M, MAtom),
+    % 1) enumerate overlay first
+    kb_overlay_axiom(MAtom, Ax),
+    Ax = Pattern.
+
+trill:axiom(M:Pattern) :-
+    module_atom(M, MAtom),
+    functor(Pattern, Kind, _Arity),
+    % fetch cached list or ask Java
+    ( kb_axiom_cache(MAtom, Kind, List)
+    -> true
+    ;  ask_java_for_axioms(MAtom, Kind, List),
+       assertz(kb_axiom_cache(MAtom, Kind, List))
+    ),
+    member(P, List),
+    P = Pattern.
+
+ask_java_for_axioms(M, Kind, Terms) :-
+    java_class(JCls),
+    % returns a Java array of org.jpl7.Term representing *ground* TRILL axioms
+    jpl_call(JCls, 'axiomsFor', [M, Kind], JavaArray),
+    % Turn array of Terms into a Prolog list of terms
+    jpl_array_to_terms(JavaArray, Terms).
+
+
+:- multifile trill:add_axiom/1.
+trill:add_axiom(M:Axiom) :-
+    module_atom(M, MAtom),
+    assertz(kb_overlay_axiom(MAtom, Axiom)),
+    retractall(kb_axiom_cache(MAtom,_,_)).
+
+trill:add_axioms(M:Axioms) :-
+    module_atom(M, MAtom),
+    must_be(list, Axioms),
+    forall(member(Ax,Axioms), assertz(kb_overlay_axiom(MAtom, Ax))),
+    retractall(kb_axiom_cache(MAtom,_,_)).
+
+trill:remove_axiom(M:Axiom) :-
+    module_atom(M, MAtom),
+    retractall(kb_overlay_axiom(MAtom, Axiom)),
+    retractall(kb_axiom_cache(MAtom,_,_)).
+
+trill:remove_axioms(M:Axioms) :-
+    module_atom(M, MAtom),
+    must_be(list, Axioms),
+    forall(member(Ax,Axioms), retractall(kb_overlay_axiom(MAtom, Ax))),
+    retractall(kb_axiom_cache(MAtom,_,_)).
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 init_java_bridge :-
     % Point to your assembled JAR (jar-with-dependencies)
@@ -175,57 +268,8 @@ trill:remove_kb_prefix(Alias, IRI) :-
 
 % === Prolog overlay for axioms ==============================================
 
-trill:add_axiom(M:Axiom) :-
-    module_atom(M, MAtom),
-    assertz(kb_overlay_axiom(MAtom, Axiom)),
-    retractall(kb_axiom_cache(MAtom,_,_)).
 
-trill:add_axioms(M:Axioms) :-
-    module_atom(M, MAtom),
-    must_be(list, Axioms),
-    forall(member(Ax,Axioms), assertz(kb_overlay_axiom(MAtom, Ax))),
-    retractall(kb_axiom_cache(MAtom,_,_)).
-
-trill:remove_axiom(M:Axiom) :-
-    module_atom(M, MAtom),
-    retractall(kb_overlay_axiom(MAtom, Axiom)),
-    retractall(kb_axiom_cache(MAtom,_,_)).
-
-trill:remove_axioms(M:Axioms) :-
-    module_atom(M, MAtom),
-    must_be(list, Axioms),
-    forall(member(Ax,Axioms), retractall(kb_overlay_axiom(MAtom, Ax))),
-    retractall(kb_axiom_cache(MAtom,_,_)).
 
 % === The heart: axiom/1 ======================================================
 
-% TRILL declares: :- meta_predicate axiom(:).
-% We implement axiom(M:Pattern) by:
-%  1) generating overlay axioms,
-%  2) asking Java for the axiom KIND and enumerating,
-%  3) letting Prolog unification handle Pattern (variables are okay).
 
-trill:axiom(M:Pattern) :-
-    module_atom(M, MAtom),
-    % 1) enumerate overlay first
-    kb_overlay_axiom(MAtom, Ax),
-    Ax = Pattern.
-
-trill:axiom(M:Pattern) :-
-    module_atom(M, MAtom),
-    functor(Pattern, Kind, _Arity),
-    % fetch cached list or ask Java
-    ( kb_axiom_cache(MAtom, Kind, List)
-    -> true
-    ;  ask_java_for_axioms(MAtom, Kind, List),
-       assertz(kb_axiom_cache(MAtom, Kind, List))
-    ),
-    member(P, List),
-    P = Pattern.
-
-ask_java_for_axioms(M, Kind, Terms) :-
-    java_class(JCls),
-    % returns a Java array of org.jpl7.Term representing *ground* TRILL axioms
-    jpl_call(JCls, 'axiomsFor', [M, Kind], JavaArray),
-    % Turn array of Terms into a Prolog list of terms
-    jpl_array_to_terms(JavaArray, Terms).

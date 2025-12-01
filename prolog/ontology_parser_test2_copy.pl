@@ -16,15 +16,16 @@ Requires:
 @copyright Riccardo Zese
 */
 
-:- module(java_parser,
+:- module(java_parser_2,
     [ set_trill_cache_policy/1     % none | functor | all (all behaves like old “assert everything”)
     ]).
 
 
-:- use_module(library(jpl)).      % JPL 7.6.1
 :- use_module(library(lists)).
-:- use_module(library(apply)).
+:- use_module(library(jpl)).             % JPL 7.x
 :- use_module(library(error)).
+:- use_module(library(apply)).
+:- use_module(library(readutil)).
 
 :- use_module(library(trill_utility)).
 
@@ -209,26 +210,78 @@ ontology_parser:get_axiom_annotationAssertion(M,AnnIRI,Ax,AnnVal):-
 % Get the KB's prefixes contained into ns4query
 % We store prefixes as kb_prefix/2 and expose them through kb_prefixes/1
 :- multifile trill:kb_prefixes/1.
+/*
 trill:kb_prefixes(Pairs) :-
   findall(S=L, M:ns(S,L), Pairs).
+*/
+% Prefixes are kept on Java side; expose as list of 'Alias=IRI' pairs.
+trill:kb_prefixes(M:Pairs) :-
+  ( kb_prefix_cache(M,Pairs) -> true
+  ; java_class(JCls),
+    jpl_call(JCls, 'prefixes', [M], Arr),
+    % Arr is a Java String[] with entries like "ex=http://example.org#"
+    jpl_array_to_list(Arr, L0),
+    maplist(string_pair_to_eq, L0, Pairs),
+    assertz(kb_prefix_cache(M,Pairs))
+  ).
+
+string_pair_to_eq(S, A=B) :-
+  sub_atom(S,Before,1,After,'='),
+  sub_atom(S,0,Before,_,Alias),
+  sub_atom(S,_,After,0,IRI),
+  atom_string(A,Alias),
+  atom_string(B,IRI).
+
 
 :- multifile trill:add_kb_prefix/2.
+/*
 trill:add_kb_prefix(M:Short, Long) :-
   must_be(atom, Short), must_be(atom, Long),
   retractall(M:ns(Short,_)), assertz(M:ns(Short,Long)).
+*/
+% Manual add/remove of prefixes:
+trill:add_kb_prefix(M:Alias, IRI) :-
+  must_be(atom, Alias), must_be(atom, IRI),
+  java_class(JCls),
+  % we forward to Java; also drop cached prefixes
+  jpl_call(JCls, 'addPrefix', [M, Alias, IRI], _),
+  retractall(kb_prefix_cache(M,_)).
 
 add_kb_prefix(M, Short, Long) :- trill:add_kb_prefix(M:Short, Long).
 
 % Adds a list of kb prefixes into ns4query
 :- multifile trill:add_kb_prefixes/1.
+/*
 trill:add_kb_prefixes(M:Pairs) :-
   must_be(list, Pairs), forall(member(S=L, Pairs), java_parser:add_kb_prefix(M,S,L)).
+*/
+trill:add_kb_prefixes(M:List) :-
+  must_be(list, List),
+  maplist(wrapper_parser:add_kb_prefix_pair(M), List).
+
+add_kb_prefix_pair(M, Short=Long) :- trill:add_kb_prefix(M:Short, Long).
 
 :- multifile trill:remove_kb_prefix/2.
+/*
 trill:remove_kb_prefix(M:Short, Long) :- retractall(M:ns(Short,Long)).
+*/
+trill:remove_kb_prefix(Alias) :-
+  must_be(atom, Alias),
+  get_current_module(M),
+  java_class(JCls),
+  jpl_call(JCls, 'removePrefix', [M, Alias], _),
+  retractall(kb_prefix_cache(M,_)).
 
 :- multifile trill:remove_kb_prefix/1.
+/*
 trill:remove_kb_prefix(M:Name) :- ( retractall(M:ns(Name,_)) ; retractall(M:ns(_,Name)) ), !.
+*/
+trill:remove_kb_prefix(M:Alias, IRI) :-
+  must_be(atom, Alias), must_be(atom, IRI),
+  get_current_module(M),
+  java_class(JCls),
+  jpl_call(JCls, 'removePrefixExact', [M, Alias, IRI], _),
+  retractall(kb_prefix_cache(M,_)).
 
 
 % -------- namespace expansion helpers ---
@@ -273,13 +326,13 @@ ns_expand_atomic(NS, A, Out) :-
  */
 trill:load_kb(File) :-
   must_be(atom, File),
-  ensure_kb_predicates,
-  clear_caches_,
   get_module(M),
+  ensure_kb_predicates(M),
+  clear_caches_(M),
   store_id_(M, StoreId),
   % load ontology into Java store, get prefixes
-  parse_file(File,StoreId),
-  pull_prefixes_(M,StoreId).
+  parse_file(File,StoreId).
+  %pull_prefixes_(M,StoreId).
 
 
 /**
@@ -300,15 +353,35 @@ trill:load_owl_kb(FileName):-
  */
 trill:load_owl_kb_from_string(String) :-
   must_be(atom, String),
-  ensure_kb_predicates,
-  clear_caches_,
   get_module(M),
+  ensure_kb_predicates(M),
+  clear_caches_(M),
   store_id_(M, StoreId),
-  parse_string(String,StoreId),
-  pull_prefixes_(M,StoreId).
+  parse_string(String,StoreId).
+  %pull_prefixes_(M,StoreId).
 
 
 /*****************************/
+
+/********************************
+  PARSER MANAGEMENT
+*********************************/ 
+
+:- multifile ontology_parser:clean_up_parser/1.
+ontology_parser:clean_up_parser(M):-
+  ensure_kb_predicates(M),
+  clear_caches_(M),
+  retractall(M:kb_atom(_)).
+
+:- multifile ontology_parser:set_up_parser/1.
+ontology_parser:set_up_parser(M):-
+  ensure_kb_predicates(M),
+  ensure_cache_policy(M),
+  init_java_bridge,
+  ensure_jvm_started.
+
+
+/* ************************************** */
 
 /************************************
  * 
@@ -357,29 +430,45 @@ init_java_bridge :-
 %   none     -> never keep Java results in Prolog (always call Java, slowest but smallest).
 %   functor  -> cache per functor (default). First call to a functor fills its bucket.
 %   all      -> fetch all functors once (effectively “old behavior” but still pulled from Java).
-:- dynamic cache_policy/1.
-cache_policy(functor).
+default_cache_policy(functor).
 
-set_trill_cache_policy(Policy) :-
+set_trill_cache_policy(M:Policy) :-
   must_be(oneof([none, functor, all]), Policy),
   retractall(M:cache_policy(_)),
   asserta(M:cache_policy(Policy)).
 
+ensure_cache_policy(M):-
+  (M:cache_policy(_) -> true ; 
+    ( default_cache_policy(Policy),
+      set_trill_cache_policy(Policy)
+    )
+  ).
+
 % Java store id (per process; if you want multiple KBs simultaneously, set trill_kb_module and reload)
-:- dynamic kb_store_id/1.
-:- dynamic fetched_functor/1.      % marks that we cached a functor already
-:- dynamic cache_axiom/2.          % cache_axiom(Functor, Term)
-:- dynamic ns/2.                   % prefixes cache for kb_prefixes/1 etc.
+%:- dynamic kb_store_id/1.
+%:- dynamic fetched_functor/1.      % marks that we cached a functor already
+%:- dynamic cache_axiom/2.          % cache_axiom(Functor, Term)
+%:- dynamic ns/2.                   % prefixes cache for kb_prefixes/1 not used
+%etc.
 
-ensure_kb_predicates :-
-  get_module(M),
-  ( predicate_property(M:ns(_,_), dynamic) -> true ; dynamic(M:ns/2) ).
+ensure_kb_predicates(M) :-
+  ( predicate_property(M:kb_store_id(_), dynamic) -> true ; dynamic(M:kb_store_id12) ),
+  ( predicate_property(M:fetched_functor(_), dynamic) -> true ; dynamic(M:fetched_functor/1) ),
+  ( predicate_property(M:cache_axiom(_,_), dynamic) -> true ; dynamic(M:cache_axiom/2) ),
+  ( predicate_property(M:cache_policy(_), dynamic) -> true ; dynamic(M:cache_policy/1) ).
 
-clear_caches_ :-
-  get_module(M),
+clear_caches_(M) :-
   retractall(M:fetched_functor(_)),
-  retractall(M:cache_axiom(_,_)),
-  retractall(M:ns(_,_)).
+  retractall(M:cache_axiom(_,_)).
+  %retractall(M:ns(_,_)).
+
+% Utility to make sure JVM is up before first call; we assume classpath is
+% properly set (see README below).
+ensure_jvm_started :-
+  ( jpl_get_actual_jvm_opts(_)
+  -> true
+  ;  true % TODO you might jpl_set_default_jvm_opts/1 here programmatically if needed
+  ).
 
 % ---------------- parsing -------------------------------------------
 
@@ -395,10 +484,11 @@ parse_string(String,StoreId):-
 % ---------------- internal helpers ----------------------------------
 
 store_id_(M, StoreId) :-
-  ( kb_store_id(Id) -> StoreId = Id
+  ( M:kb_store_id(Id) -> StoreId = Id
   ; atom_string(M, S), string_concat("trill:", S, StoreIdS),
-    assertz(kb_store_id(StoreIdS)), StoreId = StoreIdS).
+    assertz(M:kb_store_id(StoreIdS)), StoreId = StoreIdS).
 
+/*
 pull_prefixes_(M,StoreId) :-
   wrapper_class(WrapperClass),
   % fetch small list of prefixes into the cheap Prolog cache
@@ -411,6 +501,7 @@ pull_prefixes_(M,StoreId) :-
            atom_string(Alias, AliasS),
            atom_string(Iri,   IriS),
            ( Alias == '' -> true ; java_parser:add_kb_prefix(M, Alias, Iri) ))).
+*/
 
 fetch_if_needed_(M,F) :-
   cache_policy(none), !,
@@ -434,7 +525,7 @@ fetch_if_needed_(M,F) :-
     true ).
 
 fetch_functor_now_(M,F, Cache) :-
-  kb_store_id(StoreId),
+  M:kb_store_id(StoreId),
   atom_string(F, FS),
   wrapper_class(WrapperClass),
   jpl_call(WrapperClass, 'queryFunctor', [StoreId, FS], JAxs),
