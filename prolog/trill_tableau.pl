@@ -1,3 +1,38 @@
+/** <module> trill_tableau
+
+This module implements the core tableau data structures and operations for
+the TRILL probabilistic description logic reasoner.
+
+A tableau in description logic reasoning is a tree-like data structure used
+to determine the satisfiability of concept assertions. This module provides:
+
+1. **Tableau Structure**: A dictionary-based representation containing:
+   - ABox: Assertion Box holding concept and role assertions
+   - Tabs: Graph structure for tracking individuals and relationships
+   - Clashes: List of detected contradictions
+   - Expansion Queue: Work queue for tableau expansion rules
+
+2. **ABox Operations**: Add, remove, and query assertions
+
+3. **Expansion Queue Management**: Prioritized handling of deterministic
+   and non-deterministic rule applications
+
+4. **Tabs (Completion Graph)**: Graph structure with:
+   - Directed graph of individuals
+   - Red-black tree mapping individual pairs to properties (ItR)
+   - Red-black tree mapping properties to individual pairs (RtI)
+
+5. **Merge Operations**: Individual merging for handling sameIndividual
+   assertions, including graph restructuring and clash checking
+
+The tableau is implemented as a SWI-Prolog dict for efficient field access
+and functional updates.
+
+@author Riccardo Zese
+@license Artistic License 2.0
+@copyright Riccardo Zese
+*/
+
 % ==========================================================================================================
 % TABLEAU MANAGER
 % ==========================================================================================================
