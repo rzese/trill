@@ -8,12 +8,10 @@ backend satisfies every caller.
 
 :- module(encapsulated_parser,
                     [ set_encapsulated_cache_policy/1,
-                        set_encapsulated_cache_policy/2,
                         set_cache_policy/1
                     ]).
 
 :- meta_predicate set_encapsulated_cache_policy(:).
-:- meta_predicate set_encapsulated_cache_policy(:,+).
 :- meta_predicate set_cache_policy(:).
 
 :- use_module(library(lists)).
@@ -54,9 +52,6 @@ normalize_policy(selective(List0), selective(List)) :-
     maplist(must_be(atom), List0),
     sort(List0, List).
 
-set_encapsulated_cache_policy(Policy) :-
-    get_module(M),
-    set_encapsulated_cache_policy(M:Policy).
 
 set_encapsulated_cache_policy(M:PolicyIn) :-
     normalize_policy(PolicyIn, Policy),
@@ -79,6 +74,14 @@ set_cache_policy(Policy) :-
  * ------------------------------------------------------------------ */
 
 :- multifile trill:axiom/1.
+trill:axiom(M:Pattern) :-
+    var(Pattern), !,
+    ensure_module_state(M),
+    ensure_cache_policy(M),
+    supported_functor_list(M, Functors),
+    member(Functor, Functors),
+    enumerate_axioms(M, Functor, Pattern).
+
 trill:axiom(M:Pattern) :-
     nonvar(Pattern),
     functor(Pattern, Functor, _),
@@ -108,7 +111,7 @@ add_axiom(M, Axiom) :-
     add_axiom_no_check(M, Axiom).
 
 add_axiom_no_check(M, Axiom) :-
-    term_to_trill_atom(Axiom, Atom),
+    term_to_atom(Axiom, Atom),
     ensure_instance(M, JRef),
     jpl_call(JRef, 'addAxiom', [Atom], _),
     functor(Axiom, Functor, _),
@@ -268,21 +271,11 @@ ns_expand_term(M, Compound, Expanded) :-
 
 expand_atomic_term(M, Atom, Expanded) :-
     ensure_instance(M, JRef),
-    atom_string(Atom, Str),
-    jpl_call(JRef, 'expandIRI', [Str], Out),
+    %atom_string(Atom, Str),
+    jpl_call(JRef, 'compressIRI', [Atom], Out),
     ( Out == @(null)
     -> Expanded = Atom
-    ;  atom_string(Expanded, Out)
-    ).
-
-%% Legacy helper used by other parser components
-expand_iri(M, Term, Expanded) :-
-    ensure_instance(M, JRef),
-    term_to_arg_string(Term, TermStr),
-    jpl_call(JRef, 'expandIRI', [TermStr], Out),
-    ( Out == @(null)
-    -> Expanded = Term
-    ;  atom_string(Expanded, Out)
+    ;  Expanded = Out
     ).
 
 /* ------------------------------------------------------------------
@@ -336,7 +329,6 @@ prime_cache_after_load(M) :-
 ontology_parser:check_query_args_1(_M, _, [], [], []) :- !.
 ontology_parser:check_query_args_1(M, Types, Args, Expanded, Missing) :-
     ensure_instance(M, JRef),
-    length(Types, Len),
     maplist(atom_string, Types, TypeStrings),
     maplist(term_to_arg_string, Args, ArgStrings),
     jpl_list_to_array(TypeStrings, TypeArray),
@@ -440,9 +432,8 @@ clear_axiom_cache_state(M) :-
     ( M:java_class(JRef) -> jpl_call(JRef, 'clearAllCaches', [], _) ; true ).
 
 fetch_functor_terms(M, Functor, Terms) :-
-    atom_string(Functor, FS),
     ensure_instance(M, JRef),
-    jpl_call(JRef, 'fetchAxioms', [FS], Arr),
+    jpl_call(JRef, 'fetchAxioms', [Functor], Arr),
     jpl_array_to_list(Arr, Raw),
     maplist(atom_string, AtomStrs, Raw),
     maplist(read_term_safely, AtomStrs, Terms).
@@ -482,13 +473,13 @@ invalidate_functor_cache(M, Functor) :-
     retractall(M:cache_axiom(Functor,_)),
     retractall(M:fetched_functor(Functor)),
     ( M:java_class(JRef) ->
-        atom_string(Functor, FS),
-        jpl_call(JRef, 'clearFunctorCache', [FS], _)
+                jpl_call(JRef, 'clearFunctorCache', [Functor], _)
     ; true ),
     retractall(M:fetched_functor(all)).
 
 term_to_trill_atom(Term, Atom) :-
-    with_output_to(atom(Atom), write_term(Term, [quoted(true), numbervars(true)])).
+    %with_output_to(atom(Atom), write_term(Term, [quoted(true), numbervars(true)])).
+    term_to_atom(Term, Atom).
 
 array_to_atoms(Array, Atoms) :-
     jpl_array_to_list(Array, Raw),
