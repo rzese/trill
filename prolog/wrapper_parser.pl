@@ -115,14 +115,18 @@ trill:axiom(M:A) :- M:adb(A).
 
 :- multifile trill:add_axiom/1.
 trill:add_axiom(M:Axiom) :-
-    M:adb(Axiom),!.
-
-trill:add_axiom(M:Axiom) :-
     add_axiom(M,Axiom),
     trill:update_tabs(M,Axiom).
 
 add_axiom(M,Axiom) :-
+    M:adb(Axiom),!.
+
+add_axiom(M,Axiom) :-
+  must_be(nonvar, Axiom),
   trill:is_axiom(Axiom),
+  add_axiom_no_check(M,Axiom).
+
+add_axiom_no_check(M,Axiom) :-
   assertz(M:adb(Axiom)).
 
 
@@ -336,7 +340,8 @@ trill:load_kb(File) :-
   %retractall(M:adb(_)),
   %retractall(M:kb_prefix(_, _)),
   parse_file(File,JRes),
-  bridge_assert_result(M,JRes).
+  bridge_assert_result(M,JRes),
+  close_java_vm.
 
 
 /**
@@ -361,7 +366,8 @@ trill:load_owl_kb_from_string(String):-
   %retractall(M:adb(_)),
   %retractall(M:kb_prefix(_, _)),
   parse_string(String,JRes),
-  bridge_assert_result(M, JRes).
+  bridge_assert_result(M, JRes),
+  close_java_vm.
 
 
 % -------- bridge result decoding -----------------------------------
@@ -546,23 +552,26 @@ ontology_parser:set_up_parser(M):-
   UTILITY
   ****************************************/
 init_java_bridge :-
-    % Point to your assembled JAR (jar-with-dependencies)
-    jar_file(JarFile),
-    absolute_file_name(library(JarFile), NewFolder, [access(read)]),
-    
-    % Get existing CLASSPATH env var (not the JVM one, but often aligns)
-    (   getenv('CLASSPATH', ExistingCP)
-    ->  true
-    ;   ExistingCP = ''
-    ),
+  % Point to your assembled JAR (jar-with-dependencies)
+  jar_file(JarFile),
+  absolute_file_name(library(JarFile), NewFolder, [access(read)]),
+  
+  % Get existing CLASSPATH env var (not the JVM one, but often aligns)
+  (   getenv('CLASSPATH', ExistingCP)
+  ->  true
+  ;   ExistingCP = ''
+  ),
 
-    % On Windows, use ; separator
-    atomic_list_concat([ExistingCP, NewFolder], ';', FullCP),
-    atomic_list_concat(['-Djava.class.path=', FullCP], JVMOpt),
+  % On Windows, use ; separator
+  atomic_list_concat([ExistingCP, NewFolder], ';', FullCP),
+  atomic_list_concat(['-Djava.class.path=', FullCP], JVMOpt),
 
-    % Set JVM options
-    jpl_set_default_jvm_opts(['-Xms128m','-Xmx1g', JVMOpt]).
+  % Set JVM options
+  jpl_set_default_jvm_opts(['-Xms128m','-Xmx1g', JVMOpt]).
 
+
+close_java_vm:-
+  jpl_call('java.lang.System', exit, [0], _).
 
 
 parse_file(File,JRes):-
@@ -627,5 +636,5 @@ user:term_expansion(TRILLAxiom,[]):-
   get_module(M),
   trill:kb_prefixes(NSList),
   ns_expand_term(NSList, TRILLAxiom, TRILLAxiomExpanded),
-  assertz(M:adb(TRILLAxiomExpanded)).
+  add_axiom_no_check(M,Axiom).
 

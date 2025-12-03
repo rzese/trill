@@ -122,7 +122,7 @@ disponte_iri('https://ai.unife.it/disponte#probability').
  *                   maintains the referene to the ontology erapper during the entire inference
  *    - wrapper   -> uses Java OWLAPI to parse the ontology and saves the axioms n the Prolog DB
  */
-setting_trill_default(parser,wrapper).
+setting_trill_default(parser,java).
 
 
 /********************************
@@ -3251,9 +3251,9 @@ init_trill(Alg):-
   load_default_settings(M),
   load_default_parser(M),
   clean_up(M),
-  set_up(M),
-  add_kb_prefixes(M:[('disponte'='http://ai.unife.it/disponte#'),('owl'='http://www.w3.org/2002/07/owl#')]),
-  set_up_parser(M).
+  set_up(M).
+  %add_kb_prefixes(M:[('disponte'='http://ai.unife.it/disponte#'),('owl'='http://www.w3.org/2002/07/owl#')]),
+  %set_up_parser(M).
 /**
  * init_trill(++Alg:reasoner,++Parser:parser)
  * 
@@ -3266,9 +3266,8 @@ init_trill(Alg):-
   set_parser(Parser),
   load_parser_module(Parser),
   clean_up(M),
-  set_up(M),
-  add_kb_prefixes(M:[('disponte'='http://ai.unife.it/disponte#'),('owl'='http://www.w3.org/2002/07/owl#')]),
-  set_up_parser(M).
+  set_up(M).
+  %add_kb_prefixes(M:[('disponte'='http://ai.unife.it/disponte#'),('owl'='http://www.w3.org/2002/07/owl#')]).
 
 /**************/
 /*get_trill_current_module('internal_parser'):-
@@ -4109,7 +4108,8 @@ update_tabs(M,Axiom) :-
     subPropertyOf/2, equivalentProperties/1, disjointProperties/1, inverseProperties/2, propertyDomain/2, propertyRange/2,
     symmetricProperty/1, transitiveProperty/1, sameIndividual/1, differentIndividuals/1, classAssertion/2, propertyAssertion/3]),
   retractall(M:tab_end(_)),
-  update_tabs_int(M,Axiom,TabsL).
+  update_tabs_int(M,Axiom,TabsL),
+  update_tab_util(M,Pred).
 
 update_tabs(_M,_Axiom) :- !.
 
@@ -4277,6 +4277,19 @@ update_tabs_int(M,propertyAssertion(P,S,O),[Tab|TabsL]):-
   assert(M:tab_end(NewTab)),
   update_tabs_int(M,propertyAssertion(P,S,O),TabsL).
 
+
+update_tab_util(M,Pred):-
+  (member(Pred,[subClassOf,equivalentClasses,disjointClasses,disjointUnion]) ->
+    (retractall(M:tab_util(sc,_)), retractall(M:tab_util(na,_)));
+    true),
+  (member(Pred,[subPropertyOf,equivalentProperties,disjointProperties,inverseProperties,
+    propertyDomain,propertyRange,symmetricProperty,transitiveProperty]) ->
+    (retractall(M:tab_util(sp,_)));
+    true),
+  (member(Pred,[propertyAssertion]) ->
+    (retractall(M:tab_util(rc,_)));
+    true).
+  
 
 % ==================================================================================================================
 

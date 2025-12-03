@@ -114,11 +114,12 @@ set_augmented_classpath :-
  *
  * Unloads all currently loaded parser modules.
  * This ensures a clean state before loading a different parser.
- * Currently unloads ontology_parser_test1 and internal_parser modules.
+ * Currently unloads wrapper_parser and internal_parser modules.
  */
 unload_all_parsers :-
-  unload_file(library(ontology_parser_test1)),
-  unload_file(library(internal_parser)).
+  unload_file(library(wrapper_parser)),
+  unload_file(library(internal_parser)),
+  unload_file(library(encapsulated_parser)).
 
 /**
  * load_default_parser(+Module:atom) is det
@@ -148,7 +149,7 @@ load_default_parser(M):-
  */
 load_parser_module(java):-!,
   unload_all_parsers,
-  use_module(library(ontology_parser_test1)),write('ontology_parser_test1').
+  use_module(library(encapsulated_parser)),write('encapsulated_parser').
 load_parser_module(wrapper):-!,
   unload_all_parsers,
   use_module(library(wrapper_parser)),write('wrapper_parser').

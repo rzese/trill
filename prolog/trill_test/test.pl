@@ -51,8 +51,6 @@ Each test typically checks:
  * test is det
  *
  * Runs the complete TRILL test suite.
- * Currently runs test_trill tests. TRILL^P and TORNADO tests
- * can be enabled by uncommenting the relevant lines.
  */
 test:-
   use_module(library(trill_test/test_trill)),
