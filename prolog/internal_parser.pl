@@ -586,6 +586,7 @@ ontology_parser:set_up_parser(M):-
   M:(dynamic owl/4, owl/3, owl/2, blanknode/3, outstream/1, aNN/3, annotation_r_node/4, axiom_r_node/4, owl_repository/2, trdf_setting/2),
   M:(dynamic ns4query/1, addKBName/0),
   retractall(M:addKBName),
+  trill:add_kb_prefixes(M:[('disponte'='http://ai.unife.it/disponte#'),('owl'='http://www.w3.org/2002/07/owl#')]),
   set_up_kb_loading(M).
   %retractall(M:rules(_,_)),
   %assert(M:rules([],[])),

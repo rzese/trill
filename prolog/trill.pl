@@ -122,7 +122,7 @@ disponte_iri('https://ai.unife.it/disponte#probability').
  *                   maintains the referene to the ontology erapper during the entire inference
  *    - wrapper   -> uses Java OWLAPI to parse the ontology and saves the axioms n the Prolog DB
  */
-setting_trill_default(parser,java).
+setting_trill_default(parser,internal).
 
 
 /********************************
@@ -3206,7 +3206,10 @@ prob_number(ProbAT,ProbA):-
   atom_number(ProbAT,ProbA).
 
 compute_prob_ax(M,Ax,Prob):-%gtrace,
-  findall(ProbA,(disponte_iri(DisponteIri),get_axiom_annotationAssertion(M,DisponteIri,Ax,literal(ProbAT)),prob_number(ProbAT,ProbA)),Probs),
+  findall(ProbA,
+    (( (disponte_iri(DisponteIri),get_axiom_annotationAssertion(M,DisponteIri,Ax,literal(ProbAT)))
+    ; get_axiom_annotationAssertion(M,'disponte:probability',Ax,literal(ProbAT))
+    ), prob_number(ProbAT,ProbA)),Probs),
   compute_prob_ax1(Probs,Prob).
 
 compute_prob_ax1([Prob],Prob):-!.

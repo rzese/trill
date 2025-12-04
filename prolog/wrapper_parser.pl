@@ -127,7 +127,342 @@ add_axiom(M,Axiom) :-
   add_axiom_no_check(M,Axiom).
 
 add_axiom_no_check(M,Axiom) :-
-  assertz(M:adb(Axiom)).
+  assertz(M:adb(Axiom)),
+  add_kb_atom(M,Axiom).
+
+add_kb_atom(M,Axiom) :-
+  ensure_kb_atom_dict(M,KBA0),
+  collect_axiom_entities(Axiom,KBA0,KBA),
+  ( KBA0 == KBA -> true
+  ; retractall(M:kb_atom(_)),
+    assertz(M:kb_atom(KBA))
+  ).
+
+ensure_kb_atom_dict(M,KBA) :-
+  ( M:kb_atom(KBA) -> true
+  ; empty_kba(Empty),
+    assertz(M:kb_atom(Empty)),
+    KBA = Empty
+  ).
+
+empty_kba(kbatoms{annotationProperty:[],
+                  class:[],
+                  dataProperty:[],
+                  datatype:[],
+                  individual:[],
+                  objectProperty:[]}).
+
+collect_axiom_entities(subClassOf(Sub,Super),KBA0,KBA) :-
+  collect_class_expr(Sub,KBA0,KBA1),
+  collect_class_expr(Super,KBA1,KBA).
+collect_axiom_entities(equivalentClasses(List),KBA0,KBA) :-
+  collect_class_list(List,KBA0,KBA).
+collect_axiom_entities(disjointClasses(List),KBA0,KBA) :-
+  collect_class_list(List,KBA0,KBA).
+collect_axiom_entities(disjointUnion(Class,List),KBA0,KBA) :-
+  collect_class_expr(Class,KBA0,KBA1),
+  collect_class_list(List,KBA1,KBA).
+collect_axiom_entities(subPropertyOf(Sub,Super),KBA0,KBA) :-
+  collect_property_expr(Sub,any,KBA0,KBA1),
+  collect_property_expr(Super,any,KBA1,KBA).
+collect_axiom_entities(equivalentProperties(List),KBA0,KBA) :-
+  collect_property_list(List,any,KBA0,KBA).
+collect_axiom_entities(propertyDomain(Prop,Domain),KBA0,KBA) :-
+  collect_property_expr(Prop,any,KBA0,KBA1),
+  collect_class_expr(Domain,KBA1,KBA).
+collect_axiom_entities(propertyRange(Prop,Range),KBA0,KBA) :-
+  range_property_kind(Prop,Range,KBA0,Kind),
+  collect_property_expr(Prop,Kind,KBA0,KBA1),
+  collect_range_target(Range,Kind,KBA1,KBA).
+collect_axiom_entities(transitiveProperty(Prop),KBA0,KBA) :-
+  collect_property_expr(Prop,object,KBA0,KBA).
+collect_axiom_entities(symmetricProperty(Prop),KBA0,KBA) :-
+  collect_property_expr(Prop,object,KBA0,KBA).
+collect_axiom_entities(inverseProperties(P,S),KBA0,KBA) :-
+  collect_property_expr(P,object,KBA0,KBA1),
+  collect_property_expr(S,object,KBA1,KBA).
+collect_axiom_entities(sameIndividual(List),KBA0,KBA) :-
+  collect_individual_list(List,KBA0,KBA).
+collect_axiom_entities(differentIndividuals(List),KBA0,KBA) :-
+  collect_individual_list(List,KBA0,KBA).
+collect_axiom_entities(classAssertion(Class,Ind),KBA0,KBA) :-
+  collect_class_expr(Class,KBA0,KBA1),
+  collect_individual(Ind,KBA1,KBA).
+collect_axiom_entities(propertyAssertion(Prop,Subj,Obj),KBA0,KBA) :-
+  assertion_property_kind(Prop,Obj,KBA0,Kind),
+  collect_property_expr(Prop,Kind,KBA0,KBA1),
+  collect_individual(Subj,KBA1,KBA2),
+  collect_assertion_object(Obj,Kind,KBA2,KBA).
+collect_axiom_entities(annotationAssertion(Prop,Target,Value),KBA0,KBA) :-
+  collect_property_expr(Prop,annotation,KBA0,KBA1),
+  collect_annotation_target(Target,KBA1,KBA2),
+  collect_annotation_value(Value,KBA2,KBA).
+collect_axiom_entities(Term,KBA0,KBA) :-
+  compound(Term),
+  Term =.. [_|Args],
+  collect_axiom_terms(Args,KBA0,KBA).
+collect_axiom_entities(_,KBA,KBA).
+
+collect_axiom_terms([],KBA,KBA).
+collect_axiom_terms([H|T],KBA0,KBA) :-
+  collect_axiom_entities(H,KBA0,KBA1),
+  collect_axiom_terms(T,KBA1,KBA).
+
+collect_class_list(List,KBA0,KBA) :-
+  ( is_list(List) -> collect_class_list_items(List,KBA0,KBA)
+  ; collect_class_expr(List,KBA0,KBA)
+  ).
+
+collect_class_list_items([],KBA,KBA).
+collect_class_list_items([H|T],KBA0,KBA) :-
+  collect_class_expr(H,KBA0,KBA1),
+  collect_class_list_items(T,KBA1,KBA).
+
+collect_property_list(List,Kind,KBA0,KBA) :-
+  ( is_list(List) -> collect_property_list_items(List,Kind,KBA0,KBA)
+  ; collect_property_expr(List,Kind,KBA0,KBA)
+  ).
+
+collect_property_list_items([],_,KBA,KBA).
+collect_property_list_items([H|T],Kind,KBA0,KBA) :-
+  collect_property_expr(H,Kind,KBA0,KBA1),
+  collect_property_list_items(T,Kind,KBA1,KBA).
+
+collect_individual_list(List,KBA0,KBA) :-
+  ( is_list(List) -> collect_individual_list_items(List,KBA0,KBA)
+  ; collect_individual(List,KBA0,KBA)
+  ).
+
+collect_individual_list_items([],KBA,KBA).
+collect_individual_list_items([H|T],KBA0,KBA) :-
+  collect_individual(H,KBA0,KBA1),
+  collect_individual_list_items(T,KBA1,KBA).
+
+collect_class_expr(Expr,KBA,KBA) :- var(Expr), !.
+collect_class_expr(Expr,KBA,KBA) :- number(Expr), !.
+collect_class_expr('',KBA,KBA) :- !.
+collect_class_expr(Expr,KBA,KBA) :- is_literal_term(Expr), !.
+collect_class_expr(Expr,KBA0,KBA) :-
+  is_list(Expr), !,
+  collect_class_list_items(Expr,KBA0,KBA).
+collect_class_expr(Expr,KBA0,KBA) :-
+  atom(Expr), !,
+  add_entity(class,Expr,KBA0,KBA).
+collect_class_expr(intersectionOf(List),KBA0,KBA) :-
+  collect_class_list(List,KBA0,KBA).
+collect_class_expr(unionOf(List),KBA0,KBA) :-
+  collect_class_list(List,KBA0,KBA).
+collect_class_expr(complementOf(C),KBA0,KBA) :-
+  collect_class_expr(C,KBA0,KBA).
+collect_class_expr(oneOf(List),KBA0,KBA) :-
+  collect_individual_list(List,KBA0,KBA).
+collect_class_expr(someValuesFrom(Prop,Filler),KBA0,KBA) :-
+  restriction_kind(Filler,Kind),
+  collect_property_expr(Prop,Kind,KBA0,KBA1),
+  collect_restriction_filler(Filler,Kind,KBA1,KBA).
+collect_class_expr(allValuesFrom(Prop,Filler),KBA0,KBA) :-
+  restriction_kind(Filler,Kind),
+  collect_property_expr(Prop,Kind,KBA0,KBA1),
+  collect_restriction_filler(Filler,Kind,KBA1,KBA).
+collect_class_expr(hasValue(Prop,Val),KBA0,KBA) :-
+  value_kind(Val,Kind),
+  collect_property_expr(Prop,Kind,KBA0,KBA1),
+  ( Kind = data -> collect_assertion_object(Val,data,KBA1,KBA)
+  ; collect_individual(Val,KBA1,KBA)
+  ).
+collect_class_expr(hasSelf(Prop),KBA0,KBA) :-
+  collect_property_expr(Prop,object,KBA0,KBA).
+collect_class_expr(minCardinality(_,Prop),KBA0,KBA) :-
+  collect_property_expr(Prop,object,KBA0,KBA).
+collect_class_expr(minCardinality(_,Prop,Filler),KBA0,KBA) :-
+  restriction_kind(Filler,Kind),
+  collect_property_expr(Prop,Kind,KBA0,KBA1),
+  collect_restriction_filler(Filler,Kind,KBA1,KBA).
+collect_class_expr(maxCardinality(_,Prop),KBA0,KBA) :-
+  collect_property_expr(Prop,object,KBA0,KBA).
+collect_class_expr(maxCardinality(_,Prop,Filler),KBA0,KBA) :-
+  restriction_kind(Filler,Kind),
+  collect_property_expr(Prop,Kind,KBA0,KBA1),
+  collect_restriction_filler(Filler,Kind,KBA1,KBA).
+collect_class_expr(exactCardinality(_,Prop),KBA0,KBA) :-
+  collect_property_expr(Prop,object,KBA0,KBA).
+collect_class_expr(exactCardinality(_,Prop,Filler),KBA0,KBA) :-
+  restriction_kind(Filler,Kind),
+  collect_property_expr(Prop,Kind,KBA0,KBA1),
+  collect_restriction_filler(Filler,Kind,KBA1,KBA).
+collect_class_expr(Expr,KBA0,KBA) :-
+  Expr =.. [_|Args],
+  collect_class_args(Args,KBA0,KBA).
+
+collect_class_args([],KBA,KBA).
+collect_class_args([H|T],KBA0,KBA) :-
+  collect_class_expr(H,KBA0,KBA1),
+  collect_class_args(T,KBA1,KBA).
+
+collect_property_expr(Expr,_Kind,KBA,KBA) :- var(Expr), !.
+collect_property_expr(Expr,_,KBA,KBA) :- number(Expr), !.
+collect_property_expr('',_,KBA,KBA) :- !.
+collect_property_expr(Expr,Kind,KBA0,KBA) :-
+  is_list(Expr), !,
+  collect_property_list_items(Expr,Kind,KBA0,KBA).
+collect_property_expr(inverseOf(P),Kind,KBA0,KBA) :-
+  collect_property_expr(P,Kind,KBA0,KBA).
+collect_property_expr(propertyChain(List),Kind,KBA0,KBA) :-
+  collect_property_list(List,Kind,KBA0,KBA).
+collect_property_expr(annotationProperty(Prop),_,KBA0,KBA) :-
+  add_property_entity(annotation,Prop,KBA0,KBA).
+collect_property_expr(Expr,Kind,KBA0,KBA) :-
+  atom(Expr), !,
+  select_property_kind(Kind,Expr,KBA0,FinalKind),
+  add_property_entity(FinalKind,Expr,KBA0,KBA).
+collect_property_expr(Expr,Kind,KBA0,KBA) :-
+  Expr =.. [_|Args],
+  collect_property_args(Args,Kind,KBA0,KBA).
+
+collect_property_args([],_,KBA,KBA).
+collect_property_args([H|T],Kind,KBA0,KBA) :-
+  collect_property_expr(H,Kind,KBA0,KBA1),
+  collect_property_args(T,Kind,KBA1,KBA).
+
+select_property_kind(any,Expr,KBA,Kind) :-
+  known_property_kind(Expr,KBA,Kind), !.
+select_property_kind(any,_Expr,_KBA,object) :- !.
+select_property_kind(Kind,_Expr,_KBA,Kind).
+
+known_property_kind(Expr,KBA,annotation) :-
+  atom(Expr),
+  memberchk(Expr,KBA.annotationProperty).
+known_property_kind(Expr,KBA,data) :-
+  atom(Expr),
+  memberchk(Expr,KBA.dataProperty).
+known_property_kind(Expr,KBA,object) :-
+  atom(Expr),
+  memberchk(Expr,KBA.objectProperty).
+
+collect_individual(Ind,KBA,KBA) :- var(Ind), !.
+collect_individual(Ind,KBA,KBA) :- is_literal_term(Ind), !.
+collect_individual(Ind,KBA,KBA) :- number(Ind), !.
+collect_individual('',KBA,KBA) :- !.
+collect_individual(Ind,KBA0,KBA) :-
+  atom(Ind), !,
+  add_entity(individual,Ind,KBA0,KBA).
+collect_individual(Ind,KBA0,KBA) :-
+  Ind =.. [_|Args],
+  collect_individual_args(Args,KBA0,KBA).
+
+collect_individual_args([],KBA,KBA).
+collect_individual_args([H|T],KBA0,KBA) :-
+  collect_individual(H,KBA0,KBA1),
+  collect_individual_args(T,KBA1,KBA).
+
+collect_assertion_object(Value,data,KBA0,KBA) :-
+  ( Value = literal(type(DT,_)) -> add_entity(datatype,DT,KBA0,KBA)
+  ; Value = literal(type(_,DT)) -> add_entity(datatype,DT,KBA0,KBA)
+  ; Value = literal(lang(_,_)) -> KBA = KBA0
+  ; Value = literal(_) -> KBA = KBA0
+  ; Value = literal(_,_ ) -> KBA = KBA0
+  ; Value = literal(_,_,_) -> KBA = KBA0
+  ; maybe_datatype_iri(Value) -> add_entity(datatype,Value,KBA0,KBA)
+  ; number(Value) -> KBA = KBA0
+  ; add_entity(datatype,Value,KBA0,KBA)
+  ).
+collect_assertion_object(Value,_Kind,KBA0,KBA) :-
+  collect_individual(Value,KBA0,KBA).
+
+collect_annotation_target(Target,KBA0,KBA) :-
+  ( compound(Target) -> collect_axiom_entities(Target,KBA0,KBA)
+  ; annotation_target_type(Target,KBA0,Type),
+    add_annotation_target(Type,Target,KBA0,KBA)
+  ).
+
+annotation_target_type(Target,KBA,property(Kind)) :-
+  known_property_kind(Target,KBA,Kind), !.
+annotation_target_type(Target,KBA,individual) :-
+  atom(Target),
+  memberchk(Target,KBA.individual), !.
+annotation_target_type(_,_,class).
+
+add_annotation_target(property(Kind),Target,KBA0,KBA) :-
+  add_property_entity(Kind,Target,KBA0,KBA).
+add_annotation_target(Type,Target,KBA0,KBA) :-
+  add_entity(Type,Target,KBA0,KBA).
+
+collect_annotation_value(Value,KBA0,KBA) :-
+  ( compound(Value) -> collect_axiom_entities(Value,KBA0,KBA)
+  ; KBA = KBA0
+  ).
+
+collect_range_target(Range,data,KBA0,KBA) :-
+  ( Range = datatypeRestriction(DT,_) -> add_entity(datatype,DT,KBA0,KBA)
+  ; atom(Range) -> add_entity(datatype,Range,KBA0,KBA)
+  ; KBA = KBA0
+  ).
+collect_range_target(Range,_Kind,KBA0,KBA) :-
+  collect_class_expr(Range,KBA0,KBA).
+
+range_property_kind(Prop,Range,KBA,Kind) :-
+  ( known_property_kind(Prop,KBA,data) -> Kind = data
+  ; is_datatype_term(Range) -> Kind = data
+  ; Kind = object
+  ).
+
+assertion_property_kind(Prop,Obj,KBA,Kind) :-
+  ( known_property_kind(Prop,KBA,data) -> Kind = data
+  ; is_datatype_term(Obj) -> Kind = data
+  ; Kind = object
+  ).
+
+restriction_kind(Filler,data) :-
+  is_datatype_term(Filler), !.
+restriction_kind(_,object).
+
+value_kind(Value,data) :-
+  is_datatype_term(Value), !.
+value_kind(_,object).
+
+collect_restriction_filler(Filler,data,KBA0,KBA) :-
+  collect_range_target(Filler,data,KBA0,KBA).
+collect_restriction_filler(Filler,object,KBA0,KBA) :-
+  collect_class_expr(Filler,KBA0,KBA).
+
+add_property_entity(annotation,Value,KBA0,KBA) :-
+  add_entity(annotationProperty,Value,KBA0,KBA).
+add_property_entity(data,Value,KBA0,KBA) :-
+  add_entity(dataProperty,Value,KBA0,KBA).
+add_property_entity(object,Value,KBA0,KBA) :-
+  add_entity(objectProperty,Value,KBA0,KBA).
+
+add_entity(_Type,Value,KBA,KBA) :- var(Value), !.
+add_entity(_Type,Value,KBA,KBA) :- Value == '', !.
+add_entity(_Type,Value,KBA,KBA) :- number(Value), !.
+add_entity(Type,Value,KBA0,KBA) :-
+  atom(Value),
+  get_dict(Type,KBA0,List),
+  ( memberchk(Value,List) -> KBA = KBA0
+  ; KBA = KBA0.put(Type,[Value|List])
+  ).
+add_entity(_Type,_Value,KBA,KBA).
+
+maybe_datatype_iri(Value) :-
+  atom(Value),
+  ( sub_atom(Value,_,_,_,'XMLSchema#')
+  ; sub_atom(Value,0,_,_,'xsd:')
+  ; sub_atom(Value,_,_,_,'Datatype')
+  ; sub_atom(Value,_,_,_,'Literal')
+  ).
+
+is_literal_term(literal(_)).
+is_literal_term(literal(_,_)).
+is_literal_term(literal(_,_,_)).
+
+is_datatype_term(Term) :-
+  is_literal_term(Term), !.
+is_datatype_term(Term) :-
+  number(Term), !.
+is_datatype_term(datatypeRestriction(_,_)) :- !.
+is_datatype_term(Term) :-
+  atom(Term),
+  maybe_datatype_iri(Term).
 
 
 :- multifile trill:add_axioms/1.
@@ -320,7 +655,7 @@ ns_expand_atomic(NSList, A, Out) :-
             )
         ; Out = A
         )
-    ;   atomic_list_concat([':', A], Out)
+    ;   ( is_list(A) -> Out = A ; atomic_list_concat([':', A], Out))
     ).
 
 
@@ -366,8 +701,8 @@ trill:load_owl_kb_from_string(String):-
   %retractall(M:adb(_)),
   %retractall(M:kb_prefix(_, _)),
   parse_string(String,JRes),
-  bridge_assert_result(M, JRes),
-  close_java_vm.
+  bridge_assert_result(M, JRes).
+  %close_java_vm.
 
 
 % -------- bridge result decoding -----------------------------------
@@ -581,7 +916,7 @@ parse_file(File,JRes):-
           [File],
           JRes).
 
-parse_string(String,Jres):-
+parse_string(String,JRes):-
   wrapper_class(WrapperClass),
   jpl_call(WrapperClass,
           'parseOntologyString',
@@ -636,5 +971,5 @@ user:term_expansion(TRILLAxiom,[]):-
   get_module(M),
   trill:kb_prefixes(NSList),
   ns_expand_term(NSList, TRILLAxiom, TRILLAxiomExpanded),
-  add_axiom_no_check(M,Axiom).
+  add_axiom_no_check(M,TRILLAxiomExpanded).
 

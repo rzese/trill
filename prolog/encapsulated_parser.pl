@@ -32,16 +32,19 @@ prolog:message(no_ontology_loaded) -->
  * ------------------------------------------------------------------ */
 
 /* Cache policies:
-   none: no caching, every axiom request is forwarded to Java
-   lazy: cache functors on first request
-   eager: cache all functors after loading
-   selective(List): cache only functors in List after loading
+    none: no caching, forward every axiom request to Java
+    lazy: cache functors on first request
+    eager: cache all functors after loading
+    selective(List): cache only functors in List after loading
+    matching: delegate partially instantiated queries to Java so only
+                 matching axioms are materialised
 */
-default_cache_policy(eager).
+default_cache_policy(lazy).
 
 normalize_policy(none, none).
 normalize_policy(lazy, lazy).
 normalize_policy(eager, eager).
+normalize_policy(matching, matching).
 normalize_policy(selective(List0), selective(List)) :-
     must_be(list, List0),
     maplist(must_be(atom), List0),
@@ -81,13 +84,18 @@ trill:axiom(M:Pattern) :-
     enumerate_axioms(M, Functor, Pattern).
 
 enumerate_axioms(M, Functor, Term) :-
-    M:cache_policy(none), !,
-    fetch_functor_terms(M, Functor, Terms),
-    member(Term, Terms).
-
-enumerate_axioms(M, Functor, Term) :-
-    ensure_functor_cached(M, Functor),
-    M:cache_axiom(Functor, Term).
+    (   M:cache_policy(none)
+    ->  ( fetch_functor_terms(M, Functor, Terms),
+          member(Term, Terms)
+        )
+    ;   ( M:cache_policy(matching),
+            nonvar(Term)
+        ->  fetch_matching_axioms(M, Functor, Term)
+        ;   ( ensure_functor_cached(M, Functor),
+              M:cache_axiom(Functor, Term)
+            )
+        )
+    ).
 
 :- multifile trill:add_axiom/1.
 trill:add_axiom(M:Axiom) :-
@@ -251,6 +259,8 @@ ns_expand_term(_M, Num, Num) :- number(Num), !.
 ns_expand_term(M, Prefix:Local, Expanded) :- !,
     atomics_to_string([Prefix, ':', Local], Raw),
     expand_atomic_term(M, Raw, Expanded).
+ns_expand_term(M, List, ExpandedArgs) :- is_list(List), !,
+    maplist(ns_expand_term(M), List, ExpandedArgs).
 ns_expand_term(M, Atom, Expanded) :- atomic(Atom), !,
     expand_atomic_term(M, Atom, Expanded).
 ns_expand_term(M, Compound, Expanded) :-
@@ -429,6 +439,16 @@ fetch_functor_terms(M, Functor, Terms) :-
     %maplist(atom_string, AtomStrs, Raw),
     maplist(read_term_safely, Raw, Terms).
 
+fetch_matching_axioms(M, Functor, Pattern) :-
+    ensure_instance(M, JRef),
+    pattern_filters(Pattern, Filters),
+    jpl_list_to_array(Filters, FilterArray),
+    jpl_call(JRef, 'fetchMatchingAxioms', [Functor, FilterArray], Arr),
+    jpl_array_to_list(Arr, Raw),
+    maplist(read_term_safely, Raw, Terms),
+    member(Term, Terms),
+    Pattern = Term.
+
 read_term_safely(Atom, Term) :-
     read_term_from_atom(Atom, Term, [syntax_errors(error)]).
 
@@ -458,6 +478,18 @@ supported_functor_list(M, Functors) :-
       jpl_array_to_list(Arr, Raw),
       maplist(atom_string, Functors, Raw),
       assertz(M:supported_functors(Functors))
+    ).
+
+pattern_filters(Term, Filters) :-
+    Term =.. [_|Args],
+    maplist(arg_filter_value, Args, Filters).
+
+filter_wildcard('<<ANY>>').
+
+arg_filter_value(Arg, Value) :-
+    (   ground(Arg)
+    ->  with_output_to(atom(Value), write_term(Arg, [quoted(true), numbervars(true)]))
+    ;   filter_wildcard(Value)
     ).
 
 invalidate_functor_cache(M, Functor) :-
