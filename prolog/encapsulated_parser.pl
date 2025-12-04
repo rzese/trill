@@ -7,11 +7,9 @@ backend satisfies every caller.
 */
 
 :- module(encapsulated_parser,
-                    [ set_encapsulated_cache_policy/1,
-                        set_cache_policy/1
+                    [ set_cache_policy/1
                     ]).
 
-:- meta_predicate set_encapsulated_cache_policy(:).
 :- meta_predicate set_cache_policy(:).
 
 :- use_module(library(lists)).
@@ -23,8 +21,6 @@ backend satisfies every caller.
 jar_file('prob-owlapi-2.0.8.jar').
 parser_class('it.unife.ml.probowlapi.trill.TrillEncapsulated').
 
-:- dynamic java_bridge_initialized/0.
-
 prolog:message(no_jvm) -->
     [ 'JVM not available! Error in initialization of the Java Virtual Machine.' ].
 
@@ -35,14 +31,13 @@ prolog:message(no_ontology_loaded) -->
  *  Public configuration API
  * ------------------------------------------------------------------ */
 
-default_cache_policy(lazy).
-
-valid_cache_policy(none).
-valid_cache_policy(lazy).
-valid_cache_policy(eager).
-valid_cache_policy(selective(List)) :-
-    must_be(list, List),
-    maplist(must_be(atom), List).
+/* Cache policies:
+   none: no caching, every axiom request is forwarded to Java
+   lazy: cache functors on first request
+   eager: cache all functors after loading
+   selective(List): cache only functors in List after loading
+*/
+default_cache_policy(eager).
 
 normalize_policy(none, none).
 normalize_policy(lazy, lazy).
@@ -53,7 +48,7 @@ normalize_policy(selective(List0), selective(List)) :-
     sort(List0, List).
 
 
-set_encapsulated_cache_policy(M:PolicyIn) :-
+set_cache_policy(M:PolicyIn) :-
     normalize_policy(PolicyIn, Policy),
     ensure_module_state(M),
     retractall(M:cache_policy(_)),
@@ -64,10 +59,6 @@ set_encapsulated_cache_policy(M:PolicyIn) :-
 maybe_prime_cache(M) :-
     ( M:ontology_ready -> prime_cache_after_load(M) ; true ).
 
-%% Compatibility shim (old API supported none|functor|eager only)
-set_cache_policy(Policy) :-
-    get_module(M),
-    set_cache_policy(M:Policy).
 
 /* ------------------------------------------------------------------
  *  AXIOM MANAGEMENT
@@ -84,19 +75,17 @@ trill:axiom(M:Pattern) :-
 
 trill:axiom(M:Pattern) :-
     nonvar(Pattern),
+    ensure_module_state(M),
+    ensure_cache_policy(M),
     functor(Pattern, Functor, _),
     enumerate_axioms(M, Functor, Pattern).
 
 enumerate_axioms(M, Functor, Term) :-
-    ensure_module_state(M),
-    ensure_cache_policy(M),
     M:cache_policy(none), !,
     fetch_functor_terms(M, Functor, Terms),
     member(Term, Terms).
 
 enumerate_axioms(M, Functor, Term) :-
-    ensure_module_state(M),
-    ensure_cache_policy(M),
     ensure_functor_cached(M, Functor),
     M:cache_axiom(Functor, Term).
 
@@ -313,9 +302,10 @@ post_load_refresh(M) :-
 prime_cache_after_load(M) :-
     M:cache_policy(Policy),
     ( Policy == eager ->
-        fetch_all_functors(M),
-        retractall(M:fetched_functor(all)),
-        assertz(M:fetched_functor(all))
+        ( fetch_all_functors(M),
+          retractall(M:fetched_functor(all)),
+          assertz(M:fetched_functor(all))
+        )
     ; Policy = selective(List), List \= [] ->
         fetch_functor_list(M, List)
     ; true
@@ -329,10 +319,10 @@ prime_cache_after_load(M) :-
 ontology_parser:check_query_args_1(_M, _, [], [], []) :- !.
 ontology_parser:check_query_args_1(M, Types, Args, Expanded, Missing) :-
     ensure_instance(M, JRef),
-    maplist(atom_string, Types, TypeStrings),
-    maplist(term_to_arg_string, Args, ArgStrings),
-    jpl_list_to_array(TypeStrings, TypeArray),
-    jpl_list_to_array(ArgStrings, ArgArray),
+    %maplist(atom_string, Types, TypeStrings),
+    %maplist(term_to_arg_string, Args, ArgStrings),
+    jpl_list_to_array(Types, TypeArray),
+    jpl_list_to_array(Args, ArgArray),
     jpl_call(JRef, 'checkAndExpandArgs', [TypeArray, ArgArray], ResultArray),
     jpl_array_to_list(ResultArray, ResultStrings),
     parse_check_results(Args, ResultStrings, Expanded, Missing).
@@ -380,7 +370,7 @@ ontology_parser:clean_up_parser(M) :-
 
 ensure_runtime_ready(M) :-
     ensure_module_state(M),
-    init_java_bridge,
+    init_java_bridge(M),
     init_java_class(M),
     ensure_cache_policy(M).
 
@@ -396,18 +386,19 @@ ensure_module_state(M) :-
     ( predicate_property(M:cache_policy(_), dynamic) -> true ; dynamic(M:cache_policy/1) ),
     ( predicate_property(M:java_class(_), dynamic) -> true ; dynamic(M:java_class/1) ),
     ( predicate_property(M:supported_functors(_), dynamic) -> true ; dynamic(M:supported_functors/1) ),
-    ( predicate_property(M:ontology_ready, dynamic) -> true ; dynamic(M:ontology_ready/0) ).
+    ( predicate_property(M:ontology_ready, dynamic) -> true ; dynamic(M:ontology_ready/0) ),
+    ( predicate_property(M:java_bridge_initialized, dynamic) -> true ; dynamic(M:java_bridge_initialized/0) ).
 
-init_java_bridge :-
-    java_bridge_initialized, !.
-init_java_bridge :-
+init_java_bridge(M) :-
+    M:java_bridge_initialized, !.
+init_java_bridge(M) :-
     jar_file(Jar),
     absolute_file_name(library(Jar), JarPath, [access(read)]),
     (   getenv('CLASSPATH', Existing) -> true ; Existing = '' ),
     atomic_list_concat([Existing, JarPath], ';', CP),
     atomic_list_concat(['-Djava.class.path=', CP], JVMOpt),
     jpl_set_default_jvm_opts(['-Xms128m','-Xmx1g', JVMOpt]),
-    assertz(java_bridge_initialized).
+    assertz(M:java_bridge_initialized).
 
 init_java_class(M) :-
     ( M:java_class(_) -> true
@@ -435,8 +426,8 @@ fetch_functor_terms(M, Functor, Terms) :-
     ensure_instance(M, JRef),
     jpl_call(JRef, 'fetchAxioms', [Functor], Arr),
     jpl_array_to_list(Arr, Raw),
-    maplist(atom_string, AtomStrs, Raw),
-    maplist(read_term_safely, AtomStrs, Terms).
+    %maplist(atom_string, AtomStrs, Raw),
+    maplist(read_term_safely, Raw, Terms).
 
 read_term_safely(Atom, Term) :-
     read_term_from_atom(Atom, Term, [syntax_errors(error)]).
@@ -487,7 +478,6 @@ array_to_atoms(Array, Atoms) :-
 
 :- multifile sandbox:safe_meta/2.
 
-sandbox:safe_meta(encapsulated_parser:set_encapsulated_cache_policy(_), []).
 sandbox:safe_meta(encapsulated_parser:set_cache_policy(_), []).
 
 user:term_expansion(owl_rdf(String), []) :-
