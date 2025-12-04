@@ -51,9 +51,7 @@ http://vangelisv.github.io/thea/
 @copyright Riccardo Zese
 */
 
-:- module(internal_parser, []).
-
-:- dynamic trill_input_mode/1.
+%:- module(internal_parser, []).
 
 :- use_module(library(lists),[member/2]).
 :- use_module(library(pengines)).
@@ -530,9 +528,8 @@ create_list([_|T],AT,[AT|ATT]):-
 set_up_kb_loading(M):-
   retractall(M:kb_atom(_)),
   init_kb_atom(M),
-  retractall(M:addKBName),
   assert(M:addKBName),
-  assert(trill_input_mode(M)).
+  assert(M:trill_input_mode).
   %format("Loading knowledge base...~n",[]),
   %statistics(walltime,[_,_]).
 
@@ -557,7 +554,7 @@ ontology_parser:clean_up_parser(M):-
   M:(dynamic sameIndividual/1, differentIndividuals/1, classAssertion/2, propertyAssertion/3, negativePropertyAssertion/3),
   M:(dynamic annotationAssertion/3, annotation/3, ontology/1, ontologyAxiom/2, ontologyImport/2, ontologyVersionInfo/2),
   M:(dynamic owl/4, owl/3, owl/2, blanknode/3, outstream/1, aNN/3, annotation_r_node/4, axiom_r_node/4, owl_repository/2, trdf_setting/2),
-  M:(dynamic ns4query/1),
+  M:(dynamic ns4query/1, trill_input_mode/0),
   retractall(M:kb_atom([])),
   forall(trill:axiom(M:A),retractall(M:A)),
   retractall(M:blanknode(_,_,_)),
@@ -584,7 +581,7 @@ ontology_parser:set_up_parser(M):-
   M:(dynamic sameIndividual/1, differentIndividuals/1, classAssertion/2, propertyAssertion/3, negativePropertyAssertion/3),
   M:(dynamic annotationAssertion/3, annotation/3, ontology/1, ontologyAxiom/2, ontologyImport/2, ontologyVersionInfo/2),
   M:(dynamic owl/4, owl/3, owl/2, blanknode/3, outstream/1, aNN/3, annotation_r_node/4, axiom_r_node/4, owl_repository/2, trdf_setting/2),
-  M:(dynamic ns4query/1, addKBName/0),
+  M:(dynamic ns4query/1, addKBName/0, trill_input_mode/0),
   retractall(M:addKBName),
   trill:add_kb_prefixes(M:[('disponte'='http://ai.unife.it/disponte#'),('owl'='http://www.w3.org/2002/07/owl#')]),
   set_up_kb_loading(M).
@@ -4041,6 +4038,7 @@ user:term_expansion(owl_rdf(String),[]):-
 
 user:term_expansion(end_of_file, end_of_file) :-
   rdf_reset_db,
+  get_module(M),
   retractall(M:blanknode(_,_,_)),
   retractall(M:aNN(_,_,_)),
   retractall(M:annotation_r_node(_,_,_)),
@@ -4052,15 +4050,12 @@ user:term_expansion(end_of_file, end_of_file) :-
   retractall(M:ontologyAxiom(_,_)),
   retractall(M:ontologyImport(_,_)),
   retractall(M:ontologyVersionInfo(_,_)),
-  retractall(M:rdf(_,_,_)),
   retractall(M:trdf_setting(_,_)),
-  get_module(M),
-  trill_input_mode(M),
-  dif(M,trill),
-  dif(M,internal_parser),
+  M:dynamic(trill_input_mode/0),
+  M:trill_input_mode,
   fix_wrongly_classified_atoms(M),
   retractall(M:addKBName),
-  retractall(trill_input_mode(_)).
+  retractall(M:trill_input_mode).
   %statistics(walltime,[_,KBLM]),
   %KBLS is KBLM / 1000,
   %format("Knowledge base loaded in ~f seconds.~n",[KBLS]).

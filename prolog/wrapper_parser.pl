@@ -69,7 +69,7 @@ The module recognizes all standard OWL axiom types:
 @copyright Riccardo Zese
 */
 
-:- module(wrapper_parser,[]).
+%:- module(wrapper_parser,[]).
 
 
 :- use_module(library(lists)).
@@ -468,7 +468,7 @@ is_datatype_term(Term) :-
 :- multifile trill:add_axioms/1.
 trill:add_axioms(M:Axioms) :-
     must_be(list, Axioms),
-    concurrent_maplist(wrapper_parser:add_axiom(M), Axioms).
+    concurrent_maplist(add_axiom(M), Axioms).
 
 
 :- multifile trill:remove_axiom/1.
@@ -481,7 +481,7 @@ remove_axiom(M,Axiom) :- trill:remove_axiom(M:Axiom).
 :- multifile trill:remove_axioms/1.
 trill:remove_axioms(M:Axioms) :-
     must_be(list, Axioms),
-    concurrent_maplist(wrapper_parser:remove_axiom(M), Axioms).
+    concurrent_maplist(remove_axiom(M), Axioms).
 
 
 :- multifile trill:is_axiom/1.
@@ -601,7 +601,7 @@ trill:add_kb_prefix(M:Short, Long) :-
 :- multifile trill:add_kb_prefixes/1.
 trill:add_kb_prefixes(M:Pairs) :-
   must_be(list, Pairs),
-  maplist(wrapper_parser:add_kb_prefix_pair(M), Pairs).
+  maplist(add_kb_prefix_pair(M), Pairs).
 
 add_kb_prefix_pair(M, Short=Long) :- trill:add_kb_prefix(M:Short, Long).
 
@@ -631,13 +631,13 @@ expand_all_ns(_M, Args, NSList, Expanded) :-
   % NSList is a list of Short=IRI pairs (atoms)
   must_be(list, Args),
   must_be(list, NSList),
-  maplist(wrapper_parser:ns_expand_term(NSList), Args, Expanded).
+  maplist(ns_expand_term(NSList), Args, Expanded).
 
 ns_expand_term(NSList, TermIn, TermOut) :-
   (   atomic(TermIn)
   ->  ns_expand_atomic(NSList, TermIn, TermOut)
   ;   TermIn =.. [F|As],
-      maplist(wrapper_parser:ns_expand_term(NSList), As, AsE),
+      maplist(ns_expand_term(NSList), As, AsE),
       % ns_expand_atomic(NSList, F, FE), % Expansion of the predicate
       % TermOut =.. [FE|AsE]
       TermOut =.. [F|AsE]
@@ -701,8 +701,8 @@ trill:load_owl_kb_from_string(String):-
   %retractall(M:adb(_)),
   %retractall(M:kb_prefix(_, _)),
   parse_string(String,JRes),
-  bridge_assert_result(M, JRes).
-  %close_java_vm.
+  bridge_assert_result(M, JRes),
+  close_java_vm.
 
 
 % -------- bridge result decoding -----------------------------------
@@ -713,11 +713,11 @@ bridge_assert_result(M,JRes) :-
     % prefixes
     jpl_get(JRes, prefixes, JPrefArray),
     jpl_array_to_list(JPrefArray, PrefListJava),
-    maplist(wrapper_parser:assert_prefix_from_java(M), PrefListJava),
+    maplist(assert_prefix_from_java(M), PrefListJava),
     % axioms
     jpl_get(JRes, axioms, JAxiomArray),
     jpl_array_to_list(JAxiomArray, AxiomStrings),
-    maplist(wrapper_parser:assert_axiom_from_string(M), AxiomStrings),
+    maplist(assert_axiom_from_string(M), AxiomStrings),
     % entity
     jpl_get(JRes, classes, JClassArray),
     jpl_array_to_list(JClassArray, ClassStrings),
@@ -773,7 +773,7 @@ ontology_parser:check_query_args_1(M,[_|ATT],[H|T],TEx,[H|NotEx]):-
 
 % expands query arguments using prefixes and checks their existence in the kb
 check_query_args_2(M,AT,L,LEx) :-
-  ontology_parser:kb_prefixes(NSList),
+  trill:kb_prefixes(NSList),
   expand_all_ns(M,L,NSList,LEx), %from internal_parser module
   check_query_args_presence(M,AT,LEx).
 
@@ -854,7 +854,7 @@ create_list([_|T],AT,[AT|ATT]):-
 :- multifile ontology_parser:clean_up_parser/1.
 ontology_parser:clean_up_parser(M):-
   M:(dynamic adb/1, kb_atom/1, kb_prefix/2),
-  forall(ontology_parser:axiom(M:A),retractall(M:adb(A))),
+  forall(trill:axiom(M:A),retractall(M:adb(A))),
   retractall(M:kb_atom(_)).
 
 :- multifile ontology_parser:set_up_parser/1.
@@ -969,7 +969,7 @@ user:term_expansion(owl_rdf(String),[]):-
 user:term_expansion(TRILLAxiom,[]):-
   trill:is_axiom(TRILLAxiom),
   get_module(M),
-  trill:kb_prefixes(NSList),
+  trill:kb_prefixes(M:NSList),
   ns_expand_term(NSList, TRILLAxiom, TRILLAxiomExpanded),
   add_axiom_no_check(M,TRILLAxiomExpanded).
 

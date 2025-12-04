@@ -6,11 +6,11 @@ encapsulated_parser API with the newer GPT implementation so one
 backend satisfies every caller.
 */
 
-:- module(encapsulated_parser,
-                    [ set_cache_policy/1
-                    ]).
+%:- module(encapsulated_parser,
+%                    [ set_cache_policy/1
+%                    ]).
 
-:- meta_predicate set_cache_policy(:).
+%:- meta_predicate set_cache_policy(:).
 
 :- use_module(library(lists)).
 :- use_module(library(jpl)).
@@ -510,7 +510,7 @@ array_to_atoms(Array, Atoms) :-
 
 :- multifile sandbox:safe_meta/2.
 
-sandbox:safe_meta(encapsulated_parser:set_cache_policy(_), []).
+%sandbox:safe_meta(encapsulated_parser:set_cache_policy(_), []).
 
 user:term_expansion(owl_rdf(String), []) :-
     trill:load_owl_kb_from_string(String), !.
