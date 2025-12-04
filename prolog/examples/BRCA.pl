@@ -292,7 +292,6 @@ subClassOf('WomanWithAtypicalHyperplasia','Woman').
 subClassOf('WomanWithBRCA1Mutation','WomanUnderLifetimeBRCRisk').
 subClassOf('WomanWithBRCAMutation','WomanWithRiskFactors').
 subClassOf('WomanWithBRCAMutation','WomanUnderLifetimeBRCRisk').
-subClassOf('WomanWithBRCAMutation','WomanUnderLifetimeBRCRisk').
 subClassOf('WomanWithCarcinomaInSitu','Woman').
 subClassOf('WomanWithEarlyFirstChild','Woman').
 subClassOf('WomanWithEarlyFirstPeriodAndLateMenopause','Woman').

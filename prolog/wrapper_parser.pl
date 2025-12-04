@@ -108,7 +108,7 @@ wrapper_class('it.unife.ml.probowlapi.trill.TrillKBParserWrapper').
 % TRILL syntax: subClassOf, equivalentClasses, subPropertyOf, propertyDomain,
 % propertyRange, transitiveProperty, inverseProperties, symmetricProperty,
 % sameIndividual, differentIndividuals, classAssertion, propertyAssertion,
-% annotationAssertion, plus concept descriptions used inside axioms. 
+% annotationAssertion, functionalProeprty, plus concept descriptions used inside axioms. 
 :- multifile trill:axiom/1.
 trill:axiom(M:A) :- M:adb(A).
 
@@ -175,6 +175,8 @@ collect_axiom_entities(propertyRange(Prop,Range),KBA0,KBA) :-
   collect_property_expr(Prop,Kind,KBA0,KBA1),
   collect_range_target(Range,Kind,KBA1,KBA).
 collect_axiom_entities(transitiveProperty(Prop),KBA0,KBA) :-
+  collect_property_expr(Prop,object,KBA0,KBA).
+collect_axiom_entities(functionalProperty(Prop),KBA0,KBA) :-
   collect_property_expr(Prop,object,KBA0,KBA).
 collect_axiom_entities(symmetricProperty(Prop),KBA0,KBA) :-
   collect_property_expr(Prop,object,KBA0,KBA).
@@ -498,6 +500,7 @@ trill:is_axiom(equivalentProperties(_)).
 trill:is_axiom(propertyDomain(_,_)).
 trill:is_axiom(propertyRange(_,_)).
 trill:is_axiom(transitiveProperty(_)).
+trill:is_axiom(functionalProperty(_)).
 trill:is_axiom(inverseProperties(_,_)).
 trill:is_axiom(symmetricProperty(_)).
 trill:is_axiom(sameIndividual(_)).
@@ -555,6 +558,9 @@ ontology_parser:get_axiom_disjointUnion(M,C,L):-
 
 ontology_parser:get_axiom_transitiveProperty(M,P):-
   M:adb(transitiveProperty(P)).
+
+ontology_parser:get_axiom_functionalProperty(M,P):-
+  M:adb(functionalProperty(P)).
 
 ontology_parser:get_axiom_symmetricProperty(M,P):-
   M:adb(symmetricProperty(P)).
