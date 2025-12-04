@@ -675,8 +675,7 @@ trill:load_kb(File) :-
   %retractall(M:adb(_)),
   %retractall(M:kb_prefix(_, _)),
   parse_file(File,JRes),
-  bridge_assert_result(M,JRes),
-  close_java_vm.
+  bridge_assert_result(M,JRes).
 
 
 /**
@@ -701,8 +700,7 @@ trill:load_owl_kb_from_string(String):-
   %retractall(M:adb(_)),
   %retractall(M:kb_prefix(_, _)),
   parse_string(String,JRes),
-  bridge_assert_result(M, JRes),
-  close_java_vm.
+  bridge_assert_result(M, JRes).
 
 
 % -------- bridge result decoding -----------------------------------
@@ -773,7 +771,7 @@ ontology_parser:check_query_args_1(M,[_|ATT],[H|T],TEx,[H|NotEx]):-
 
 % expands query arguments using prefixes and checks their existence in the kb
 check_query_args_2(M,AT,L,LEx) :-
-  trill:kb_prefixes(NSList),
+  trill:kb_prefixes(M:NSList),
   expand_all_ns(M,L,NSList,LEx), %from internal_parser module
   check_query_args_presence(M,AT,LEx).
 
@@ -886,6 +884,8 @@ ontology_parser:set_up_parser(M):-
 /****************************************
   UTILITY
   ****************************************/
+init_java_bridge:-
+    jpl_get_actual_jvm_opts(_),!.
 init_java_bridge :-
   % Point to your assembled JAR (jar-with-dependencies)
   jar_file(JarFile),

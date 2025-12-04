@@ -401,6 +401,8 @@ ensure_module_state(M) :-
 
 init_java_bridge(M) :-
     M:java_bridge_initialized, !.
+init_java_bridge(_M) :-
+    jpl_get_actual_jvm_opts(_),!.
 init_java_bridge(M) :-
     jar_file(Jar),
     absolute_file_name(library(Jar), JarPath, [access(read)]),
