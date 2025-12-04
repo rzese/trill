@@ -249,8 +249,8 @@ ontology_parser:get_axiom_disjointUnion(M,C,L):-
 ontology_parser:get_axiom_transitiveProperty(M,P):-
   M:transitiveProperty(P).
 
-ontology_parser:get_axiom_transitiveProperty(M,P):-
-  M:transitiveProperty(P).
+ontology_parser:get_axiom_functionalProperty(M,P):-
+  M:functionalProperty(P).
 
 ontology_parser:get_axiom_symmetricProperty(M,P):-
   M:symmetricProperty(P).
