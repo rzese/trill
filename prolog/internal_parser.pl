@@ -63,6 +63,8 @@ http://vangelisv.github.io/thea/
 :- style_check(-discontiguous).
 
 
+expand_iri_default_operation(reduce). %expand or reduce
+
 /*****************************/
 
 /************************************
@@ -1478,21 +1480,42 @@ subsumed_by(I,T):-
 %% iri(?IRI)
 % true if IRI is an IRI. TODO: currently underconstrained, any atomic term can be an IRI
 iri(IRI) :- atomic(IRI).	%
-expand_iri(_M,NS_URL,NSList,Full_URL):-
+expand_iri(M,IRI,NSList,IRIOut):-
+  expand_iri_default_operation(Op),
+  expand_iri(M,IRI,NSList,IRIOut,Op).
+
+expand_iri(_M,NS_URL,NSList,Full_URL,reduce):-
+  atomic(NS_URL),
+  NS_URL \= literal(_),
+  uri_split(NS_URL,Long_NS_T,Term, '#'),
+  atomic_list_concat([Long_NS_T, '#'], Long_NS),
+  member((Short_NS=Long_NS),NSList),
+  ( dif([],Short_NS) -> concat_atom([Short_NS,':',Term],Full_URL) ; concat_atom([':',Term],Full_URL)),!.
+
+expand_iri(_M,NS_URL,_NSList,IRIOut,reduce):- 
+  atomic(NS_URL),
+  NS_URL \= literal(_),
+  \+ sub_atom(NS_URL,_,_,_,':'),!,
+  atomic_list_concat([':', NS_URL], IRIOut).
+
+expand_iri(_M,NS_URL,_NSList,NS_URL,reduce):- 
+  atomic(NS_URL).
+
+expand_iri(_M,NS_URL,NSList,Full_URL,expand):-
   atomic(NS_URL),
   NS_URL \= literal(_),
   uri_split(NS_URL,Short_NS,Term, ':'),
   member((Short_NS=Long_NS),NSList),
   concat_atom([Long_NS,Term],Full_URL),!.
 
-expand_iri(_M,NS_URL,NSList,Full_URL):- 
+expand_iri(_M,NS_URL,NSList,Full_URL,expand):- 
   atomic(NS_URL),
   NS_URL \= literal(_),
   \+ sub_atom(NS_URL,_,_,_,':'),
   member(([]=Long_NS),NSList),
   concat_atom([Long_NS,NS_URL],Full_URL),!.
 
-expand_iri(_M,IRI,_NSList,IRI):- atomic(IRI).
+expand_iri(_M,IRI,_NSList,IRIOut,expand):- atomic(IRI),atomic_list_concat([':', IRI], IRIOut).
   
 
 %% literal(?Lit)
@@ -2469,7 +2492,7 @@ uri_split(URI,Namespace,Term,Split_Char) :-
 	sub_atom(URI,Start,_,After,Split_Char),
 	sub_atom(URI,0,Start,_,Namespace),
 	Start1 is Start + 1,
-	sub_atom(URI,Start1,After,_,Term).
+	sub_atom(URI,Start1,After,_,Term),!.
 
 
 %%       owl_collect_linked_nodes(+Node,+Predicate, +InList,-OutList)
