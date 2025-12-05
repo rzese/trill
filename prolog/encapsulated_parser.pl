@@ -312,8 +312,8 @@ trill:load_kb(File) :-
     ensure_runtime_ready(M),
     clear_axiom_cache_state(M),
     ensure_instance(M, JRef),
-    jpl_call(JRef, 'loadFromFile', [File], Result),
-    post_load_refresh(M,Result).
+    jpl_call(JRef, 'loadFromFile', [File], _),
+    post_load_refresh(M).
 
 trill:load_owl_kb(File) :-
     trill:load_kb(File).
@@ -324,13 +324,12 @@ trill:load_owl_kb_from_string(String) :-
     ensure_runtime_ready(M),
     clear_axiom_cache_state(M),
     ensure_instance(M, JRef),
-    jpl_call(JRef, 'loadFromString', [String], Result),
+    jpl_call(JRef, 'loadFromString', [String], _),
     post_load_refresh(M).
 
-post_load_refresh(M,Result) :-
+post_load_refresh(M) :-
     retractall(M:ontology_ready),
     assertz(M:ontology_ready),
-    apply_parsing(Result),
     prime_cache_after_load(M).
 
 prime_cache_after_load(M) :-
@@ -421,7 +420,8 @@ ensure_module_state(M) :-
     ( predicate_property(M:java_class(_), dynamic) -> true ; dynamic(M:java_class/1) ),
     ( predicate_property(M:supported_functors(_), dynamic) -> true ; dynamic(M:supported_functors/1) ),
     ( predicate_property(M:ontology_ready, dynamic) -> true ; dynamic(M:ontology_ready/0) ),
-    ( predicate_property(M:java_bridge_initialized, dynamic) -> true ; dynamic(M:java_bridge_initialized/0) ).
+    ( predicate_property(M:java_bridge_initialized, dynamic) -> true ; dynamic(M:java_bridge_initialized/0) ),
+    ( predicate_property(M:rule(_), dynamic) -> true ; dynamic(M:rule/1) ).
 
 init_java_bridge(M) :-
     M:java_bridge_initialized, !.
@@ -488,7 +488,8 @@ fetch_functor_and_store(M, Functor) :-
     fetch_functor_terms(M, Functor, Terms),
     retractall(M:cache_axiom(Functor,_)),
     forall(member(T, Terms), assertz(M:cache_axiom(Functor, T))),
-    ( M:fetched_functor(all) -> true ; assertz(M:fetched_functor(Functor)) ).
+    ( M:fetched_functor(all) -> true ; assertz(M:fetched_functor(Functor)) ),
+    update_rule_lists(M,Terms).
 
 fetch_all_functors(M) :-
     supported_functor_list(M, Functors),
@@ -534,6 +535,15 @@ array_to_atoms(Array, Atoms) :-
     jpl_array_to_list(Array, Raw),
     maplist(atom_string, Atoms, Raw).
 
+
+update_rule_lists(_M,[]):-!.
+
+update_rule_lists(M,_T):-
+    ensure_instance(M, JRef),
+    jpl_call(JRef, 'getRequiredRules', [], Arr),
+    jpl_array_to_list(Arr, Raw),
+    forall(member(Rule,Raw),add_rule(M,Rule)).
+
 :- multifile sandbox:safe_meta/2.
 
 %sandbox:safe_meta(encapsulated_parser:set_cache_policy(_), []).
@@ -541,6 +551,6 @@ array_to_atoms(Array, Atoms) :-
 user:term_expansion(owl_rdf(String), []) :-
     trill:load_owl_kb_from_string(String), !.
 
-user:term_expansion(TRILLAxiom, []) :-
+user:term_expansion(Axiom, []) :-
     get_module(M),
     add_axiom(M,Axiom).
