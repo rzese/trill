@@ -131,9 +131,11 @@ test(p_p_r):-
 
 :- consult(library(examples/commander)).
 
+test(abc):-run((aggregate_all(count, axiom(_), Count), Count=6)).
+
 test(e_c_j):-
   run((instanceOf(commander,john,Expl),
-       one_of(Expl,[[equivalentClasses([guard, soldier]), classAssertion(allValuesFrom(commands, guard), john), subClassOf(allValuesFrom(commands, soldier), commander)]])
+       one_of(Expl,[[equivalentClasses([':guard', ':soldier']), classAssertion(allValuesFrom(':commands', ':guard'), ':john'), subClassOf(allValuesFrom(':commands', ':soldier'), ':commander')]])
   )).
 
 :- end_tests(trill_commander).
