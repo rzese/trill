@@ -524,12 +524,13 @@ prune_tableau_rules(M):-write('dummy prune rule'),!,
   set_tableau_expansion_rules(M:DetRules,NondetRules).
 */
 prune_tableau_rules(M):-
-  get_classes_list(M,Classes0),
-  add_class_from_query_monitor(M,Classes0,Classes),
+  add_rule(M,unfold_rule),
+  add_rule(M,add_exists_rule),
+  get_rules(M,Rules),
   setting_trill_default(det_rules,DetRules),
-  prune_tableau_rules(Classes,DetRules,PrunedDetRules),
+  prune_tableau_rules(Rules,DetRules,PrunedDetRules),
   setting_trill_default(nondet_rules,NondetRules),
-  prune_tableau_rules(Classes,NondetRules,PrunedNondetRules),
+  prune_tableau_rules(Rules,NondetRules,PrunedNondetRules),
   set_tableau_expansion_rules(M:PrunedDetRules,PrunedNondetRules).
 
 add_class_from_query_monitor(M,Classes0,[intersectionOf(QueryArgs)|Classes0]):-
@@ -537,67 +538,19 @@ add_class_from_query_monitor(M,Classes0,[intersectionOf(QueryArgs)|Classes0]):-
 
 add_class_from_query_monitor(_M,Classes0,Classes0):-!.
 
-add_tableau_rules_from_class(M,someValuesFrom(_,_)):-
-  M:setting_trill(det_rules,Rules),
-  memberchk(exists_rule,Rules),!.
+add_tableau_rules_from_class(M,Functor):-
+  add_rule(M,Functor),
+  prune_tableau_rules(M).
 
-add_tableau_rules_from_class(M,C):-
-  get_classes_list(M,Classes),
-  setting_trill_default(det_rules,DetRules),
-  prune_tableau_rules([C|Classes],DetRules,PrunedDetRules),
-  setting_trill_default(nondet_rules,NondetRules),
-  prune_tableau_rules([C|Classes],NondetRules,PrunedNondetRules),
-  set_tableau_expansion_rules(M:PrunedDetRules,PrunedNondetRules).
 
 % o_rule,and_rule,unfold_rule,add_exists_rule,forall_rule,forall_plus_rule,exists_rule,min_rule,or_rule,max_rule,ch_rule
-prune_tableau_rules(_,[],[]).
+prune_tableau_rules([],_,[]):-!.
 
-prune_tableau_rules(KBA,[o_rule|TR],[o_rule|PTR]):-
-  memberchk(oneOf(_),KBA),!,
+prune_tableau_rules([Rule|TR],KBA,[Rule|PTR]):-
+  memberchk(Rule,KBA),!,
   prune_tableau_rules(KBA,TR,PTR).
 
-prune_tableau_rules(KBA,[and_rule|TR],[and_rule|PTR]):-
-  memberchk(intersectionOf(_),KBA),!,
-  prune_tableau_rules(KBA,TR,PTR).
-
-prune_tableau_rules(KBA,[unfold_rule|TR],[unfold_rule|PTR]):-
-  !,
-  prune_tableau_rules(KBA,TR,PTR).
-
-prune_tableau_rules(KBA,[add_exists_rule|TR],[add_exists_rule|PTR]):-
-  !,
-  prune_tableau_rules(KBA,TR,PTR).
-
-prune_tableau_rules(KBA,[forall_rule|TR],[forall_rule|PTR]):-
-  memberchk(allValuesFrom(_,_),KBA),!,
-  prune_tableau_rules(KBA,TR,PTR).
-
-prune_tableau_rules(KBA,[forall_plus_rule|TR],[forall_plus_rule|PTR]):-
-  memberchk(allValuesFrom(_,_),KBA),!,
-  prune_tableau_rules(KBA,TR,PTR).
-
-prune_tableau_rules(KBA,[exists_rule|TR],[exists_rule|PTR]):-
-  memberchk(someValuesFrom(_,_),KBA),!,
-  prune_tableau_rules(KBA,TR,PTR).
-
-prune_tableau_rules(KBA,[min_rule|TR],[min_rule|PTR]):-
-  (memberchk(minCardinality(_,_),KBA); memberchk(minCardinality(_,_,_),KBA);memberchk(exactCardinality(_,_),KBA);memberchk(exactCardinality(_,_,_),KBA)),!,
-  prune_tableau_rules(KBA,TR,PTR).
-
-prune_tableau_rules(KBA,[or_rule|TR],[or_rule|PTR]):-
-  memberchk(unionOf(_),KBA),!,
-  prune_tableau_rules(KBA,TR,PTR).
-
-prune_tableau_rules(KBA,[max_rule|TR],[max_rule|PTR]):-
-  (memberchk(maxCardinality(_,_),KBA); memberchk(maxCardinality(_,_,_),KBA);memberchk(exactCardinality(_,_),KBA);memberchk(exactCardinality(_,_,_),KBA)),!,
-  prune_tableau_rules(KBA,TR,PTR).
-
-
-prune_tableau_rules(KBA,[ch_rule|TR],[ch_rule|PTR]):-
-  (memberchk(maxCardinality(_,_),KBA); memberchk(maxCardinality(_,_,_),KBA);memberchk(exactCardinality(_,_),KBA);memberchk(exactCardinality(_,_,_),KBA)),!,
-  prune_tableau_rules(KBA,TR,PTR).
-
-prune_tableau_rules(KBA,[_|TR],PTR):-
+prune_tableau_rules([_Rule|TR],KBA,PTR):-
   prune_tableau_rules(KBA,TR,PTR).
 
 /***********
@@ -895,11 +848,14 @@ prob_inconsistent_theory(M:Prob):-
  */
 resume_query(M:Expl):-
   check_open_query_monitor_status(M,_,_),
+  get_time_limit_monitor(M,MonitorTimeLimit),
   M:tab_end(Tab),
   retract(M:tab_end(Tab)),
   set_up_tableau(M),
   check_and_set_next_from_expansion_queue(Tab,_EA,Tab1),
-  get_explanation(M,Tab1,Expl).
+  get_explanation(M,Tab1,Expl),
+  check_time_limit_monitor(M,MonitorTimeLimit),
+  is_expl(M,Expl).
 
 /**
  * compute_query_prob(:Prob:double) is det
@@ -1412,7 +1368,7 @@ existsInKB(M,R,C):-
 */
 
 scan_exists_from_class_list(M,_,_,_,_,[],Tab,Tab):-!,
-  add_tableau_rules_from_class(M,someValuesFrom(_,_)).
+  add_tableau_rules_from_class(M,someValuesFrom).
 
 scan_exists_from_class_list(M,R,Ind1,Expl1,ABox,[C-Expl2|T],Tab0,Tab):-
   and_f(M,Expl1,Expl2,Expl),
@@ -1425,7 +1381,7 @@ scan_exists_from_class_list(M,R,Ind1,Expl1,ABox,[_|T],Tab0,Tab):-
 % -----------------
 
 scan_exists_from_rule_list(M,_,_,_,[],Tab,Tab):-!,
-  add_tableau_rules_from_class(M,someValuesFrom(_,_)).
+  add_tableau_rules_from_class(M,someValuesFrom).
 
 scan_exists_from_rule_list(M,C,Expl2,ABox,[R-Ind1-Expl1|T],Tab0,Tab):-
   and_f(M,Expl1,Expl2,Expl),

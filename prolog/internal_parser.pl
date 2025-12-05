@@ -557,7 +557,7 @@ ontology_parser:clean_up_parser(M):-
   M:(dynamic sameIndividual/1, differentIndividuals/1, classAssertion/2, propertyAssertion/3, negativePropertyAssertion/3),
   M:(dynamic annotationAssertion/3, annotation/3, ontology/1, ontologyAxiom/2, ontologyImport/2, ontologyVersionInfo/2),
   M:(dynamic owl/4, owl/3, owl/2, blanknode/3, outstream/1, aNN/3, annotation_r_node/4, axiom_r_node/4, owl_repository/2, trdf_setting/2),
-  M:(dynamic ns4query/1, trill_input_mode/0),
+  M:(dynamic ns4query/1, trill_input_mode/0,rule/1),
   retractall(M:kb_atom([])),
   forall(trill:axiom(M:A),retractall(M:A)),
   retractall(M:blanknode(_,_,_)),
@@ -584,7 +584,7 @@ ontology_parser:set_up_parser(M):-
   M:(dynamic sameIndividual/1, differentIndividuals/1, classAssertion/2, propertyAssertion/3, negativePropertyAssertion/3),
   M:(dynamic annotationAssertion/3, annotation/3, ontology/1, ontologyAxiom/2, ontologyImport/2, ontologyVersionInfo/2),
   M:(dynamic owl/4, owl/3, owl/2, blanknode/3, outstream/1, aNN/3, annotation_r_node/4, axiom_r_node/4, owl_repository/2, trdf_setting/2),
-  M:(dynamic ns4query/1, addKBName/0, trill_input_mode/0),
+  M:(dynamic ns4query/1, addKBName/0, trill_input_mode/0,rule/1),
   retractall(M:addKBName),
   trill:add_kb_prefixes(M:[('disponte'='http://ai.unife.it/disponte#'),('owl'='http://www.w3.org/2002/07/owl#')]),
   set_up_kb_loading(M).
@@ -596,6 +596,21 @@ ontology_parser:set_up_parser(M):-
 
 /* ************************************** */
 
+/**
+ * add_rule(+Module:string, +Rule:string) is det
+ *
+ * This predicate adds to the rules list the rule in Rule
+ */
+:- multifile ontology_parser:add_rule/2.
+ontology_parser:add_rule(M,Rule):-
+  M:rule(Rule),!.
+  
+ontology_parser:add_rule(M,Rule):- !,
+  assert(M:rule(Rule)).
+
+:- multifile ontology_parser:get_rules/2.
+ontology_parser:get_rules(M,Rules):-
+  findall(Rule,M:rule(Rule),Rules), !.
 
 
 
@@ -1203,8 +1218,8 @@ axiompred(transitiveProperty/1).
 axiom_arguments(transitiveProperty,[objectPropertyExpression]).
 valid_axiom(transitiveProperty(A)) :- subsumed_by([A],[objectPropertyExpression]).
 expand_axiom(M,transitiveProperty(A),NSList,transitiveProperty(A_full_URL)) :- 
-  expand_objectPropertyExpression(M,A,NSList,A_full_URL).
-  %add_rule(M,forall_plus_rule),
+  expand_objectPropertyExpression(M,A,NSList,A_full_URL),
+  add_rule(M,forall_plus_rule).
   %add_expressivity(M,s).
 
 %% hasKey(?ClassExpression,?PropertyExpression)
@@ -1642,11 +1657,12 @@ expand_classExpression(M,CE,NSList,ExpCE):-			 % TODO: add management datatype
 */
 expand_classExpression(M,intersectionOf(CEs),NSList,intersectionOf(ExpCEs)):- !,
   expand_classExpressions(M,CEs,NSList,ExpCEs),
-  ( M:addKBName -> add_kb_atoms(M,class,[intersectionOf(ExpCEs)]) ; true ).
+  ( M:addKBName -> add_kb_atoms(M,class,[intersectionOf(ExpCEs)]) ; true ),
+  add_rule(M,and_rule).
 expand_classExpression(M,unionOf(CEs),NSList,unionOf(ExpCEs)) :- !,
   expand_classExpressions(M,CEs,NSList,ExpCEs),
-  ( M:addKBName -> add_kb_atoms(M,class,[unionOf(ExpCEs)]) ; true ).
-  %add_rule(M,or_rule),
+  ( M:addKBName -> add_kb_atoms(M,class,[unionOf(ExpCEs)]) ; true ),
+  add_rule(M,or_rule).
   %add_expressivity(M,a).
 expand_classExpression(M,complementOf(CE),NSList,complementOf(ExpCE)) :- !,
   expand_classExpression(M,CE,NSList,ExpCE),
@@ -1654,19 +1670,19 @@ expand_classExpression(M,complementOf(CE),NSList,complementOf(ExpCE)) :- !,
   %add_expressivity(M,a).
 expand_classExpression(M,oneOf(Is),NSList,oneOf(ExpIs)) :- !,  % TODO check in trill
   expand_individuals(M,Is,NSList,ExpIs),
-  ( M:addKBName -> add_kb_atoms(M,class,[oneOf(ExpIs)]) ; true ).
-  %add_rule(M,o_rule),
+  ( M:addKBName -> add_kb_atoms(M,class,[oneOf(ExpIs)]) ; true ),
+  add_rule(M,o_rule).
   %add_expressivity(M,o).
 expand_classExpression(M,someValuesFrom(OPE,CE),NSList,someValuesFrom(ExpOPE,ExpCE)) :- !,
   expand_objectPropertyExpression(M,OPE,NSList,ExpOPE),
   expand_classExpression(M,CE,NSList,ExpCE),
-  ( M:addKBName -> add_kb_atoms(M,class,[someValuesFrom(ExpOPE,ExpCE)]) ; true ).
-  %add_rule(M,exists_rule).
+  ( M:addKBName -> add_kb_atoms(M,class,[someValuesFrom(ExpOPE,ExpCE)]) ; true ),
+  add_rule(M,exists_rule).
 expand_classExpression(M,allValuesFrom(OPE,CE),NSList,allValuesFrom(ExpOPE,ExpCE)) :- !,
 	expand_objectPropertyExpression(M,OPE,NSList,ExpOPE),
 	expand_classExpression(M,CE,NSList,ExpCE),
-    ( M:addKBName -> add_kb_atoms(M,class,[allValuesFrom(ExpOPE,ExpCE)]) ; true ).
-  %add_rule(M,forall_rule),
+    ( M:addKBName -> add_kb_atoms(M,class,[allValuesFrom(ExpOPE,ExpCE)]) ; true ),
+  add_rule(M,forall_rule).
   %add_expressivity(M,a).
 expand_classExpression(M,hasValue(OPE,I),NSList,hasValue(ExpOPE,ExpI)) :- !,  % TODO: add in trill
 	expand_objectPropertyExpression(M,OPE,NSList,ExpOPE),
@@ -1680,45 +1696,47 @@ expand_classExpression(M,minCardinality(C,OPE,CE),NSList,minCardinality(C,ExpOPE
 	C>=0,
 	expand_objectPropertyExpression(M,OPE,NSList,ExpOPE),
 	expand_classExpression(M,CE,NSList,ExpCE),
-    ( M:addKBName -> add_kb_atoms(M,class,[minCardinality(C,ExpOPE,ExpCE)]) ; true ).
-  %add_rule(M,min_rule),
+    ( M:addKBName -> add_kb_atoms(M,class,[minCardinality(C,ExpOPE,ExpCE)]) ; true ),
+  add_rule(M,min_rule).
   %add_expressivity(M,q).
 expand_classExpression(M,minCardinality(C,OPE),NSList,minCardinality(C,ExpOPE)):- !,
 	number(C),
 	C>=0,
 	expand_objectPropertyExpression(M,OPE,NSList,ExpOPE),
-    ( M:addKBName -> add_kb_atoms(M,class,[minCardinality(C,ExpOPE)]) ; true ).
-  %add_rule(M,min_rule),
+    ( M:addKBName -> add_kb_atoms(M,class,[minCardinality(C,ExpOPE)]) ; true ),
+  add_rule(M,min_rule).
   %add_expressivity(M,n).
 expand_classExpression(M,maxCardinality(C,OPE,CE),NSList,maxCardinality(C,ExpOPE,ExpCE)):- !,
 	number(C),
 	C>=0,
 	expand_objectPropertyExpression(M,OPE,NSList,ExpOPE),
 	expand_classExpression(M,CE,NSList,ExpCE),
-    ( M:addKBName -> add_kb_atoms(M,class,[maxCardinality(C,ExpOPE,ExpCE)]) ; true ).
-  %add_rule(M,max_rule),
+    ( M:addKBName -> add_kb_atoms(M,class,[maxCardinality(C,ExpOPE,ExpCE)]) ; true ),
+  add_rule(M,max_rule).
   %add_expressivity(M,q).
 expand_classExpression(M,maxCardinality(C,OPE),NSList,maxCardinality(C,ExpOPE)):- !,
 	number(C),
 	C>=0,
 	expand_objectPropertyExpression(M,OPE,NSList,ExpOPE),
-    ( M:addKBName -> add_kb_atoms(M,class,[maxCardinality(C,ExpOPE)]) ; true ).
-  %add_rule(M,max_rule),
+    ( M:addKBName -> add_kb_atoms(M,class,[maxCardinality(C,ExpOPE)]) ; true ),
+  add_rule(M,max_rule).
   %add_expressivity(M,n).
 expand_classExpression(M,exactCardinality(C,OPE,CE),NSList,exactCardinality(C,ExpOPE,ExpCE)):- !,
 	number(C),
 	C>=0,
 	expand_objectPropertyExpression(M,OPE,NSList,ExpOPE),
 	expand_classExpression(M,CE,NSList,ExpCE),
-    ( M:addKBName -> add_kb_atoms(M,class,[exactCardinality(C,ExpOPE,ExpCE)]) ; true ).
-  %add_rule(M,min_rule),add_rule(M,max_rule),
+    ( M:addKBName -> add_kb_atoms(M,class,[exactCardinality(C,ExpOPE,ExpCE)]) ; true ),
+  add_rule(M,min_rule),
+  add_rule(M,max_rule).
   %add_expressivity(M,q).
 expand_classExpression(M,exactCardinality(C,OPE),NSList,exactCardinality(C,ExpOPE)):- !,
 	number(C),
 	C>=0,
 	expand_objectPropertyExpression(M,OPE,NSList,ExpOPE),
-    ( M:addKBName -> add_kb_atoms(M,class,[exactCardinality(C,ExpOPE)]) ; true ).
-  %add_rule(M,min_rule),add_rule(M,max_rule),
+    ( M:addKBName -> add_kb_atoms(M,class,[exactCardinality(C,ExpOPE)]) ; true ),
+  add_rule(M,min_rule),
+  add_rule(M,max_rule).
   %add_expressivity(M,n).
 expand_classExpression(M,CE,NSList,ExpCE):-
     expand_class(M,CE,NSList,ExpCE),
@@ -3936,36 +3954,6 @@ add_kb_atoms(M,Type,[H|T]):-
   ),
   add_kb_atoms(M,Type,T).
 
-
-/**
- * add_rule(+Module:string, +Rule:string) is det
- *
- * This predicate adds to the rules list the rule in Rule
- */
-add_rule(M,max_rule):- !,
-  M:rules(D,ND),
-  ( memberchk(max_rule,ND) -> true ;
-    ( retractall(M:rules(_,_)),
-      assert(M:rules(D,[max_rule|ND]))
-    )
-  ), !.
-  
-add_rule(M,or_rule):- !,
-  M:rules(D,ND),
-  ( memberchk(or_rule,ND) -> true ;
-    ( retractall(M:rules(_,_)),
-      assert(M:rules(D,[or_rule|ND]))
-    )
-  ), !.
-  
-add_rule(M,Rule):-
-  M:rules(D,ND),
-  ( memberchk(Rule,D) -> true ;
-    ( retractall(M:rules(_,_)),
-      assert(M:rules([Rule|D],ND))
-    )
-  ), !.
-
 /**
  * add_expressivity(+Module:string, +L:string) is det
  *
@@ -4054,7 +4042,8 @@ user:term_expansion(end_of_file, end_of_file) :-
   retractall(M:ontologyImport(_,_)),
   retractall(M:ontologyVersionInfo(_,_)),
   retractall(M:trdf_setting(_,_)),
-  M:dynamic(trill_input_mode/0),
+  M:(dynamic rule/1),
+  M:(dynamic trill_input_mode/0),
   M:trill_input_mode,
   fix_wrongly_classified_atoms(M),
   retractall(M:addKBName),

@@ -43,7 +43,10 @@ This module provides:
             get_axiom_symmetricProperty/2, get_axiom_inverseProperties/3,
             get_axiom_annotationAssertion/4,
             %---------
-            get_classes_list/2
+            get_classes_list/2,
+            %--------
+            add_rule/2,
+            get_rules/2
           ]).
 
 
@@ -260,6 +263,12 @@ from_query_type_to_args_type(it,[]):- !.
 %% Multifile hooks that parser implementations must provide
 :- multifile set_up_parser/1.
 :- multifile clean_up_parser/1.
+
+% ========================================
+% Retrieve list of rules for pruning rule in trill
+% ========================================
+:- multifile add_rule/2.
+:- multifile get_rules/2.
 
 % ========================================
 % Sandbox Safety Declarations

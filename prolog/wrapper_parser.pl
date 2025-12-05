@@ -115,16 +115,18 @@ trill:axiom(M:A) :- M:adb(A).
 
 :- multifile trill:add_axiom/1.
 trill:add_axiom(M:Axiom) :-
-    add_axiom(M,Axiom),
-    trill:update_tabs(M,Axiom).
-
-add_axiom(M,Axiom) :-
-    M:adb(Axiom),!.
+  add_axiom(M,Axiom),
+  trill:update_tabs(M,Axiom).
 
 add_axiom(M,Axiom) :-
   must_be(nonvar, Axiom),
   trill:is_axiom(Axiom),
-  add_axiom_no_check(M,Axiom).
+  trill:kb_prefixes(M:NSList),
+  ns_expand_term(M,NSList, Axiom, TRILLAxiomExpanded),
+  add_axiom_no_check(M,TRILLAxiomExpanded).
+
+add_axiom_no_check(M,Axiom) :-
+  M:adb(Axiom),!.
 
 add_axiom_no_check(M,Axiom) :-
   assertz(M:adb(Axiom)),
@@ -633,17 +635,18 @@ trill:remove_kb_prefix(M:NameOrIRI) :-
  * using the list of prefixes. Finally, it returns the list of expanded strings.
  * It adds names in Args to the list of known elements.
  */
-expand_all_ns(_M, Args, NSList, Expanded) :-
+expand_all_ns(M, Args, NSList, Expanded) :-
   % NSList is a list of Short=IRI pairs (atoms)
   must_be(list, Args),
   must_be(list, NSList),
-  maplist(ns_expand_term(NSList), Args, Expanded).
+  maplist(ns_expand_term(M,NSList), Args, Expanded).
 
-ns_expand_term(NSList, TermIn, TermOut) :-
+ns_expand_term(M,NSList, TermIn, TermOut) :-
   (   atomic(TermIn)
   ->  ns_expand_atomic(NSList, TermIn, TermOut)
   ;   TermIn =.. [F|As],
-      maplist(ns_expand_term(NSList), As, AsE),
+      add_rule(M,F),
+      maplist(ns_expand_term(M,NSList), As, AsE),
       % ns_expand_atomic(NSList, F, FE), % Expansion of the predicate
       % TermOut =.. [FE|AsE]
       TermOut =.. [F|AsE]
@@ -857,19 +860,21 @@ create_list([_|T],AT,[AT|ATT]):-
 
 :- multifile ontology_parser:clean_up_parser/1.
 ontology_parser:clean_up_parser(M):-
-  M:(dynamic adb/1, kb_atom/1, kb_prefix/2),
+  M:(dynamic adb/1, kb_atom/1, kb_prefix/2,rule/1),
   forall(trill:axiom(M:A),retractall(M:adb(A))),
   retractall(M:kb_atom(_)).
 
 :- multifile ontology_parser:set_up_parser/1.
 ontology_parser:set_up_parser(M):-
-  M:(dynamic adb/1, kb_atom/1, kb_prefix/2),
+  M:(dynamic adb/1, kb_atom/1, kb_prefix/2,rule/1),
   init_java_bridge.
 
 
 /* ************************************** */
 
-
+:- multifile ontology_parser:get_rules/2.
+ontology_parser:get_rules(M,Rules):-
+  findall(Rule,M:rule(Rule),Rules), !.
 
 
 /*****************************/
@@ -955,8 +960,38 @@ is_concept(T) :-
 
 /* ************************************** */
 
+/**
+ * add_rule(+Module:string, +Rule:string) is det
+ *
+ * This predicate adds to the rules list the rule in Rule
+ */
+add_rule(M,Functor):-
+  funct_to_rule(M,Functor).
+
+add_rule_int(M,Rule):-
+  M:rule(Rule),!.
+  
+add_rule_int(M,Rule):- !,
+  assert(M:rule(Rule)).
 
 
+funct_to_rule(M,transitiveProperty):-
+  add_rule_int(M,forall_plus_rule).
+funct_to_rule(M,unionOf):-
+  add_rule_int(M,or_rule).
+funct_to_rule(M,oneOf):-
+  add_rule_int(M,o_rule).
+funct_to_rule(M,someValuesFrom):-
+  add_rule_int(M,exists_rule).
+funct_to_rule(M,allValuesFrom):-
+  add_rule_int(M,forall_rule).
+funct_to_rule(M,minCardinality):-
+  add_rule_int(M,min_rule).
+funct_to_rule(M,maxCardinality):-
+  add_rule_int(M,max_rule).
+funct_to_rule(M,exactCardinality):-
+  add_rule_int(M,min_rule),
+  add_rule_int(M,max_rule).
 
 /*****************************/
 
@@ -973,9 +1008,6 @@ user:term_expansion(owl_rdf(String),[]):-
   trill:load_owl_kb_from_string(String),!.
 
 user:term_expansion(TRILLAxiom,[]):-
-  trill:is_axiom(TRILLAxiom),
   get_module(M),
-  trill:kb_prefixes(M:NSList),
-  ns_expand_term(NSList, TRILLAxiom, TRILLAxiomExpanded),
-  add_axiom_no_check(M,TRILLAxiomExpanded).
+  add_axiom(M,TRILLAxiom).
 
