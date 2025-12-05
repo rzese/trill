@@ -104,8 +104,9 @@ trill:add_axiom(M:Axiom) :-
 
 add_axiom(M, Axiom) :-
     must_be(nonvar, Axiom),
-    trill:is_axiom(Axiom),
-    add_axiom_no_check(M, Axiom).
+    trill:is_axiom(Axiom),    
+    ns_expand_term(M, Axiom, Expanded),
+    add_axiom_no_check(M, Expanded).
 
 add_axiom_no_check(M, Axiom) :-
     term_to_atom(Axiom, Atom),
@@ -155,7 +156,8 @@ trill:is_axiom(annotationAssertion(_,_,_)).
  *  AXIOM SEARCH
  * ------------------------------------------------------------------ */
 
-:- multifile ontology_parser:get_axiom_subClassOf/3, ontology_parser:get_axiom_subPropertyOf/3,
+:- multifile ontology_parser:get_axiom_subClassOf/3,
+             ontology_parser:get_axiom_subPropertyOf/3,
              ontology_parser:get_axiom_equivalentClasses/2, ontology_parser:get_axiom_differentIndividuals/2,
              ontology_parser:get_axiom_sameIndividual/2, ontology_parser:get_axiom_propertyAssertion/4,
              ontology_parser:get_axiom_classAssertion/3, ontology_parser:get_axiom_propertyRange/3,
@@ -166,49 +168,69 @@ trill:is_axiom(annotationAssertion(_,_,_)).
 
 ontology_parser:get_axiom_subClassOf(M,A,B):-
   trill:axiom(M:subClassOf(A,B)).
+
 ontology_parser:get_axiom_subPropertyOf(M,R,S):-
   trill:axiom(M:subPropertyOf(R,S)).
+
 ontology_parser:get_axiom_equivalentClasses(M,L):-
   trill:axiom(M:equivalentClasses(L)).
+
 ontology_parser:get_axiom_differentIndividuals(M,L):-
   trill:axiom(M:differentIndividuals(L)).
+
 ontology_parser:get_axiom_sameIndividual(M,L):-
   trill:axiom(M:sameIndividual(L)).
+
 ontology_parser:get_axiom_propertyAssertion(M,P,S,O):-
   trill:axiom(M:propertyAssertion(P,S,O)).
+
 ontology_parser:get_axiom_classAssertion(M,C,I):-
   trill:axiom(M:classAssertion(C,I)).
+
 ontology_parser:get_axiom_propertyRange(M,P,R):-
   trill:axiom(M:propertyRange(P,R)).
+
 ontology_parser:get_axiom_propertyDomain(M,P,D):-
   trill:axiom(M:propertyDomain(P,D)).
+
 ontology_parser:get_axiom_disjointClasses(M,L):-
   trill:axiom(M:disjointClasses(L)).
+
 ontology_parser:get_axiom_disjointUnion(M,C,L):-
   trill:axiom(M:disjointUnion(C,L)).
+
 ontology_parser:get_axiom_transitiveProperty(M,P):-
   trill:axiom(M:transitiveProperty(P)).
+
 ontology_parser:get_axiom_symmetricProperty(M,P):-
   trill:axiom(M:symmetricProperty(P)).
+
 ontology_parser:get_axiom_inverseProperties(M,P,S):-
   trill:axiom(M:inverseProperties(P,S)).
+
 ontology_parser:get_axiom_equivalentProperties(M,L):-
   trill:axiom(M:equivalentProperties(L)).
+
 ontology_parser:get_axiom_annotationAssertion(M,Ann,Ax,Val):-
   trill:axiom(M:annotationAssertion(Ann,Ax,Val)).
 
-:- multifile ontology_parser:get_classes_list/2.
-ontology_parser:get_classes_list(M, Classes) :-
-    ( M:ontology_ready ->
-        ensure_instance(M, JRef),
-        jpl_call(JRef, 'getClassIRIs', [], Arr),
-        array_to_atoms(Arr, Classes)
-    ;   Classes = []
-    ).
 
-/* ------------------------------------------------------------------
- *  PREFIX MANAGEMENT
- * ------------------------------------------------------------------ */
+/********************************
+  CLASSES, PREDICATES AND
+  INDIVIDUALS MANAGEMENT
+*********************************/
+%:- multifile ontology_parser:get_classes_list/2.
+%ontology_parser:get_classes_list(M, Classes) :-
+%    ( M:ontology_ready ->
+%        ensure_instance(M, JRef),
+%        jpl_call(JRef, 'getClassIRIs', [], Arr),
+%        array_to_atoms(Arr, Classes)
+%    ;   Classes = []
+%    ).
+
+/********************************
+  PREFIXES MANAGEMENT
+*********************************/
 
 :- multifile trill:kb_prefixes/1.
 trill:kb_prefixes(M:Pairs) :-
@@ -265,6 +287,7 @@ ns_expand_term(M, Atom, Expanded) :- atomic(Atom), !,
     expand_atomic_term(M, Atom, Expanded).
 ns_expand_term(M, Compound, Expanded) :-
     Compound =.. [F|Args],
+    add_rule_from_functor(M,F),
     maplist(ns_expand_term(M), Args, ExpandedArgs),
     Expanded =.. [F|ExpandedArgs].
 
@@ -289,8 +312,8 @@ trill:load_kb(File) :-
     ensure_runtime_ready(M),
     clear_axiom_cache_state(M),
     ensure_instance(M, JRef),
-    jpl_call(JRef, 'loadFromFile', [File], _),
-    post_load_refresh(M).
+    jpl_call(JRef, 'loadFromFile', [File], Result),
+    post_load_refresh(M,Result).
 
 trill:load_owl_kb(File) :-
     trill:load_kb(File).
@@ -301,12 +324,13 @@ trill:load_owl_kb_from_string(String) :-
     ensure_runtime_ready(M),
     clear_axiom_cache_state(M),
     ensure_instance(M, JRef),
-    jpl_call(JRef, 'loadFromString', [String], _),
+    jpl_call(JRef, 'loadFromString', [String], Result),
     post_load_refresh(M).
 
-post_load_refresh(M) :-
+post_load_refresh(M,Result) :-
     retractall(M:ontology_ready),
     assertz(M:ontology_ready),
+    apply_parsing(Result),
     prime_cache_after_load(M).
 
 prime_cache_after_load(M) :-
@@ -518,7 +542,5 @@ user:term_expansion(owl_rdf(String), []) :-
     trill:load_owl_kb_from_string(String), !.
 
 user:term_expansion(TRILLAxiom, []) :-
-    trill:is_axiom(TRILLAxiom),
     get_module(M),
-    ns_expand_term(M, TRILLAxiom, Expanded),
-    add_axiom_no_check(M, Expanded).
+    add_axiom(M,Axiom).

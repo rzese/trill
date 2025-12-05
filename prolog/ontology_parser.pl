@@ -43,8 +43,6 @@ This module provides:
             get_axiom_symmetricProperty/2, get_axiom_inverseProperties/3,
             get_axiom_annotationAssertion/4,
             %---------
-            get_classes_list/2,
-            %--------
             add_rule/2,
             add_rule_from_functor/2,
             get_rules/2
@@ -193,7 +191,7 @@ load_parser_module(Parser):- %Fallback to internal
   
   Predicates for retrieving lists of entities defined in the KB.
 *********************************/
-:- multifile get_classes_list/2.
+%:- multifile get_classes_list/2.
 
 /**
  * check_query_args(+Module:atom, +QueryType:atom, +QueryArgs:list, -ExpandedArgs:list) is semidet
@@ -279,7 +277,6 @@ add_rule(M,Rule):-
 add_rule(M,Rule):- !,
   assert(M:rule(Rule)).
 
-get_rules/2.
 get_rules(M,Rules):-
   findall(Rule,M:rule(Rule),Rules), !.
 
@@ -334,4 +331,4 @@ sandbox:safe_meta(get_axiom_symmetricProperty(_,_),[]).
 sandbox:safe_meta(get_axiom_inverseProperties(_,_,_),[]).
 sandbox:safe_meta(get_axiom_equivalentProperties(_,_),[]). 
 sandbox:safe_meta(get_axiom_annotationAssertion(_,_,_,_),[]).
-sandbox:safe_meta(get_classes_list(_,_),[]).
+%sandbox:safe_meta(get_classes_list(_,_),[]).

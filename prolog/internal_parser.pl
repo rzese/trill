@@ -205,7 +205,8 @@ trill:is_axiom(Axiom) :-
   AXIOMS SEARCH
 *********************************/
 
-:- multifile ontology_parser:get_axiom_subClassOf/3, ontology_parser:get_axiom_subPropertyOf/3,
+:- multifile ontology_parser:get_axiom_subClassOf/3,
+             ontology_parser:get_axiom_subPropertyOf/3,
              ontology_parser:get_axiom_equivalentClasses/2, ontology_parser:get_axiom_differentIndividuals/2,
              ontology_parser:get_axiom_sameIndividual/2, ontology_parser:get_axiom_propertyAssertion/4,
              ontology_parser:get_axiom_classAssertion/3, ontology_parser:get_axiom_propertyRange/3,
@@ -272,11 +273,10 @@ ontology_parser:get_axiom_annotationAssertion(M,AnnIRI,Ax,AnnVal):-
 *********************************/
 
 
-:- multifile ontology_parser:get_classes_list/2.
-
-ontology_parser:get_classes_list(M,Classes):-
-  M:kb_atom(KBA),
-  Classes=KBA.class.
+%:- multifile ontology_parser:get_classes_list/2.
+%ontology_parser:get_classes_list(M,Classes):-
+%  M:kb_atom(KBA),
+%  Classes=KBA.class.
 
 /********************************
   PREFIXES MANAGEMENT
