@@ -645,7 +645,7 @@ ns_expand_term(M,NSList, TermIn, TermOut) :-
   (   atomic(TermIn)
   ->  ns_expand_atomic(NSList, TermIn, TermOut)
   ;   TermIn =.. [F|As],
-      add_rule(M,F),
+      add_rule_from_functor(M,F),
       maplist(ns_expand_term(M,NSList), As, AsE),
       % ns_expand_atomic(NSList, F, FE), % Expansion of the predicate
       % TermOut =.. [FE|AsE]
@@ -872,9 +872,6 @@ ontology_parser:set_up_parser(M):-
 
 /* ************************************** */
 
-:- multifile ontology_parser:get_rules/2.
-ontology_parser:get_rules(M,Rules):-
-  findall(Rule,M:rule(Rule),Rules), !.
 
 
 /*****************************/
@@ -960,38 +957,6 @@ is_concept(T) :-
 
 /* ************************************** */
 
-/**
- * add_rule(+Module:string, +Rule:string) is det
- *
- * This predicate adds to the rules list the rule in Rule
- */
-add_rule(M,Functor):-
-  funct_to_rule(M,Functor).
-
-add_rule_int(M,Rule):-
-  M:rule(Rule),!.
-  
-add_rule_int(M,Rule):- !,
-  assert(M:rule(Rule)).
-
-
-funct_to_rule(M,transitiveProperty):-
-  add_rule_int(M,forall_plus_rule).
-funct_to_rule(M,unionOf):-
-  add_rule_int(M,or_rule).
-funct_to_rule(M,oneOf):-
-  add_rule_int(M,o_rule).
-funct_to_rule(M,someValuesFrom):-
-  add_rule_int(M,exists_rule).
-funct_to_rule(M,allValuesFrom):-
-  add_rule_int(M,forall_rule).
-funct_to_rule(M,minCardinality):-
-  add_rule_int(M,min_rule).
-funct_to_rule(M,maxCardinality):-
-  add_rule_int(M,max_rule).
-funct_to_rule(M,exactCardinality):-
-  add_rule_int(M,min_rule),
-  add_rule_int(M,max_rule).
 
 /*****************************/
 

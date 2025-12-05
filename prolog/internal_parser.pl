@@ -596,21 +596,6 @@ ontology_parser:set_up_parser(M):-
 
 /* ************************************** */
 
-/**
- * add_rule(+Module:string, +Rule:string) is det
- *
- * This predicate adds to the rules list the rule in Rule
- */
-:- multifile ontology_parser:add_rule/2.
-ontology_parser:add_rule(M,Rule):-
-  M:rule(Rule),!.
-  
-ontology_parser:add_rule(M,Rule):- !,
-  assert(M:rule(Rule)).
-
-:- multifile ontology_parser:get_rules/2.
-ontology_parser:get_rules(M,Rules):-
-  findall(Rule,M:rule(Rule),Rules), !.
 
 
 
@@ -1219,7 +1204,7 @@ axiom_arguments(transitiveProperty,[objectPropertyExpression]).
 valid_axiom(transitiveProperty(A)) :- subsumed_by([A],[objectPropertyExpression]).
 expand_axiom(M,transitiveProperty(A),NSList,transitiveProperty(A_full_URL)) :- 
   expand_objectPropertyExpression(M,A,NSList,A_full_URL),
-  add_rule(M,forall_plus_rule).
+  ontology_parser:add_rule(M,forall_plus_rule).
   %add_expressivity(M,s).
 
 %% hasKey(?ClassExpression,?PropertyExpression)
@@ -1658,11 +1643,11 @@ expand_classExpression(M,CE,NSList,ExpCE):-			 % TODO: add management datatype
 expand_classExpression(M,intersectionOf(CEs),NSList,intersectionOf(ExpCEs)):- !,
   expand_classExpressions(M,CEs,NSList,ExpCEs),
   ( M:addKBName -> add_kb_atoms(M,class,[intersectionOf(ExpCEs)]) ; true ),
-  add_rule(M,and_rule).
+  ontology_parser:add_rule(M,and_rule).
 expand_classExpression(M,unionOf(CEs),NSList,unionOf(ExpCEs)) :- !,
   expand_classExpressions(M,CEs,NSList,ExpCEs),
   ( M:addKBName -> add_kb_atoms(M,class,[unionOf(ExpCEs)]) ; true ),
-  add_rule(M,or_rule).
+  ontology_parser:add_rule(M,or_rule).
   %add_expressivity(M,a).
 expand_classExpression(M,complementOf(CE),NSList,complementOf(ExpCE)) :- !,
   expand_classExpression(M,CE,NSList,ExpCE),
@@ -1682,7 +1667,7 @@ expand_classExpression(M,allValuesFrom(OPE,CE),NSList,allValuesFrom(ExpOPE,ExpCE
 	expand_objectPropertyExpression(M,OPE,NSList,ExpOPE),
 	expand_classExpression(M,CE,NSList,ExpCE),
     ( M:addKBName -> add_kb_atoms(M,class,[allValuesFrom(ExpOPE,ExpCE)]) ; true ),
-  add_rule(M,forall_rule).
+  ontology_parser:add_rule(M,forall_rule).
   %add_expressivity(M,a).
 expand_classExpression(M,hasValue(OPE,I),NSList,hasValue(ExpOPE,ExpI)) :- !,  % TODO: add in trill
 	expand_objectPropertyExpression(M,OPE,NSList,ExpOPE),
@@ -1704,7 +1689,7 @@ expand_classExpression(M,minCardinality(C,OPE),NSList,minCardinality(C,ExpOPE)):
 	C>=0,
 	expand_objectPropertyExpression(M,OPE,NSList,ExpOPE),
     ( M:addKBName -> add_kb_atoms(M,class,[minCardinality(C,ExpOPE)]) ; true ),
-  add_rule(M,min_rule).
+  ontology_parser:add_rule(M,min_rule).
   %add_expressivity(M,n).
 expand_classExpression(M,maxCardinality(C,OPE,CE),NSList,maxCardinality(C,ExpOPE,ExpCE)):- !,
 	number(C),
@@ -1712,14 +1697,14 @@ expand_classExpression(M,maxCardinality(C,OPE,CE),NSList,maxCardinality(C,ExpOPE
 	expand_objectPropertyExpression(M,OPE,NSList,ExpOPE),
 	expand_classExpression(M,CE,NSList,ExpCE),
     ( M:addKBName -> add_kb_atoms(M,class,[maxCardinality(C,ExpOPE,ExpCE)]) ; true ),
-  add_rule(M,max_rule).
+  ontology_parser:add_rule(M,max_rule).
   %add_expressivity(M,q).
 expand_classExpression(M,maxCardinality(C,OPE),NSList,maxCardinality(C,ExpOPE)):- !,
 	number(C),
 	C>=0,
 	expand_objectPropertyExpression(M,OPE,NSList,ExpOPE),
     ( M:addKBName -> add_kb_atoms(M,class,[maxCardinality(C,ExpOPE)]) ; true ),
-  add_rule(M,max_rule).
+  ontology_parser:add_rule(M,max_rule).
   %add_expressivity(M,n).
 expand_classExpression(M,exactCardinality(C,OPE,CE),NSList,exactCardinality(C,ExpOPE,ExpCE)):- !,
 	number(C),
@@ -1727,16 +1712,16 @@ expand_classExpression(M,exactCardinality(C,OPE,CE),NSList,exactCardinality(C,Ex
 	expand_objectPropertyExpression(M,OPE,NSList,ExpOPE),
 	expand_classExpression(M,CE,NSList,ExpCE),
     ( M:addKBName -> add_kb_atoms(M,class,[exactCardinality(C,ExpOPE,ExpCE)]) ; true ),
-  add_rule(M,min_rule),
-  add_rule(M,max_rule).
+  ontology_parser:add_rule(M,min_rule),
+  ontology_parser:add_rule(M,max_rule).
   %add_expressivity(M,q).
 expand_classExpression(M,exactCardinality(C,OPE),NSList,exactCardinality(C,ExpOPE)):- !,
 	number(C),
 	C>=0,
 	expand_objectPropertyExpression(M,OPE,NSList,ExpOPE),
     ( M:addKBName -> add_kb_atoms(M,class,[exactCardinality(C,ExpOPE)]) ; true ),
-  add_rule(M,min_rule),
-  add_rule(M,max_rule).
+  ontology_parser:add_rule(M,min_rule),
+  ontology_parser:add_rule(M,max_rule).
   %add_expressivity(M,n).
 expand_classExpression(M,CE,NSList,ExpCE):-
     expand_class(M,CE,NSList,ExpCE),

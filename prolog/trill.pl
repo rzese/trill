@@ -539,7 +539,7 @@ add_class_from_query_monitor(M,Classes0,[intersectionOf(QueryArgs)|Classes0]):-
 add_class_from_query_monitor(_M,Classes0,Classes0):-!.
 
 add_tableau_rules_from_class(M,Functor):-
-  add_rule(M,Functor),
+  add_rule_from_functor(M,Functor),
   prune_tableau_rules(M).
 
 

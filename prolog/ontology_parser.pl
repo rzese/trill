@@ -46,6 +46,7 @@ This module provides:
             get_classes_list/2,
             %--------
             add_rule/2,
+            add_rule_from_functor/2,
             get_rules/2
           ]).
 
@@ -267,8 +268,47 @@ from_query_type_to_args_type(it,[]):- !.
 % ========================================
 % Retrieve list of rules for pruning rule in trill
 % ========================================
-:- multifile add_rule/2.
-:- multifile get_rules/2.
+/**
+ * add_rule(+Module:string, +Rule:string) is det
+ *
+ * This predicate adds to the rules list the rule in Rule
+ */
+add_rule(M,Rule):-
+  M:rule(Rule),!.
+  
+add_rule(M,Rule):- !,
+  assert(M:rule(Rule)).
+
+get_rules/2.
+get_rules(M,Rules):-
+  findall(Rule,M:rule(Rule),Rules), !.
+
+add_rule_from_functor(M,Functor):-
+  funct_to_rule(M,Functor),!.
+
+add_rule_from_functor(_M,_F):-!.
+
+funct_to_rule(M,intersectionOf):-
+  ontology_parser:add_rule(M,and_rule).
+funct_to_rule(M,transitiveProperty):-
+  ontology_parser:add_rule(M,forall_plus_rule).
+funct_to_rule(M,unionOf):-
+  ontology_parser:add_rule(M,or_rule).
+funct_to_rule(M,oneOf):-
+  ontology_parser:add_rule(M,o_rule).
+funct_to_rule(M,someValuesFrom):-
+  ontology_parser:add_rule(M,exists_rule).
+funct_to_rule(M,allValuesFrom):-
+  ontology_parser:add_rule(M,forall_rule).
+funct_to_rule(M,minCardinality):-
+  ontology_parser:add_rule(M,min_rule).
+funct_to_rule(M,maxCardinality):-
+  ontology_parser:add_rule(M,max_rule),
+  ontology_parser:add_rule(M,ch_rule).
+funct_to_rule(M,exactCardinality):-
+  ontology_parser:add_rule(M,min_rule),
+  ontology_parser:add_rule(M,max_rule),
+  ontology_parser:add_rule(M,ch_rule).
 
 % ========================================
 % Sandbox Safety Declarations
