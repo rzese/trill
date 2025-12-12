@@ -868,7 +868,8 @@ ontology_parser:clean_up_parser(M):-
 :- multifile ontology_parser:set_up_parser/1.
 ontology_parser:set_up_parser(M):-
   M:(dynamic adb/1, kb_atom/1, kb_prefix/2,rule/1),
-  init_java_bridge.
+  init_java_bridge,
+  trill:add_kb_prefixes(M:[('disponte'='http://ai.unife.it/disponte#'),('owl'='http://www.w3.org/2002/07/owl#')]).
 
 
 /* ************************************** */

@@ -1685,7 +1685,8 @@ expand_classExpression(M,someValuesFrom(OPE,CE),NSList,someValuesFrom(ExpOPE,Exp
   expand_objectPropertyExpression(M,OPE,NSList,ExpOPE),
   expand_classExpression(M,CE,NSList,ExpCE),
   ( M:addKBName -> add_kb_atoms(M,class,[someValuesFrom(ExpOPE,ExpCE)]) ; true ),
-  add_rule(M,exists_rule).
+  add_rule(M,exists_rule),
+  add_rule(M,add_exists_rule).
 expand_classExpression(M,allValuesFrom(OPE,CE),NSList,allValuesFrom(ExpOPE,ExpCE)) :- !,
 	expand_objectPropertyExpression(M,OPE,NSList,ExpOPE),
 	expand_classExpression(M,CE,NSList,ExpCE),

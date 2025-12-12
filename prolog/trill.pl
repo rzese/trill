@@ -122,7 +122,7 @@ disponte_iri('https://ai.unife.it/disponte#probability').
  *                   maintains the referene to the ontology erapper during the entire inference
  *    - wrapper   -> uses Java OWLAPI to parse the ontology and saves the axioms n the Prolog DB
  */
-setting_trill_default(parser,java).
+setting_trill_default(parser,internal).
 
 
 /********************************
@@ -525,7 +525,6 @@ prune_tableau_rules(M):-write('dummy prune rule'),!,
 */
 prune_tableau_rules(M):-
   add_rule(M,unfold_rule),
-  add_rule(M,add_exists_rule),
   get_rules(M,Rules),
   setting_trill_default(det_rules,DetRules),
   prune_tableau_rules(Rules,DetRules,PrunedDetRules),
@@ -544,13 +543,13 @@ add_tableau_rules_from_class(M,Functor):-
 
 
 % o_rule,and_rule,unfold_rule,add_exists_rule,forall_rule,forall_plus_rule,exists_rule,min_rule,or_rule,max_rule,ch_rule
-prune_tableau_rules([],_,[]):-!.
+prune_tableau_rules(_,[],[]):-!.
 
-prune_tableau_rules([Rule|TR],KBA,[Rule|PTR]):-
+prune_tableau_rules(KBA,[Rule|TR],[Rule|PTR]):-
   memberchk(Rule,KBA),!,
   prune_tableau_rules(KBA,TR,PTR).
 
-prune_tableau_rules([_Rule|TR],KBA,PTR):-
+prune_tableau_rules(KBA,[_Rule|TR],PTR):-
   prune_tableau_rules(KBA,TR,PTR).
 
 /***********

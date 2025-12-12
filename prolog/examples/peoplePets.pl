@@ -291,9 +291,6 @@ owl_rdf('<?xml version="1.0"?>
 % Native TRILL Syntax Axioms
 % =============================================================================
 
-% Cat is a subclass of pet with probability 0.6
-subClassOf('cat','pet').
-
 % Dinosaur is a subclass of pet (for Fred's pet Dino)
 subClassOf('dinosaur','pet').
 

@@ -294,7 +294,8 @@ funct_to_rule(M,unionOf):-
 funct_to_rule(M,oneOf):-
   ontology_parser:add_rule(M,o_rule).
 funct_to_rule(M,someValuesFrom):-
-  ontology_parser:add_rule(M,exists_rule).
+  ontology_parser:add_rule(M,exists_rule),
+  ontology_parser:add_rule(M,add_exists_rule).
 funct_to_rule(M,allValuesFrom):-
   ontology_parser:add_rule(M,forall_rule).
 funct_to_rule(M,minCardinality):-

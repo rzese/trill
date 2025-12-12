@@ -91,7 +91,7 @@ enumerate_axioms(M, Functor, Term) :-
     ;   ( M:cache_policy(matching),
             nonvar(Term)
         ->  fetch_matching_axioms(M, Functor, Term)
-        ;   ( ensure_functor_cached(M, Functor),
+        ;   ( ensure_functor_cached(M, Functor), % Other cache policies
               M:cache_axiom(Functor, Term)
             )
         )
@@ -104,7 +104,7 @@ trill:add_axiom(M:Axiom) :-
 
 add_axiom(M, Axiom) :-
     must_be(nonvar, Axiom),
-    trill:is_axiom(Axiom),    
+    trill:is_axiom(Axiom),
     ns_expand_term(M, Axiom, Expanded),
     add_axiom_no_check(M, Expanded).
 
@@ -278,6 +278,7 @@ expand_all_ns(M, [H|T], [EH|ET]) :-
 
 ns_expand_term(_M, Var, Var) :- var(Var), !.
 ns_expand_term(_M, Num, Num) :- number(Num), !.
+ns_expand_term(_M, literal(Lit), literal(Lit)) :- !.
 ns_expand_term(M, Prefix:Local, Expanded) :- !,
     atomics_to_string([Prefix, ':', Local], Raw),
     expand_atomic_term(M, Raw, Expanded).
