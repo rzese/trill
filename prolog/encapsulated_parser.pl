@@ -543,7 +543,8 @@ update_rule_lists(M,_T):-
     ensure_instance(M, JRef),
     jpl_call(JRef, 'getRequiredRules', [], Arr),
     jpl_array_to_list(Arr, Raw),
-    forall(member(Rule,Raw),add_rule(M,Rule)).
+    forall(member(Rule,Raw),add_rule(M,Rule)),
+    trill:prune_tableau_rules(M).
 
 :- multifile sandbox:safe_meta/2.
 

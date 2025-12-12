@@ -292,6 +292,7 @@ owl_rdf('<?xml version="1.0"?>
 % =============================================================================
 
 % Dinosaur is a subclass of pet (for Fred's pet Dino)
+subClassOf('cat','pet').
 subClassOf('dinosaur','pet').
 
 % DISPONTE probabilistic annotations for class subsumption

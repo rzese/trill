@@ -610,9 +610,12 @@ trill:add_kb_prefix(M:Short, Long) :-
 :- multifile trill:add_kb_prefixes/1.
 trill:add_kb_prefixes(M:Pairs) :-
   must_be(list, Pairs),
-  maplist(add_kb_prefix_pair(M), Pairs).
+  add_kb_prefix_pairs(M, Pairs).
 
-add_kb_prefix_pair(M, Short=Long) :- trill:add_kb_prefix(M:Short, Long).
+add_kb_prefix_pairs(_, []).
+add_kb_prefix_pairs(M, [Short=Long|Rest]) :-
+  trill:add_kb_prefix(M:Short, Long),
+  add_kb_prefix_pairs(M, Rest).
 
 
 :- multifile trill:remove_kb_prefix/2.
