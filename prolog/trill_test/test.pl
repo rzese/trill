@@ -56,6 +56,9 @@ test:-
   use_module(library(trill_test/test_trill)),
   test_trill.
   %unload_file(library(trill_test/test_trill)),
+  %use_module(library(trill_test/test_trill_prob)),
+  %test_trill_prob,
+  %unload_file(library(trill_test/test_trill_prob)),
   %use_module(library(trill_test/test_trillp)),
   %test_trillp,
   %unload_file(library(trill_test/test_trillp)),

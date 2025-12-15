@@ -122,7 +122,7 @@ disponte_iri('https://ai.unife.it/disponte#probability').
  *                   maintains the referene to the ontology erapper during the entire inference
  *    - wrapper   -> uses Java OWLAPI to parse the ontology and saves the axioms n the Prolog DB
  */
-setting_trill_default(parser,java).
+setting_trill_default(parser,wrapper).
 
 
 /********************************
@@ -301,12 +301,19 @@ get_from_query_options(OptList,Option,Value1,Value2):-
   memberchk(Opt,OptList).
 
 
-set_query_options(_,[]):- !.
+set_query_options(M,Options):-
+  reset_query_options(M),
+  set_query_options_int(M,Options).
 
-set_query_options(M,[QueryOption|TailQueryOptions]) :-
+reset_query_options(M):-
+  retractall(M:query_option(_,_)).
+
+set_query_options_int(_,[]):- !.
+
+set_query_options_int(M,[QueryOption|TailQueryOptions]) :-
   QueryOption=..[Option|Value],
   add_trill_query_option(M,Option,Value),
-  set_query_options(M,TailQueryOptions).
+  set_query_options_int(M,TailQueryOptions).
 
 add_trill_query_option(M,Option,[ValueIn]) :-
   trill_available_option(Option,in),!,
@@ -450,7 +457,7 @@ add_q(M,sc,Tableau0,[SubClassEx,SupClassEx],Tableau):- !,
   neg_class(SupClassEx,NSupClassEx),
   query_ind(QInd),
   add_q(M,Tableau0,classAssertion(intersectionOf([SubClassEx,NSupClassEx]),QInd),Tableau1),
-  %add_kb_atoms(M,class,[intersectionOf([SubClassEx,NSupClassEx])]), % This is necessary to correctly prune expansion rules %TODO to remove
+  add_rule_from_functor(M,intersectionOf),
   add_owlThing_ind(M,Tableau1,QInd,Tableau2),
   add_clash_to_tableau(M,Tableau2,intersectionOf([SubClassEx,NSupClassEx])-QInd,Tableau3),
   update_expansion_queue_in_tableau(M,intersectionOf([SubClassEx,NSupClassEx]),QInd,Tableau3,Tableau).
