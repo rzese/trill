@@ -83,6 +83,8 @@ The module recognizes all standard OWL axiom types:
 jar_file('prob-owlapi-2.0.8.jar').
 wrapper_class('it.unife.ml.probowlapi.trill.TrillKBParserWrapper').
 
+expand_atomic_default_operation(reduce). %expand or reduce
+
 /*****************************/
 
 /************************************
@@ -646,30 +648,105 @@ expand_all_ns(M, Args, NSList, Expanded) :-
   maplist(ns_expand_term(M,NSList), Args, Expanded).
 
 ns_expand_term(M,NSList, TermIn, TermOut) :-
-  (   atomic(TermIn)
-  ->  ns_expand_atomic(NSList, TermIn, TermOut)
-  ;   TermIn =.. [F|As],
-      add_rule_from_functor(M,F),
-      maplist(ns_expand_term(M,NSList), As, AsE),
-      % ns_expand_atomic(NSList, F, FE), % Expansion of the predicate
-      % TermOut =.. [FE|AsE]
-      TermOut =.. [F|AsE]
+  ( atomic(TermIn)
+    ->  ns_expand_atomic(NSList, TermIn, TermOut)
+    ;   
+    ( is_list(TermIn) -> 
+        maplist(ns_expand_term(M,NSList), TermIn, TermOut)
+        ;
+        ns_expand_functor(M,NSList, TermIn, TermOut)
+    )      
   ).
 
+ns_expand_functor(M,NSList, TermIn, TermOut) :-
+  TermIn =.. [F|As],
+  add_rule_from_functor(M,F),
+  ( (cardinality_functor(F)) ->
+    ( As = [C|Entities],
+      number(C), % Otherwise fail
+      maplist(ns_expand_term(M,NSList), Entities, AsE)
+    )
+    ;
+    ( TermIn=literal(_) -> 
+      TermOut=TermIn
+      ;
+      maplist(ns_expand_term(M,NSList), As, AsE)
+    )
+  ),
+  TermOut =.. [F|AsE].
+
 ns_expand_atomic(NSList, A, Out) :-
-    (   atom(A),
-        sub_atom(A, B, _, C, ':') 
-        -> (  B>0, C>=0
-            ->  sub_atom(A, 0, B, _, Pref),
-            sub_atom(A, _, C, 0, Local),
-            (   memberchk(Pref=IRI, NSList)
-            ->  atomic_list_concat([IRI, Local], Out)
-            ;   Out = A
-            )
-        ; Out = A
-        )
-    ;   ( is_list(A) -> Out = A ; atomic_list_concat([':', A], Out))
-    ).
+  expand_atomic_default_operation(Op),
+  ns_expand_atomic(NSList, A, Out,Op).
+
+%%       uri_split(+URI,-Namespace,-Term,+Split_Char) is det
+%
+%       Splits a URI into the Namespace and the Term parts
+%       separated by the Split_Char character.
+%       It supposes URI = concat(Namespace,Split_Char,Term)
+
+uri_split(URI,Namespace,Term,Split_Char) :-
+	sub_atom(URI,Start,_,After,Split_Char),
+	sub_atom(URI,0,Start,_,Namespace),
+	Start1 is Start + 1,
+	sub_atom(URI,Start1,After,_,Term),!.
+
+ns_expand_atomic(NSList,NS_URL,Full_URL,reduce):-
+  atomic(NS_URL),
+  NS_URL \= literal(_),
+  uri_split(NS_URL,Long_NS_T,Term, '#'),!, % full URI or entity with #
+  atomic_list_concat([Long_NS_T, '#'], Long_NS),
+  ( member(Short_NS=Long_NS,NSList) -> % prefix found
+    ( dif([],Short_NS) -> 
+      concat_atom([Short_NS,':',Term],Full_URL) % specific prefix
+      ;
+      concat_atom([':',Term],Full_URL) % default prefix
+    )
+    ;
+    ( sub_atom(Long_NS_T,_,_,_,':') -> % entity is full URI
+        Full_URL=NS_URL % impossible to reduce
+        ;
+        concat_atom([':',Term],Full_URL) % not full URI, add ':'
+    )
+  ),!.
+
+ns_expand_atomic(_NSList,NS_URL,IRIOut,reduce):- 
+  atomic(NS_URL),
+  NS_URL \= literal(_),
+  \+ sub_atom(NS_URL,_,_,_,':'),!, % entity without ':'
+  atomic_list_concat([':', NS_URL], IRIOut). % Add ':'
+
+ns_expand_atomic(NSList,NS_URL,Full_URL,reduce):- 
+  atomic(NS_URL),
+  (
+    (member(''=Long_NS,NSList), sub_string(NS_URL,_,Start,Length,Long_NS))
+    ->
+    (sub_atom(NS_URL,Start,Length,_,Term),concat_atom([':',Term],Full_URL))
+    ;
+    Full_URL=NS_URL
+  ),!. % entity with ':' -> do nothing
+
+ns_expand_atomic(NSList,NS_URL,Full_URL,expand):-
+  atomic(NS_URL),
+  NS_URL \= literal(_),
+  uri_split(NS_URL,Short_NS,Term, ':'),!, % prefix:term, :term or full URI
+  ( dif(Short_NS,'') ->
+    ( member(Short_NS=Long_NS,NSList) -> % prefix:term
+      concat_atom([Long_NS,Term],Full_URL)
+      ;
+      Full_URL = NS_URL % full URI or unknowkn prefix
+    )
+    ;
+    ( member(''=Long_NS,NSList) -> % default prefix or unexpandable
+      concat_atom([Long_NS,NS_URL],Full_URL) % default prefix
+      ;
+      Full_URL = NS_URL % unexpandable
+    )
+  ),!.
+
+ns_expand_atomic(_NSList,IRI,IRIOut,expand):- % without :
+  atomic(IRI),
+  atomic_list_concat([':', IRI], IRIOut).
 
 
 /********************************

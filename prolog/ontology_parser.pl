@@ -189,9 +189,13 @@ load_parser_module(Parser):- %Fallback to internal
   CLASSES, PREDICATES AND
   INDIVIDUALS MANAGEMENT
   
-  Predicates for retrieving lists of entities defined in the KB.
+  Predicates for managing entities defined in the KB.
 *********************************/
 %:- multifile get_classes_list/2.
+cardinality_functor(minCardinality).
+cardinality_functor(maxCardinality).
+cardinality_functor(exactCardinality).
+
 
 /**
  * check_query_args(+Module:atom, +QueryType:atom, +QueryArgs:list, -ExpandedArgs:list) is semidet

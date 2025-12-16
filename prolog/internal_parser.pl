@@ -1487,35 +1487,52 @@ expand_iri(M,IRI,NSList,IRIOut):-
 expand_iri(_M,NS_URL,NSList,Full_URL,reduce):-
   atomic(NS_URL),
   NS_URL \= literal(_),
-  uri_split(NS_URL,Long_NS_T,Term, '#'),
+  uri_split(NS_URL,Long_NS_T,Term, '#'),!, % full URI o entity with #
   atomic_list_concat([Long_NS_T, '#'], Long_NS),
-  member((Short_NS=Long_NS),NSList),
-  ( dif([],Short_NS) -> concat_atom([Short_NS,':',Term],Full_URL) ; concat_atom([':',Term],Full_URL)),!.
+  ( member(Short_NS=Long_NS,NSList) -> % prefix found
+    ( dif([],Short_NS) -> 
+      concat_atom([Short_NS,':',Term],Full_URL) % specific prefix
+      ;
+      concat_atom([':',Term],Full_URL) % default prefix
+    )
+    ;
+    ( sub_atom(Long_NS_T,_,_,_,':') -> % entity is full URI
+        Full_URL=NS_URL % impossible to reduce
+        ;
+        concat_atom([':',Term],Full_URL) % not full URI, add ':'
+    )
+  ),!.
 
 expand_iri(_M,NS_URL,_NSList,IRIOut,reduce):- 
   atomic(NS_URL),
   NS_URL \= literal(_),
-  \+ sub_atom(NS_URL,_,_,_,':'),!,
-  atomic_list_concat([':', NS_URL], IRIOut).
+  \+ sub_atom(NS_URL,_,_,_,':'),!, % entity without ':'
+  atomic_list_concat([':', NS_URL], IRIOut). % Add ':'
 
 expand_iri(_M,NS_URL,_NSList,NS_URL,reduce):- 
-  atomic(NS_URL).
+  atomic(NS_URL). % entity with ':' -> do nothing
 
 expand_iri(_M,NS_URL,NSList,Full_URL,expand):-
   atomic(NS_URL),
   NS_URL \= literal(_),
-  uri_split(NS_URL,Short_NS,Term, ':'),
-  member((Short_NS=Long_NS),NSList),
-  concat_atom([Long_NS,Term],Full_URL),!.
+  uri_split(NS_URL,Short_NS,Term, ':'),!, % prefix:term, :term or full URI
+  ( dif(Short_NS,'') ->
+    ( member(Short_NS=Long_NS,NSList) -> % prefix:term
+      concat_atom([Long_NS,Term],Full_URL)
+      ;
+      Full_URL = NS_URL % full URI or unknowkn prefix
+    )
+    ;
+    ( member([]=Long_NS,NSList) -> % default prefix or unexpandable
+      concat_atom([Long_NS,NS_URL],Full_URL) % default prefix
+      ;
+      Full_URL = NS_URL % unexpandable
+    )
+  ),!.
 
-expand_iri(_M,NS_URL,NSList,Full_URL,expand):- 
-  atomic(NS_URL),
-  NS_URL \= literal(_),
-  \+ sub_atom(NS_URL,_,_,_,':'),
-  member(([]=Long_NS),NSList),
-  concat_atom([Long_NS,NS_URL],Full_URL),!.
-
-expand_iri(_M,IRI,_NSList,IRIOut,expand):- atomic(IRI),atomic_list_concat([':', IRI], IRIOut).
+expand_iri(_M,IRI,_NSList,IRIOut,expand):- % without :
+  atomic(IRI),
+  atomic_list_concat([':', IRI], IRIOut).
   
 
 %% literal(?Lit)
