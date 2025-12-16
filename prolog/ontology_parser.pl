@@ -151,14 +151,14 @@ load_default_parser(M):-
  */
 load_parser_module(java):-!,
   unload_all_parsers,
-  consult(library(encapsulated_parser)),write('encapsulated_parser').
+  consult(library(encapsulated_parser)).
 load_parser_module(wrapper):-!,
   unload_all_parsers,
-  consult(library(wrapper_parser)),write('wrapper_parser').
+  consult(library(wrapper_parser)).
 load_parser_module(Parser):- %Fallback to internal
   unload_all_parsers,
   ( dif(Parser,internal) -> print_message(warning, wrong_parser(Parser)) ; true ),
-  consult(library(internal_parser)),write('internal_parser').
+  consult(library(internal_parser)).
 
 /*****************************
   ABSTRACT UTILITY PREDICATES

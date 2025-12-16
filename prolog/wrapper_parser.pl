@@ -664,16 +664,18 @@ ns_expand_functor(M,NSList, TermIn, TermOut) :-
   ( (cardinality_functor(F)) ->
     ( As = [C|Entities],
       number(C), % Otherwise fail
-      maplist(ns_expand_term(M,NSList), Entities, AsE)
+      maplist(ns_expand_term(M,NSList), Entities, AsE),
+      TermOut =.. [F,C|AsE]
     )
     ;
     ( TermIn=literal(_) -> 
       TermOut=TermIn
       ;
-      maplist(ns_expand_term(M,NSList), As, AsE)
+      ( maplist(ns_expand_term(M,NSList), As, AsE),
+        TermOut =.. [F|AsE]
+      )
     )
-  ),
-  TermOut =.. [F|AsE].
+  ),!.
 
 ns_expand_atomic(NSList, A, Out) :-
   expand_atomic_default_operation(Op),

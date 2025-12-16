@@ -179,7 +179,7 @@ test(ae_p_pp):-
        ( same_expl(Expl,[[equivalentClasses(['http://dbpedia.org/ontology/A73_A0_',intersectionOf(['http://dbpedia.org/ontology/PopulatedPlace','http://dbpedia.org/ontology/Settlement'])]),subClassOf('http://dbpedia.org/ontology/Place','http://dbpedia.org/ontology/A73_A0_')],[subClassOf('http://dbpedia.org/ontology/Place','http://dbpedia.org/ontology/PopulatedPlace')],[equivalentClasses(['http://dbpedia.org/ontology/A0_144_',intersectionOf(['http://dbpedia.org/ontology/Place','http://dbpedia.org/ontology/PopulatedPlace'])]),subClassOf('http://dbpedia.org/ontology/Place','http://dbpedia.org/ontology/Settlement'),subClassOf('http://dbpedia.org/ontology/Settlement','http://dbpedia.org/ontology/A0_144_')],[subClassOf('http://dbpedia.org/ontology/Place','http://dbpedia.org/ontology/Settlement'),subClassOf('http://dbpedia.org/ontology/Settlement','http://dbpedia.org/ontology/PopulatedPlace')]])
        ;
        same_expl(Expl,[[equivalentClasses([':A73_A0_',intersectionOf([':PopulatedPlace',':Settlement'])]),subClassOf(':Place',':A73_A0_')],[subClassOf(':Place',':PopulatedPlace')],[equivalentClasses([':A0_144_',intersectionOf([':Place',':PopulatedPlace'])]),subClassOf(':Place',':Settlement'),subClassOf(':Settlement',':A0_144_')],[subClassOf(':Place',':Settlement'),subClassOf(':Settlement',':PopulatedPlace')]])
-      )
+      ),!
   )).
 
 :- end_tests(trill_dbpedia).
