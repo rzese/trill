@@ -39,7 +39,7 @@ prolog:message(no_ontology_loaded) -->
     matching: delegate partially instantiated queries to Java so only
                  matching axioms are materialised
 */
-default_cache_policy(lazy).
+default_cache_policy(eager).
 
 normalize_policy(none, none).
 normalize_policy(lazy, lazy).
@@ -464,7 +464,8 @@ fetch_functor_terms(M, Functor, Terms) :-
     jpl_call(JRef, 'fetchAxioms', [Functor], Arr),
     jpl_array_to_list(Arr, Raw),
     %maplist(atom_string, AtomStrs, Raw),
-    maplist(read_term_safely, Raw, Terms).
+    maplist(read_term_safely, Raw, Terms),
+    update_rule_lists(M,Terms).
 
 fetch_matching_axioms(M, Functor, Pattern) :-
     ensure_instance(M, JRef),
@@ -474,7 +475,8 @@ fetch_matching_axioms(M, Functor, Pattern) :-
     jpl_array_to_list(Arr, Raw),
     maplist(read_term_safely, Raw, Terms),
     member(Term, Terms),
-    Pattern = Term.
+    Pattern = Term,
+    update_rule_lists(M,Terms).
 
 read_term_safely(Atom, Term) :-
     read_term_from_atom(Atom, Term, [syntax_errors(error)]).
