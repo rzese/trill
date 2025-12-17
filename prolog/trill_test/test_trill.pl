@@ -138,20 +138,20 @@ test(ne_nl_k):-
 :- consult(library(examples/biopaxLevel3)).
 
 test(e_twbr_e):-
-  run((sub_class('biopax:TransportWithBiochemicalReaction','biopax:Entity',ListExpl),
-       one_of(ListExpl,[[subClassOf('biopax:BiochemicalReaction','biopax:Conversion'),subClassOf('biopax:Conversion','biopax:Interaction'),subClassOf('biopax:Interaction','biopax:Entity'),subClassOf('biopax:TransportWithBiochemicalReaction','biopax:BiochemicalReaction')],
-[subClassOf('biopax:Conversion','biopax:Interaction'),subClassOf('biopax:Interaction','biopax:Entity'),subClassOf('biopax:Transport','biopax:Conversion'),subClassOf('biopax:TransportWithBiochemicalReaction','biopax:Transport')]])
+  run((sub_class(':TransportWithBiochemicalReaction',':Entity',ListExpl),
+       one_of(ListExpl,[[subClassOf(':BiochemicalReaction',':Conversion'),subClassOf(':Conversion',':Interaction'),subClassOf(':Interaction',':Entity'),subClassOf(':TransportWithBiochemicalReaction',':BiochemicalReaction')],
+[subClassOf(':Conversion',':Interaction'),subClassOf(':Interaction',':Entity'),subClassOf(':Transport',':Conversion'),subClassOf(':TransportWithBiochemicalReaction',':Transport')]])
   )).
 test(ae_twbr_e):-
-  run((all_sub_class('biopax:TransportWithBiochemicalReaction','biopax:Entity',Expl),
-       same_expl(Expl,[[subClassOf('biopax:BiochemicalReaction', 'biopax:Conversion'),
-       subClassOf('biopax:Conversion', 'biopax:Interaction'),
-       subClassOf('biopax:Interaction', 'biopax:Entity'),
-       subClassOf('biopax:TransportWithBiochemicalReaction', 'biopax:BiochemicalReaction')],
-       [subClassOf('biopax:Conversion', 'biopax:Interaction'),
-       subClassOf('biopax:Interaction', 'biopax:Entity'),
-       subClassOf('biopax:Transport', 'biopax:Conversion'),
-       subClassOf('biopax:TransportWithBiochemicalReaction', 'biopax:Transport')]])
+  run((all_sub_class(':TransportWithBiochemicalReaction',':Entity',Expl),
+       same_expl(Expl,[[subClassOf(':BiochemicalReaction', ':Conversion'),
+       subClassOf(':Conversion', ':Interaction'),
+       subClassOf(':Interaction', ':Entity'),
+       subClassOf(':TransportWithBiochemicalReaction', ':BiochemicalReaction')],
+       [subClassOf(':Conversion', ':Interaction'),
+       subClassOf(':Interaction', ':Entity'),
+       subClassOf(':Transport', ':Conversion'),
+       subClassOf(':TransportWithBiochemicalReaction', ':Transport')]])
   )).
 
 :- end_tests(trill_biopax).
@@ -162,9 +162,9 @@ test(ae_twbr_e):-
 
 test(p_twbr_e):-
   run((init_trill(trill),load_owl_kb('../examples/biopaxLevel3_rdf.owl'),
-  sub_class('biopax:TransportWithBiochemicalReaction','biopax:Entity',ListExpl),
-       one_of(ListExpl,[[subClassOf('biopax:BiochemicalReaction','biopax:Conversion'),subClassOf('biopax:Conversion','biopax:Interaction'),subClassOf('biopax:Interaction','biopax:Entity'),subClassOf('biopax:TransportWithBiochemicalReaction','biopax:BiochemicalReaction')],
-[subClassOf('biopax:Conversion','biopax:Interaction'),subClassOf('biopax:Interaction','biopax:Entity'),subClassOf('biopax:Transport','biopax:Conversion'),subClassOf('biopax:TransportWithBiochemicalReaction','biopax:Transport')]])
+  sub_class(':TransportWithBiochemicalReaction',':Entity',ListExpl),
+       one_of(ListExpl,[[subClassOf(':BiochemicalReaction',':Conversion'),subClassOf(':Conversion',':Interaction'),subClassOf(':Interaction',':Entity'),subClassOf(':TransportWithBiochemicalReaction',':BiochemicalReaction')],
+[subClassOf(':Conversion',':Interaction'),subClassOf(':Interaction',':Entity'),subClassOf(':Transport',':Conversion'),subClassOf(':TransportWithBiochemicalReaction',':Transport')]])
   )).
 
 :- end_tests(trill_biopax_rdf).
@@ -215,11 +215,26 @@ test(e_uns_tof):-
 test(e_u_a):-
   run((all_unsat(a,Expl),
   same_expl(Expl,[
-      [subClassOf(':a',intersectionOf([':b',someValuesFrom(':r',':e')])),subClassOf(':a',unionOf([complementOf(':c'),complementOf(':d')])),subClassOf(':b',intersectionOf([':c',':d']))],
-      [subClassOf(':a',intersectionOf([':b',someValuesFrom(':r',':e')])),subClassOf(':a',unionOf([':f',allValuesFrom(':r',':b')])),subClassOf(':a',unionOf([complementOf(':c'),complementOf(':f')])),subClassOf(':b',complementOf(':e')),subClassOf(':b',intersectionOf([':c',':d']))],
-      [subClassOf(':a',intersectionOf([':b',someValuesFrom(':r',':e')])),subClassOf(':a',unionOf([':f',allValuesFrom(':r',':b')])),subClassOf(':a',unionOf([intersectionOf([':c',complementOf(':c')]),complementOf(':f')])),subClassOf(':b',complementOf(':e'))],
-      [subClassOf(':a',intersectionOf([':b',someValuesFrom(':r',':e')])),subClassOf(':a',unionOf([':f',allValuesFrom(':r',':b')])),subClassOf(':b',complementOf(':e')),subClassOf(':b',complementOf(':f'))],
-      [subClassOf(':a',intersectionOf([':b',someValuesFrom(':r',':e')])),subClassOf(':b',complementOf(':e')),subClassOf(':b',intersectionOf([':c',':d'])),subClassOf(':c',intersectionOf([minCardinality(1,':r'),':e']))]
+      [subClassOf(':a',intersectionOf([':b',someValuesFrom(':r',':e')])),
+      subClassOf(':a',unionOf([complementOf(':c'),complementOf(':d')])),
+      subClassOf(':b',intersectionOf([':c',':d']))],
+      [subClassOf(':a',intersectionOf([':b',someValuesFrom(':r',':e')])),
+      subClassOf(':a',unionOf([':f',allValuesFrom(':r',':b')])),
+      subClassOf(':a',unionOf([complementOf(':c'),complementOf(':f')])),
+      subClassOf(':b',complementOf(':e')),
+      subClassOf(':b',intersectionOf([':c',':d']))],
+      [subClassOf(':a',intersectionOf([':b',someValuesFrom(':r',':e')])),
+      subClassOf(':a',unionOf([':f',allValuesFrom(':r',':b')])),
+      subClassOf(':a',unionOf([intersectionOf([':c',complementOf(':c')]),complementOf(':f')])),
+      subClassOf(':b',complementOf(':e'))],
+      [subClassOf(':a',intersectionOf([':b',someValuesFrom(':r',':e')])),
+      subClassOf(':a',unionOf([':f',allValuesFrom(':r',':b')])),
+      subClassOf(':b',complementOf(':e')),
+      subClassOf(':b',complementOf(':f'))],
+      [subClassOf(':a',intersectionOf([':b',someValuesFrom(':r',':e')])),
+    subClassOf(':b',complementOf(':e')),
+  subClassOf(':b',intersectionOf([':c',':d'])),
+subClassOf(':c',intersectionOf([minCardinality(1,':r'),':e']))]
       ])
   )).
 

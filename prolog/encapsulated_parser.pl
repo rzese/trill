@@ -311,8 +311,8 @@ trill:load_kb(File) :-
     must_be(atom, File),
     get_module(M),
     ensure_runtime_ready(M),
-    clear_axiom_cache_state(M),
     ensure_instance(M, JRef),
+    clear_axiom_cache_state(M),
     jpl_call(JRef, 'loadFromFile', [File], _),
     post_load_refresh(M).
 
@@ -323,8 +323,8 @@ trill:load_owl_kb_from_string(String) :-
     must_be(atom, String),
     get_module(M),
     ensure_runtime_ready(M),
-    clear_axiom_cache_state(M),
     ensure_instance(M, JRef),
+    clear_axiom_cache_state(M),
     jpl_call(JRef, 'loadFromString', [String], _),
     post_load_refresh(M).
 
