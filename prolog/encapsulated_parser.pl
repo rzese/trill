@@ -39,7 +39,7 @@ prolog:message(no_ontology_loaded) -->
     matching: delegate partially instantiated queries to Java so only
                  matching axioms are materialised
 */
-default_cache_policy(eager).
+default_cache_policy(lazy).
 
 normalize_policy(none, none).
 normalize_policy(lazy, lazy).
