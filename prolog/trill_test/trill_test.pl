@@ -114,21 +114,33 @@ close_to(V,T,E):-
 /**
  * same_expl(+Expls, +CorrExpls) is semidet
  *
- * Checks if two lists of explanations contain the same explanations,
- * regardless of order within lists.
+ * Checks if two lists of explanations are identical once the axioms inside
+ * each explanation and every nested list are canonicalised.
  */
-same_expl(Expl, CorrExpl):-
-	length(Expl,NE),
-	length(CorrExpl,NE),
-	same_expl_int(Expl, CorrExpl).
+same_expl(Expls, CorrExpls):-
+	normalize_explanations(Expls, NormalizedExpls),
+	normalize_explanations(CorrExpls, NormalizedCorrExpls),
+	msort(NormalizedExpls, SortedExpls),
+	msort(NormalizedCorrExpls, SortedCorrExpls),
+	SortedExpls == SortedCorrExpls.
 
-same_expl_int([],_CorrExpls).
+normalize_explanations(Expls, Normalized):-
+	maplist(normalize_explanation, Expls, Normalized).
 
-same_expl_int([Expl|Expls],CorrExpls):-
-  sort(Expl,ExplSort),
-  member(X,CorrExpls),
-  sort(X,ExplSort),!,
-  same_expl_int(Expls,CorrExpls).
+normalize_explanation(Expl, Normalized):-
+	maplist(canonical_term, Expl, CanonicalAxioms),
+	msort(CanonicalAxioms, Normalized).
+
+canonical_term(Term, Canonical):-
+	(   is_list(Term)
+	->  maplist(canonical_term, Term, CanonicalList),
+			msort(CanonicalList, Canonical)
+	;   compound(Term)
+	->  Term =.. [Functor|Args],
+			maplist(canonical_term, Args, CanonArgs),
+			Canonical =.. [Functor|CanonArgs]
+	;   Canonical = Term
+	).
 
 /**
  * one_of(+Expl, +CorrExpls) is semidet

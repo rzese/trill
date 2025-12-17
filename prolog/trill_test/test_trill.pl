@@ -190,8 +190,8 @@ test(ae_p_pp):-
 :- consult(library(examples/johnEmployee)).
 
 test(e_p_j):-
-  run((instanceOf('johnEmployee:person','johnEmployee:john',Expl),
-       same_expl([Expl],[[classAssertion('johnEmployee:employee', 'johnEmployee:john'), subClassOf('johnEmployee:employee', 'johnEmployee:worker'), subClassOf('johnEmployee:worker', 'johnEmployee:person')]])
+  run((instanceOf(':person',':john',Expl),
+       same_expl([Expl],[[classAssertion(':employee', ':john'), subClassOf(':employee', ':worker'), subClassOf(':worker', ':person')]])
   )).
   
 :- end_tests(trill_johnEmployee).
@@ -232,9 +232,9 @@ test(e_u_a):-
       subClassOf(':b',complementOf(':e')),
       subClassOf(':b',complementOf(':f'))],
       [subClassOf(':a',intersectionOf([':b',someValuesFrom(':r',':e')])),
-    subClassOf(':b',complementOf(':e')),
-  subClassOf(':b',intersectionOf([':c',':d'])),
-subClassOf(':c',intersectionOf([minCardinality(1,':r'),':e']))]
+      subClassOf(':b',complementOf(':e')),
+      subClassOf(':b',intersectionOf([':c',':d'])),
+      subClassOf(':c',intersectionOf([minCardinality(1,':r'),':e']))]
       ])
   )).
 
@@ -246,10 +246,11 @@ subClassOf(':c',intersectionOf([minCardinality(1,':r'),':e']))]
 
 test(e_i):-
   run((all_inconsistent_theory(Expl),
-  same_expl(Expl,[[disjointClasses([':b',':e',':f']),classAssertion(':a',':1'),classAssertion(':c',':3'),classAssertion(':c',':4'),classAssertion(':e',':3'),classAssertion(':f',':4'),subClassOf(':a',maxCardinality(1,':s',':c')),propertyAssertion(':s',':1',':3'),propertyAssertion(':s',':1',':4')],
-                  [disjointClasses([':b',':e',':f']),classAssertion(':a',':1'),classAssertion(':b',':2'),classAssertion(':c',':2'),classAssertion(':c',':4'),classAssertion(':f',':4'),subClassOf(':a',maxCardinality(1,':s',':c')),propertyAssertion(':s',':1',':2'),propertyAssertion(':s',':1',':4')],
-                  [disjointClasses([':b',':e',':f']),classAssertion(':a',':1'),classAssertion(':b',':2'),classAssertion(':c',':2'),classAssertion(':c',':3'),classAssertion(':e',':3'),subClassOf(':a',maxCardinality(1,':s',':c')),propertyAssertion(':s',':1',':2'),propertyAssertion(':s',':1',':3')]
-                ])
+  same_expl(Expl,[
+      [disjointClasses([':b',':e',':f']),classAssertion(':a',':1'),classAssertion(':c',':3'),classAssertion(':c',':4'),classAssertion(':e',':3'),classAssertion(':f',':4'),subClassOf(':a',maxCardinality(1,':s',':c')),propertyAssertion(':s',':1',':3'),propertyAssertion(':s',':1',':4')],
+      [disjointClasses([':b',':e',':f']),classAssertion(':a',':1'),classAssertion(':b',':2'),classAssertion(':c',':2'),classAssertion(':c',':4'),classAssertion(':f',':4'),subClassOf(':a',maxCardinality(1,':s',':c')),propertyAssertion(':s',':1',':2'),propertyAssertion(':s',':1',':4')],
+      [disjointClasses([':b',':e',':f']),classAssertion(':a',':1'),classAssertion(':b',':2'),classAssertion(':c',':2'),classAssertion(':c',':3'),classAssertion(':e',':3'),subClassOf(':a',maxCardinality(1,':s',':c')),propertyAssertion(':s',':1',':2'),propertyAssertion(':s',':1',':3')]
+      ])
   )).
 
 :- end_tests(non_det_max).
