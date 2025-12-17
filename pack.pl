@@ -32,7 +32,7 @@ title('A tableau probabilistic reasoner in three different versions').
 %% version(?Version:string)
 %
 %  Specifies the current version of the pack in semantic versioning format.
-version('7.1.0').
+version('8.0.0').
 
 %% author(?Name:string, ?Email:string)
 %
