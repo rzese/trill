@@ -473,37 +473,9 @@ add_q(M,un,Tableau0,['unsat',ClassEx],Tableau):- !,
 % inconsistent_theory
 add_q(_,it,Tableau,['inconsistent','kb'],Tableau):- !. % Do nothing
 
-/*
-  Auxiliary predicates to extract the det of individuals connected to the query
-*/
 
-% Find the individuals directly connected to the given one
-gather_connected_individuals(M,Ind,ConnectedInds):-
-  find_successors(M,Ind,SuccInds),
-  find_predecessors(M,Ind,PredInds),
-  append(SuccInds,PredInds,ConnectedInds).
-
-find_successors(M,Ind,List) :- findall(ConnectedInd, (get_axiom_propertyAssertion(M,_,Ind,ConnectedInd)), List).
-find_predecessors(M,Ind,List) :- findall(ConnectedInd, (get_axiom_propertyAssertion(M,_,ConnectedInd,Ind)), List).
-
-intersect([H|_], List) :- member(H, List), !.
-intersect([_|T], List) :- intersect(T, List).
-
-% Recursively gather all the connected individuals, i.e., isolate the relevant fragment of the KB.
-%scan_connected_individuals(M,IndividualsToCheck,IndividualsChecked,IndividualsSet0,IndividualsSet).
-scan_connected_individuals(_,[],_,IndividualsSet0,IndividualsSet):-
-  sort(IndividualsSet0,IndividualsSet).
-
-scan_connected_individuals(M,[H|IndividualsToCheck],IndividualsChecked,IndividualsSet0,IndividualsSet):-
-  memberchk(H,IndividualsChecked),!,
-  scan_connected_individuals(M,IndividualsToCheck,IndividualsChecked,IndividualsSet0,IndividualsSet).
-
-
-scan_connected_individuals(M,[H|IndividualsToCheck0],IndividualsChecked,IndividualsSet0,IndividualsSet):-
-  gather_connected_individuals(M,H,NewIndividualsToCheck),
-  append(IndividualsSet0,NewIndividualsToCheck,IndividualsSet1),
-  append(IndividualsToCheck0,NewIndividualsToCheck,IndividualsToCheck),
-  scan_connected_individuals(M,IndividualsToCheck,[H|IndividualsChecked],IndividualsSet1,IndividualsSet).
+%intersect([H|_], List) :- member(H, List), !.
+%intersect([_|T], List) :- intersect(T, List).
 
 
 % Builds the list of individuals conneted given the query type

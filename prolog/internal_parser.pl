@@ -55,6 +55,8 @@ http://vangelisv.github.io/thea/
 
 :- use_module(library(lists),[member/2]).
 :- use_module(library(pengines)).
+:- use_module(library(ordsets)).
+:- use_module(library(thread)).
 
 :- use_module(library(sandbox)).
 
@@ -598,7 +600,62 @@ ontology_parser:set_up_parser(M):-
 
 /* ************************************** */
 
+:- multifile scan_connected_individuals/5.
+% Recursively gather all the connected individuals, i.e., isolate the relevant fragment of the KB.
+%scan_connected_individuals(M,IndividualsToCheck,IndividualsChecked,IndividualsSet0,IndividualsSet).
+scan_connected_individuals(_,[],_,IndividualsSet0,IndividualsSet):-
+  sort(IndividualsSet0,IndividualsSet).
 
+scan_connected_individuals(M,[H|IndividualsToCheck],IndividualsChecked,IndividualsSet0,IndividualsSet):-
+  memberchk(H,IndividualsChecked),!,
+  scan_connected_individuals(M,IndividualsToCheck,IndividualsChecked,IndividualsSet0,IndividualsSet).
+
+
+scan_connected_individuals(M,[H|IndividualsToCheck0],IndividualsChecked,IndividualsSet0,IndividualsSet):-
+  gather_connected_individuals(M,H,NewIndividualsToCheck),
+  append(IndividualsSet0,NewIndividualsToCheck,IndividualsSet1),
+  append(IndividualsToCheck0,NewIndividualsToCheck,IndividualsToCheck),
+  scan_connected_individuals(M,IndividualsToCheck,[H|IndividualsChecked],IndividualsSet1,IndividualsSet).
+
+/*
+  Parallel/ordset-based variant.
+  Entry-point with simpler arity: seeds list -> connected ord-set (as list).
+*/
+scan_connected_individuals_parallel(M, Seeds, Connected) :-
+  list_to_ord_set(Seeds, Frontier0),
+  scan_frontier(M, Frontier0, Frontier0, Connected).
+
+scan_frontier(_, [], Visited, Visited).
+scan_frontier(M, Frontier, Visited0, Connected) :-
+  % Parallel neighbor gathering for the current frontier (fallback to sequential if threads unavailable)
+  parallel_gather_connected(M, Frontier, NeighborLists),
+  append(NeighborLists, NeighborsFlat),
+  list_to_ord_set(NeighborsFlat, NeighborsSet),
+  ord_union(Visited0, Frontier, Visited1),
+  ord_subtract(NeighborsSet, Visited1, NextFrontier),
+  scan_frontier(M, NextFrontier, Visited1, Connected).
+
+parallel_gather_connected(M, Frontier, NeighborLists) :-
+  current_prolog_flag(cpu_count, CPU),
+  CPU > 1,
+  !,
+  catch(concurrent_maplist(gather_connected_individuals(M), Frontier, NeighborLists), _,
+        maplist(gather_connected_individuals(M), Frontier, NeighborLists)).
+parallel_gather_connected(M, Frontier, NeighborLists) :-
+  maplist(gather_connected_individuals(M), Frontier, NeighborLists).
+
+/*
+  Auxiliary predicates to extract the set of individuals connected to the query
+*/
+
+% Find the individuals directly connected to the given one
+gather_connected_individuals(M,Ind,ConnectedInds):-
+  find_successors(M,Ind,SuccInds),
+  find_predecessors(M,Ind,PredInds),
+  append(SuccInds,PredInds,ConnectedInds).
+
+find_successors(M,Ind,List) :- findall(ConnectedInd, (get_axiom_propertyAssertion(M,_,Ind,ConnectedInd)), List).
+find_predecessors(M,Ind,List) :- findall(ConnectedInd, (get_axiom_propertyAssertion(M,_,ConnectedInd,Ind)), List).
 
 
 /*****************************/

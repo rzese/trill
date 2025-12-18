@@ -45,7 +45,9 @@ This module provides:
             %---------
             add_rule/2,
             add_rule_from_functor/2,
-            get_rules/2
+            get_rules/2,
+            %---------
+            scan_connected_individuals/5
           ]).
 
 
@@ -311,6 +313,9 @@ funct_to_rule(M,exactCardinality):-
   ontology_parser:add_rule(M,min_rule),
   ontology_parser:add_rule(M,max_rule),
   ontology_parser:add_rule(M,ch_rule).
+
+
+:- multifile scan_connected_individuals/5.
 
 % ========================================
 % Sandbox Safety Declarations
