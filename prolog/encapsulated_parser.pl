@@ -17,6 +17,7 @@ backend satisfies every caller.
 :- use_module(library(error)).
 :- use_module(library(apply)).
 :- use_module(library(trill_utility)).
+:- use_module(library(ordsets)).
 
 jar_file('prob-owlapi-2.0.8.jar').
 parser_class('it.unife.ml.probowlapi.trill.TrillEncapsulated').
@@ -213,6 +214,27 @@ ontology_parser:get_axiom_equivalentProperties(M,L):-
 
 ontology_parser:get_axiom_annotationAssertion(M,Ann,Ax,Val):-
   trill:axiom(M:annotationAssertion(Ann,Ax,Val)).
+
+
+/********************************
+    CONNECTED INDIVIDUALS (JAVA-ASSISTED)
+*********************************/
+
+:- multifile scan_connected_individuals/5.
+
+% Compatibility stub mirroring the legacy recursive interface.
+scan_connected_individuals(M, IndividualsToCheck, _Checked, _Set0, Connected) :-
+    scan_connected_individuals_parallel(M, IndividualsToCheck, Connected).
+
+% Parallel/Java-backed variant: seeds list -> connected individuals (ord-set list).
+scan_connected_individuals_parallel(M, Seeds, Connected) :-
+    ensure_instance(M, JRef),
+    maplist(atom_string, Seeds, SeedStrs),
+    jpl_list_to_array(SeedStrs, SeedArray),
+    jpl_call('it.unife.ml.probowlapi.trill.ConnectedIndividuals', 'connectedIndividuals', [JRef, SeedArray], Arr),
+    jpl_array_to_list(Arr, RawStrs),
+    maplist(atom_string, Connected0, RawStrs),
+    list_to_ord_set(Connected0, Connected).
 
 
 /********************************
