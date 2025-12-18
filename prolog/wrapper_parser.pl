@@ -77,6 +77,8 @@ The module recognizes all standard OWL axiom types:
 :- use_module(library(error)).
 :- use_module(library(apply)).
 :- use_module(library(readutil)).
+:- use_module(library(ordsets)).
+:- use_module(library(thread)).
 
 :- use_module(library(trill_utility)).
 
@@ -618,6 +620,62 @@ add_kb_prefix_pairs(_, []).
 add_kb_prefix_pairs(M, [Short=Long|Rest]) :-
   trill:add_kb_prefix(M:Short, Long),
   add_kb_prefix_pairs(M, Rest).
+
+
+/********************************
+  CONNECTED INDIVIDUALS (PARALLEL BFS)
+*********************************/
+
+:- multifile scan_connected_individuals/5.
+
+% Recursive, legacy version (kept for interface completeness)
+scan_connected_individuals(_,[],_,IndividualsSet0,IndividualsSet):-
+  sort(IndividualsSet0,IndividualsSet).
+
+scan_connected_individuals(M,[H|IndividualsToCheck],IndividualsChecked,IndividualsSet0,IndividualsSet):-
+  memberchk(H,IndividualsChecked),!,
+  scan_connected_individuals(M,IndividualsToCheck,IndividualsChecked,IndividualsSet0,IndividualsSet).
+
+scan_connected_individuals(M,[H|IndividualsToCheck0],IndividualsChecked,IndividualsSet0,IndividualsSet):-
+  gather_connected_individuals(M,H,NewIndividualsToCheck),
+  append(IndividualsSet0,NewIndividualsToCheck,IndividualsSet1),
+  append(IndividualsToCheck0,NewIndividualsToCheck,IndividualsToCheck),
+  scan_connected_individuals(M,IndividualsToCheck,[H|IndividualsChecked],IndividualsSet1,IndividualsSet).
+
+/*
+  Parallel/ordset-based variant.
+  Entry-point with simpler arity: seeds list -> connected ord-set (as list).
+*/
+scan_connected_individuals_parallel(M, Seeds, Connected) :-
+  list_to_ord_set(Seeds, Frontier0),
+  scan_frontier(M, Frontier0, Frontier0, Connected).
+
+scan_frontier(_, [], Visited, Visited).
+scan_frontier(M, Frontier, Visited0, Connected) :-
+  parallel_gather_connected(M, Frontier, NeighborLists),
+  append(NeighborLists, NeighborsFlat),
+  list_to_ord_set(NeighborsFlat, NeighborsSet),
+  ord_union(Visited0, Frontier, Visited1),
+  ord_subtract(NeighborsSet, Visited1, NextFrontier),
+  scan_frontier(M, NextFrontier, Visited1, Connected).
+
+parallel_gather_connected(M, Frontier, NeighborLists) :-
+  current_prolog_flag(cpu_count, CPU),
+  CPU > 1,
+  !,
+  catch(concurrent_maplist(gather_connected_individuals(M), Frontier, NeighborLists), _,
+        maplist(gather_connected_individuals(M), Frontier, NeighborLists)).
+parallel_gather_connected(M, Frontier, NeighborLists) :-
+  maplist(gather_connected_individuals(M), Frontier, NeighborLists).
+
+% Find the individuals directly connected to the given one
+gather_connected_individuals(M,Ind,ConnectedInds):-
+  find_successors(M,Ind,SuccInds),
+  find_predecessors(M,Ind,PredInds),
+  append(SuccInds,PredInds,ConnectedInds).
+
+find_successors(M,Ind,List) :- findall(ConnectedInd, (get_axiom_propertyAssertion(M,_,Ind,ConnectedInd)), List).
+find_predecessors(M,Ind,List) :- findall(ConnectedInd, (get_axiom_propertyAssertion(M,_,ConnectedInd,Ind)), List).
 
 
 :- multifile trill:remove_kb_prefix/2.
