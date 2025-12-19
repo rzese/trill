@@ -220,21 +220,7 @@ ontology_parser:get_axiom_annotationAssertion(M,Ann,Ax,Val):-
     CONNECTED INDIVIDUALS (JAVA-ASSISTED)
 *********************************/
 
-:- multifile scan_connected_individuals/5.
-
-% Compatibility stub mirroring the legacy recursive interface.
-scan_connected_individuals(M, IndividualsToCheck, _Checked, _Set0, Connected) :-
-    scan_connected_individuals_parallel(M, IndividualsToCheck, Connected).
-
-% Parallel/Java-backed variant: seeds list -> connected individuals (ord-set list).
-scan_connected_individuals_parallel(M, Seeds, Connected) :-
-    ensure_instance(M, JRef),
-    maplist(atom_string, Seeds, SeedStrs),
-    jpl_list_to_array(SeedStrs, SeedArray),
-    jpl_call('it.unife.ml.probowlapi.trill.ConnectedIndividuals', 'connectedIndividuals', [JRef, SeedArray], Arr),
-    jpl_array_to_list(Arr, RawStrs),
-    maplist(atom_string, Connected0, RawStrs),
-    list_to_ord_set(Connected0, Connected).
+:- multifile scan_connected_individuals/3.
 
 
 /********************************
