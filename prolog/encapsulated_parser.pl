@@ -222,19 +222,46 @@ ontology_parser:get_axiom_annotationAssertion(M,Ann,Ax,Val):-
 
 :- multifile scan_connected_individuals/5.
 
-% Compatibility stub mirroring the legacy recursive interface.
-scan_connected_individuals(M, IndividualsToCheck, _Checked, _Set0, Connected) :-
-    scan_connected_individuals_parallel(M, IndividualsToCheck, Connected).
+scan_connected_individuals(_, [], _, IndividualsSet0, IndividualsSet) :-
+    !,
+    sort(IndividualsSet0, IndividualsSet).
 
-% Parallel/Java-backed variant: seeds list -> connected individuals (ord-set list).
+scan_connected_individuals(M, IndividualsToCheck, _Checked, IndividualsSet0, IndividualsSet) :-
+    append(IndividualsToCheck, IndividualsSet0, RawSeeds),
+    sort(RawSeeds, Seeds),
+    ( Seeds == []
+    -> sort(IndividualsSet0, IndividualsSet)
+    ;   java_connected_component(M, Seeds, IndividualsSet)
+    ).
+
 scan_connected_individuals_parallel(M, Seeds, Connected) :-
+    sort(Seeds, DedupSeeds),
+    ( DedupSeeds == []
+    -> Connected = []
+    ;   java_connected_component(M, DedupSeeds, Connected)
+    ).
+
+java_connected_component(M, Seeds, Connected) :-
+    java_fetch_connected(M, Seeds, RawConnected),
+    sort(RawConnected, Connected).
+
+java_fetch_connected(M, Seeds, ConnectedAtoms) :-
     ensure_instance(M, JRef),
-    maplist(atom_string, Seeds, SeedStrs),
-    jpl_list_to_array(SeedStrs, SeedArray),
-    jpl_call('it.unife.ml.probowlapi.trill.ConnectedIndividuals', 'connectedIndividuals', [JRef, SeedArray], Arr),
-    jpl_array_to_list(Arr, RawStrs),
-    maplist(atom_string, Connected0, RawStrs),
-    list_to_ord_set(Connected0, Connected).
+    maplist(term_string_for_java, Seeds, SeedStrings),
+    jpl_list_to_array(SeedStrings, SeedArray),
+    jpl_call(JRef, 'getConnectedIndividuals', [SeedArray], Arr),
+    jpl_array_to_list(Arr, RawStrings),
+    maplist(atom_string, ConnectedAtoms, RawStrings).
+
+term_string_for_java(Term, String) :-
+    must_be(nonvar, Term),
+    ( atom(Term) ->
+        atom_string(Term, String)
+    ; number(Term) ->
+        number_string(Term, String)
+    ; term_to_atom(Term, Atom),
+      atom_string(Atom, String)
+    ).
 
 
 /********************************

@@ -122,7 +122,7 @@ disponte_iri('https://ai.unife.it/disponte#probability').
  *                   maintains the referene to the ontology erapper during the entire inference
  *    - wrapper   -> uses Java OWLAPI to parse the ontology and saves the axioms n the Prolog DB
  */
-setting_trill_default(parser,java).
+setting_trill_default(parser,encapsulated).
 
 
 /********************************
@@ -480,10 +480,10 @@ add_q(_,it,Tableau,['inconsistent','kb'],Tableau):- !. % Do nothing
 
 % Builds the list of individuals conneted given the query type
 collect_individuals(M,io,[_,IndEx],IndividualsSet):-
-  scan_connected_individuals(M,[IndEx],[],[IndEx],IndividualsSet).
+  scan_connected_individuals(M,[IndEx],IndividualsSet).
 
 collect_individuals(M,pv,[_,Ind1Ex,Ind2Ex],IndividualsSet):-
-  scan_connected_individuals(M,[Ind1Ex,Ind2Ex],[],[Ind1Ex,Ind2Ex],IndividualsSet).
+  scan_connected_individuals(M,[Ind1Ex,Ind2Ex],IndividualsSet).
 
 collect_individuals(_,sc,[_,_],[QInd]):- % It is not necessary to check the KB as the individual of the query is a new fresh individual not included in the KB.
   query_ind(QInd).

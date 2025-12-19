@@ -626,7 +626,10 @@ add_kb_prefix_pairs(M, [Short=Long|Rest]) :-
   CONNECTED INDIVIDUALS (PARALLEL BFS)
 *********************************/
 
-:- multifile scan_connected_individuals/5.
+:- multifile scan_connected_individuals/3.
+
+scan_connected_individuals(M,BaseInds,ConnectedInds):-
+  scan_connected_individuals(M,BaseInds,[],BaseInds,ConnectedInds).
 
 % Recursive, legacy version (kept for interface completeness)
 scan_connected_individuals(_,[],_,IndividualsSet0,IndividualsSet):-

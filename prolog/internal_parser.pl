@@ -600,7 +600,11 @@ ontology_parser:set_up_parser(M):-
 
 /* ************************************** */
 
-:- multifile scan_connected_individuals/5.
+:- multifile scan_connected_individuals/3.
+
+scan_connected_individuals(M,BaseInds,ConnectedInds):-
+  scan_connected_individuals(M,BaseInds,[],BaseInds,ConnectedInds).
+
 % Recursively gather all the connected individuals, i.e., isolate the relevant fragment of the KB.
 %scan_connected_individuals(M,IndividualsToCheck,IndividualsChecked,IndividualsSet0,IndividualsSet).
 scan_connected_individuals(_,[],_,IndividualsSet0,IndividualsSet):-
