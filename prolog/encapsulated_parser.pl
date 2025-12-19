@@ -223,6 +223,21 @@ ontology_parser:get_axiom_annotationAssertion(M,Ann,Ax,Val):-
 
 :- multifile scan_connected_individuals/3.
 
+scan_connected_individuals(_M, [], []) :- !.
+scan_connected_individuals(M, Seeds, Connected) :-
+    must_be(list, Seeds),
+    maplist(must_be(atom), Seeds),
+    ensure_instance(M, JRef),
+    maplist(atom_string, Seeds, SeedStrings),
+    jpl_list_to_array(SeedStrings, SeedArray),
+    jpl_call(JRef, 'scanConnectedIndividuals', [SeedArray], ResultArray),
+    jpl_array_to_list(ResultArray, RawStrings),
+    maplist(atom_string, Connected, RawStrings).
+
+
+
+/*****************************/
+
 
 /********************************
   CLASSES, PREDICATES AND

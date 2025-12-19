@@ -628,78 +628,77 @@ add_kb_prefix_pairs(M, [Short=Long|Rest]) :-
 *********************************/
 
 :- multifile scan_connected_individuals/3.
-
-
-scan_connected_individuals(M,BaseInds,ConnectedInds):-
-  scan_connected_individuals(M,BaseInds,[],BaseInds,ConnectedInds).
-
-
-% Entry point: compute all individuals reachable (undirected) from Seeds via
-% propertyAssertion/3 or sameIndividual/1 links. Uses an adjacency index built
-% once and expands in parallel where possible.
 scan_connected_individuals(M, Seeds, Connected) :-
   must_be(list, Seeds),
   maplist(must_be(atom), Seeds),
-  build_neighbor_index(M, Index),
-  list_to_ord_set(Seeds, Frontier0),
-  bfs_neighbors(Index, Frontier0, Frontier0, Connected).
-
-% -------- adjacency construction ------------------------------------
-
-build_neighbor_index(M, Index) :-
-  findall(S-O,
-          ( M:adb(propertyAssertion(_, S, O)),
-            atom(S),
-            atom(O)
-          ),
-          PropEdges0),
-  findall(A-B,
-          ( M:adb(sameIndividual(List)),
-            member(A, List),
-            member(B, List),
-            A \== B,
-            atom(A),
-            atom(B)
-          ),
-          SameEdges),
-  append(PropEdges0, SameEdges, Edges0),
-  maplist(make_undirected, Edges0, UndirectedPairs),
-  append(UndirectedPairs, EdgePairs),
-  empty_assoc(Empty),
-  foldl(add_edge, EdgePairs, Empty, Index).
-
-make_undirected(A-B, [A-B, B-A]).
-
-add_edge(Key-Val, Assoc0, Assoc) :-
-  ( get_assoc(Key, Assoc0, Vs0) -> Vs = [Val|Vs0]
-  ; Vs = [Val]
-  ),
-  put_assoc(Key, Assoc0, Vs, Assoc).
-
-% -------- parallel BFS ----------------------------------------------
-
-bfs_neighbors(_, [], Visited, Visited).
-bfs_neighbors(Index, Frontier, Visited0, Connected) :-
-  gather_neighbors(Index, Frontier, NeighborLists),
-  append(NeighborLists, NeighborsFlat),
-  list_to_ord_set(NeighborsFlat, Neighbors),
-  ord_union(Visited0, Frontier, Visited1),
-  ord_subtract(Neighbors, Visited1, NextFrontier),
-  bfs_neighbors(Index, NextFrontier, Visited1, Connected).
-
-gather_neighbors(Index, Frontier, NeighborLists) :-
-  current_prolog_flag(cpu_count, CPU),
-  CPU > 1,
-  !,
-  catch(concurrent_maplist(neighbor_lookup(Index), Frontier, NeighborLists), _,
-        maplist(neighbor_lookup(Index), Frontier, NeighborLists)).
-gather_neighbors(Index, Frontier, NeighborLists) :-
-  maplist(neighbor_lookup(Index), Frontier, NeighborLists).
-
-neighbor_lookup(Index, Node, Neighbors) :-
-  ( get_assoc(Node, Index, Ns0) -> sort(Ns0, Neighbors)
-  ; Neighbors = []
+  include(valid_individual_atom, Seeds, AtomSeeds),
+  list_to_ord_set(AtomSeeds, SeedSet),
+  ( SeedSet == [] ->
+      Connected = []
+  ; bfs_connected_component(M, SeedSet, SeedSet, Connected)
   ).
+
+
+bfs_connected_component(_M, Visited, [], Visited) :- !.
+bfs_connected_component(M, Visited, Frontier, Connected) :-
+  parallel_frontier_neighbors(M, Frontier, Visited, FreshNeighbors),
+  ( FreshNeighbors == [] ->
+      Connected = Visited
+  ; ord_union(Visited, FreshNeighbors, UpdatedVisited),
+    bfs_connected_component(M, UpdatedVisited, FreshNeighbors, Connected)
+  ).
+
+parallel_frontier_neighbors(_M, [], _Visited, []) :- !.
+parallel_frontier_neighbors(M, Frontier, Visited, FreshNeighbors) :-
+  concurrent_maplist(frontier_neighbors(M, Visited), Frontier, Nested),
+  append(Nested, FlatNeighbors),
+  list_to_ord_set(FlatNeighbors, NeighborSet),
+  ord_subtract(NeighborSet, Visited, FreshNeighbors).
+
+frontier_neighbors(M, Visited, Node, FreshNeighbors) :-
+  parallel_collect_neighbors(M, Node, RawNeighbors),
+  exclude({Visited}/[Candidate]>>ord_memberchk(Candidate, Visited), RawNeighbors, Filtered),
+  sort(Filtered, FreshNeighbors).
+
+parallel_collect_neighbors(M, Node, AllNeighbors) :-
+  concurrent(2,
+            [collect_subject_neighbors(M, Node, SubjectNeighbors),
+             collect_object_neighbors(M, Node, ObjectNeighbors)],
+            []),
+  append(SubjectNeighbors, ObjectNeighbors, AllNeighbors).
+
+collect_subject_neighbors(M, Node, Neighbors) :-
+  findall(Neighbor,
+          neighbor_from_subject(M, Node, Neighbor),
+          Neighbors).
+
+collect_object_neighbors(M, Node, Neighbors) :-
+  findall(Neighbor,
+          neighbor_from_object(M, Node, Neighbor),
+          Neighbors).
+
+neighbor_from_subject(M, Node, Neighbor) :-
+  kb_property_assertion(M, _P, Node, Object),
+  normalize_neighbor(Object, Neighbor),
+  Neighbor \== Node.
+
+neighbor_from_object(M, Node, Neighbor) :-
+  kb_property_assertion(M, _P, Subject, Node),
+  normalize_neighbor(Subject, Neighbor),
+  Neighbor \== Node.
+
+kb_property_assertion(M, P, S, O) :-
+  M:adb(propertyAssertion(P,S,O)).
+kb_property_assertion(M, P, S, O) :-
+  predicate_property(M:propertyAssertion(_,_,_), defined),
+  M:propertyAssertion(P,S,O).
+
+normalize_neighbor(Value, Value) :-
+  valid_individual_atom(Value).
+
+valid_individual_atom(Value) :-
+  atom(Value),
+  Value \== ''.
 
 
 
