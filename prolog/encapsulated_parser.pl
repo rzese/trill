@@ -222,6 +222,17 @@ ontology_parser:get_axiom_annotationAssertion(M,Ann,Ax,Val):-
 
 :- multifile scan_connected_individuals/3.
 
+% Delegates the reachability computation to the Java backend (parallel graph build).
+scan_connected_individuals(M, Seeds, Connected) :-
+    must_be(list, Seeds),
+    maplist(must_be(atom), Seeds),
+    ensure_instance(M, JRef),
+    jpl_list_to_array(Seeds, SeedArray),
+    jpl_call(JRef, 'connectedIndividuals', [SeedArray], Arr),
+    jpl_array_to_list(Arr, Raw),
+    maplist(atom_string, ConnectedAtoms, Raw),
+    list_to_ord_set(ConnectedAtoms, Connected).
+
 
 /********************************
   CLASSES, PREDICATES AND
