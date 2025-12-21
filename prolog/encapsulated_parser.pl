@@ -220,6 +220,7 @@ ontology_parser:get_axiom_annotationAssertion(M,Ann,Ax,Val):-
     CONNECTED INDIVIDUALS (JAVA-ASSISTED)
 *********************************/
 
+
 :- multifile scan_connected_individuals/3.
 
 % Delegates the reachability computation to the Java backend (parallel graph build).

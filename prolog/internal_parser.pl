@@ -53,7 +53,7 @@ http://vangelisv.github.io/thea/
 
 %:- module(internal_parser, []).
 
-:- use_module(library(lists),[member/2]).
+:- use_module(library(lists),[member/2,list_to_set/2,append/2]).
 :- use_module(library(pengines)).
 :- use_module(library(ordsets)).
 :- use_module(library(thread)).
@@ -603,73 +603,76 @@ ontology_parser:set_up_parser(M):-
 
 :- multifile scan_connected_individuals/3.
 
-% Optimized, parallel BFS over the undirected graph induced by propertyAssertion/3
-% and sameIndividual/1. Seeds are included in the result.
+% Parallel multi-source BFS that keeps discovery order.
 scan_connected_individuals(M, Seeds, Connected) :-
   must_be(list, Seeds),
   maplist(must_be(atom), Seeds),
-  build_neighbor_index(M, Index),
-  list_to_ord_set(Seeds, Frontier0),
-  bfs_neighbors(Index, Frontier0, Frontier0, Connected).
-
-
-% ---------------- adjacency construction ----------------
-
-build_neighbor_index(M, Index) :-
-  findall(S-O,
-          ( M:propertyAssertion(_, S, O),
-            atom(S),
-            atom(O)
-          ),
-          PropEdges0),
-  findall(A-B,
-          ( M:sameIndividual(List),
-            member(A, List),
-            member(B, List),
-            A \== B,
-            atom(A),
-            atom(B)
-          ),
-          SameEdges),
-  append(PropEdges0, SameEdges, Edges0),
-  maplist(make_undirected, Edges0, UndirectedPairs),
-  append(UndirectedPairs, EdgePairs),
-  empty_assoc(Empty),
-  foldl(add_edge, EdgePairs, Empty, Index).
-
-make_undirected(A-B, [A-B, B-A]).
-
-add_edge(Key-Val, Assoc0, Assoc) :-
-  ( get_assoc(Key, Assoc0, Vs0) -> Vs = [Val|Vs0]
-  ; Vs = [Val]
-  ),
-  put_assoc(Key, Assoc0, Vs, Assoc).
-
-% ---------------- parallel BFS ----------------
-
-bfs_neighbors(_, [], Visited, Visited).
-bfs_neighbors(Index, Frontier, Visited0, Connected) :-
-  gather_neighbors(Index, Frontier, NeighborLists),
-  append(NeighborLists, NeighborsFlat),
-  list_to_ord_set(NeighborsFlat, Neighbors),
-  ord_union(Visited0, Frontier, Visited1),
-  ord_subtract(Neighbors, Visited1, NextFrontier),
-  bfs_neighbors(Index, NextFrontier, Visited1, Connected).
-
-gather_neighbors(Index, Frontier, NeighborLists) :-
-  current_prolog_flag(cpu_count, CPU),
-  CPU > 1,
-  !,
-  catch(concurrent_maplist(neighbor_lookup(Index), Frontier, NeighborLists), _,
-        maplist(neighbor_lookup(Index), Frontier, NeighborLists)).
-gather_neighbors(Index, Frontier, NeighborLists) :-
-  maplist(neighbor_lookup(Index), Frontier, NeighborLists).
-
-neighbor_lookup(Index, Node, Neighbors) :-
-  ( get_assoc(Node, Index, Ns0) -> sort(Ns0, Neighbors)
-  ; Neighbors = []
+  normalize_frontier(Seeds, Frontier, SeedSet),
+  ( Frontier == []
+  -> Connected = []
+  ;  bfs_connected(M, Frontier, SeedSet, Frontier, Connected)
   ).
 
+bfs_connected(_M, [], _Visited, OrderAcc, OrderAcc).
+bfs_connected(M, Frontier, Visited0, OrderAcc, Connected) :-
+  Frontier \= [],
+  frontier_neighbors(M, Frontier, RawNeighbors),
+  filter_new_neighbors(RawNeighbors, Visited0, Visited, NewFrontier),
+  ( NewFrontier == []
+  -> Connected = OrderAcc
+  ;  append(OrderAcc, NewFrontier, OrderNext),
+     bfs_connected(M, NewFrontier, Visited, OrderNext, Connected)
+  ).
+
+frontier_neighbors(_M, [], []).
+frontier_neighbors(M, Frontier, RawNeighbors) :-
+  parallel_maplist(neighbor_list(M), Frontier, NeighborLists),
+  append(NeighborLists, RawNeighbors).
+
+neighbor_list(M, Node, Neighbors) :-
+  findall(Neighbor, connected_neighbor(M, Node, Neighbor), Raw),
+  list_to_set(Raw, Neighbors).
+
+connected_neighbor(M, Node, Neighbor) :-
+  ( M:propertyAssertion(_, Node, Candidate)
+  ; M:propertyAssertion(_, Candidate, Node)
+  ),
+  valid_individual_term(Candidate),
+  Neighbor = Candidate.
+
+valid_individual_term(Term) :-
+  nonvar(Term),
+  Term \= literal(_).
+
+filter_new_neighbors(RawNeighbors, Visited0, Visited, NewFrontier) :-
+  filter_new_neighbors_dl(RawNeighbors, Visited0, Visited, NewFrontier-[]).
+
+filter_new_neighbors_dl([], Visited, Visited, Tail-Tail).
+filter_new_neighbors_dl([H|T], Visited0, Visited, DLHead-DLTail) :-
+  ( ord_memberchk(H, Visited0)
+  -> filter_new_neighbors_dl(T, Visited0, Visited, DLHead-DLTail)
+  ; ord_add_element(Visited0, H, Visited1),
+    DLHead = [H|DLRest],
+    filter_new_neighbors_dl(T, Visited1, Visited, DLRest-DLTail)
+  ).
+
+normalize_frontier(Seeds, Frontier, SeedSet) :-
+  normalize_frontier_dl(Seeds, [], SeedSet, Frontier-[]).
+
+normalize_frontier_dl([], SeedSet, SeedSet, Tail-Tail).
+normalize_frontier_dl([Seed|Rest], SeedSet0, SeedSet, DLHead-DLTail) :-
+  ( ord_memberchk(Seed, SeedSet0)
+  -> normalize_frontier_dl(Rest, SeedSet0, SeedSet, DLHead-DLTail)
+  ; ord_add_element(SeedSet0, Seed, SeedSet1),
+    DLHead = [Seed|DLRest],
+    normalize_frontier_dl(Rest, SeedSet1, SeedSet, DLRest-DLTail)
+  ).
+
+parallel_maplist(_Pred, [], []).
+parallel_maplist(Pred, [Item], [Result]) :- !,
+  call(Pred, Item, Result).
+parallel_maplist(Pred, List, Results) :-
+  concurrent_maplist(Pred, List, Results).
 
 
 /*****************************/
