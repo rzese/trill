@@ -3502,44 +3502,52 @@ add_all_to_tableau(M,L,Tableau0,Tableau):-
   get_clashes(Tableau0,Clashes0),
   get_tabs(Tableau0,Tabs0),
   get_sameind(Tableau0,SameInd0),
-  add_all_to_abox_and_clashes(M,L,Tableau0,ABox0,ABox,Clashes0,Clashes,Tabs0,Tabs,SameInd0,SameInd),
+  add_all_to_abox_structs(L,ABox0,ABox,Tabs0,Tabs,SameInd0,SameInd,PendingChecks),
+  ( PendingChecks == [] ->
+      Clashes = Clashes0
+    ; init_tableau(ABox,TabOnlyABox),
+      process_pending_clashes(M,PendingChecks,TabOnlyABox,Clashes0,Clashes)
+  ),
   set_abox(Tableau0,ABox,Tableau1),
-  set_clashes(Tableau1,Clashes,Tableau2),
-  set_tabs(Tableau2,Tabs,Tableau3),
-  set_sameind(Tableau3,SameInd,Tableau).
+  set_tabs(Tableau1,Tabs,Tableau2),
+  set_sameind(Tableau2,SameInd,Tableau3),
+  set_clashes(Tableau3,Clashes,Tableau).
 
-add_all_to_abox_and_clashes(_,[],_,A,A,C,C,T,T,S,S):-!.
+add_all_to_abox_structs(L,A0,A,T0,T,SameInd0,SameInd,PendingChecks):-
+  add_all_to_abox_structs_dl(L,A0,A,T0,T,SameInd0,SameInd,PendingChecks,[]).
 
-add_all_to_abox_and_clashes(M,[(classAssertion(Class,I),Expl)|Tail],Tableau,A0,A,C0,C,(T0,RBN,RBR),T,SameInd0,SameInd):-
+add_all_to_abox_structs_dl([],A,A,T,T,S,S,P,P):-!.
+
+add_all_to_abox_structs_dl([(classAssertion(Class,I),Expl)|Tail],A0,A,(T0,RBN,RBR),T,SameInd0,SameInd,[Class-I|PNext],PTail):-
   add_to_abox(A0,(classAssertion(Class,I),Expl),A1),
-  init_tableau(A1,TabOnlyABox),
-  check_clash_and_add_to_clashes(M,Class-I,TabOnlyABox,C0,C1),!,
   add_vertices(T0,[I],T1),
-  add_all_to_abox_and_clashes(M,Tail,Tableau,A1,A,C1,C,(T1,RBN,RBR),T,SameInd0,SameInd).
+  add_all_to_abox_structs_dl(Tail,A1,A,(T1,RBN,RBR),T,SameInd0,SameInd,PNext,PTail).
 
-add_all_to_abox_and_clashes(M,[(sameIndividual(LI),Expl)|Tail],Tableau,A0,A,C0,C,(T0,RBN,RBR),T,SameInd0,SameInd):-
+add_all_to_abox_structs_dl([(sameIndividual(LI),Expl)|Tail],A0,A,(T0,RBN,RBR),T,SameInd0,SameInd,[sameIndividual(LI)|PNext],PTail):-
   add_to_abox(A0,(sameIndividual(LI),Expl),A1),
-  init_tableau(A1,TabOnlyABox),
-  check_clash_and_add_to_clashes(M,sameIndividual(LI),TabOnlyABox,C0,C1),!,
   add_vertices(T0,LI,T1),
   add_to_sameind(SameInd0,LI,SameInd1),
-  add_all_to_abox_and_clashes(M,Tail,Tableau,A1,A,C1,C,(T1,RBN,RBR),T,SameInd1,SameInd).
+  add_all_to_abox_structs_dl(Tail,A1,A,(T1,RBN,RBR),T,SameInd1,SameInd,PNext,PTail).
 
-add_all_to_abox_and_clashes(M,[(differentIndividuals(LI),Expl)|Tail],Tableau,A0,A,C0,C,(T0,RBN,RBR),T,SameInd0,SameInd):-
+add_all_to_abox_structs_dl([(differentIndividuals(LI),Expl)|Tail],A0,A,(T0,RBN,RBR),T,SameInd0,SameInd,[differentIndividuals(LI)|PNext],PTail):-
   add_to_abox(A0,(differentIndividuals(LI),Expl),A1),
-  init_tableau(A1,TabOnlyABox),
-  check_clash_and_add_to_clashes(M,differentIndividuals(LI),TabOnlyABox,C0,C1),!,
   add_vertices(T0,LI,T1),
-  add_all_to_abox_and_clashes(M,Tail,Tableau,A1,A,C1,C,(T1,RBN,RBR),T,SameInd0,SameInd).
+  add_all_to_abox_structs_dl(Tail,A1,A,(T1,RBN,RBR),T,SameInd0,SameInd,PNext,PTail).
 
-add_all_to_abox_and_clashes(M,[(propertyAssertion(P,S,O),Expl)|Tail],Tableau,A0,A,C0,C,T0,T,SameInd0,SameInd):-!,
+add_all_to_abox_structs_dl([(propertyAssertion(P,S,O),Expl)|Tail],A0,A,T0,T,SameInd0,SameInd,PNext,PTail):-!,
   add_to_abox(A0,(propertyAssertion(P,S,O),Expl),A1),
   add_edge_int(P,S,O,T0,T1),
-  add_all_to_abox_and_clashes(M,Tail,Tableau,A1,A,C0,C,T1,T,SameInd0,SameInd).
+  add_all_to_abox_structs_dl(Tail,A1,A,T1,T,SameInd0,SameInd,PNext,PTail).
 
-add_all_to_abox_and_clashes(M,[H|Tail],Tableau,A0,A,C0,C,T0,T,SameInd0,SameInd):-!,
+add_all_to_abox_structs_dl([H|Tail],A0,A,T0,T,SameInd0,SameInd,PNext,PTail):-!,
   add_to_abox(A0,H,A1),
-  add_all_to_abox_and_clashes(M,Tail,Tableau,A1,A,C0,C,T0,T,SameInd0,SameInd).
+  add_all_to_abox_structs_dl(Tail,A1,A,T0,T,SameInd0,SameInd,PNext,PTail).
+
+process_pending_clashes(_,[],_,Clashes,Clashes):-!.
+
+process_pending_clashes(M,[El|Tail],Tableau,A0,A):-
+  check_clash_and_add_to_clashes(M,El,Tableau,A0,A1),
+  process_pending_clashes(M,Tail,Tableau,A1,A).
 
 add_all_to_abox([],A,A).
 
