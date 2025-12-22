@@ -230,9 +230,8 @@ scan_connected_individuals(M, Seeds, Connected) :-
     ensure_instance(M, JRef),
     jpl_list_to_array(Seeds, SeedArray),
     jpl_call(JRef, 'connectedIndividuals', [SeedArray], Arr),
-    jpl_array_to_list(Arr, Raw),
-    maplist(atom_string, ConnectedAtoms, Raw),
-    list_to_ord_set(ConnectedAtoms, Connected).
+    jpl_array_to_list(Arr, Connected).
+    %list_to_ord_set(ConnectedAtoms, Connected).
 
 
 /********************************
