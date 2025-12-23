@@ -953,33 +953,41 @@ clash(M,C-Ind,Tab,Expl):-
   %write('clash 1'),nl,
   findClassAssertion(C,Ind,Expl1,ABox),
   neg_class(C,NegC),
-  findClassAssertion(NegC,Ind,Expl2,ABox),
-  and_f(M,Expl1,Expl2,Expl).
+  get_sameind(Tab,Ind,SameIndList),
+  member(IndC,SameIndList),
+  findClassAssertion(NegC,IndC,Expl2,ABox),
+  get_sameind_explanations(M,Tab,Ind,IndC,ExplSameInd),
+  and_f(M,Expl1,Expl2,ExplT),
+  and_f(M,ExplT,ExplSameInd,Expl).
 
 clash(M,sameIndividual(LS),Tab,Expl):-
   get_abox(Tab,ABox),
   %write('clash 2.a'),nl,
-  findSameIndividual(LS,(sameIndividual(LSABox),Expl1),ABox),
+  member(X,LS),
+  get_sameind(Tab,X,LSABox),
+  %findSameIndividual(LS,(sameIndividual(LSABox),Expl1),ABox),
   find((differentIndividuals(LD),Expl2),ABox),
-  member(X,LSABox),
   member(Y,LSABox),
   member(X,LD),
   member(Y,LD),
   dif(X,Y),
+  get_sameind_explanations(M,Tab,X,Y,Expl1),
   and_f(M,Expl1,Expl2,Expl).
 
 clash(M,differentIndividuals(LS),Tab,Expl):-
   get_abox(Tab,ABox),
   %write('clash 2.b'),nl,
   findDifferentIndividuals(LS,(differentIndividuals(LSABox),Expl1),ABox),
-  find((sameIndividual(LD),Expl2),ABox),
+  %find((sameIndividual(LD),Expl2),ABox),
   member(X,LSABox),
+  get_sameind(Tab,X,LD),
   member(Y,LSABox),
-  member(X,LD),
   member(Y,LD),
   dif(X,Y),
+  get_sameind_explanations(M,Tab,X,Y,Expl2),
   and_f(M,Expl1,Expl2,Expl).
 
+/*
 clash(M,C-sameIndividual(L1),Tab,Expl):-
   get_abox(Tab,ABox),
   %write('clash 3'),nl,
@@ -1010,6 +1018,7 @@ clash(M,C-sameIndividual(L1),Tab,Expl):-
   findClassAssertion(NegC,Ind2,Expl2,ABox),
   member(Ind2,L1),
   and_f(M,Expl1,Expl2,Expl).
+*/
 
 clash(M,C1-Ind,Tab,Expl):-
   get_abox(Tab,ABox),
@@ -1019,9 +1028,13 @@ clash(M,C1-Ind,Tab,Expl):-
   member(C1,L),
   member(C2,L),
   dif(C1,C2),
-  findClassAssertion(C2,Ind,Expl2,ABox),
+  get_sameind(Tab,Ind,SameIndList),
+  member(IndC,SameIndList),
+  findClassAssertion(C2,IndC,Expl2,ABox),
   and_f(M,Expl1,Expl2,ExplT),
-  and_f_ax(M,disjointClasses(L),ExplT,Expl).
+  get_sameind_explanations(M,Tab,Ind,IndC,ExplSameInd),
+  and_f(M,ExplT,ExplSameInd,ExplT1),
+  and_f_ax(M,disjointClasses(L),ExplT1,Expl).
 
 clash(M,C1-Ind,Tab,Expl):-
   get_abox(Tab,ABox),
@@ -1031,17 +1044,31 @@ clash(M,C1-Ind,Tab,Expl):-
   member(C1,L),
   member(C2,L),
   dif(C1,C2),
-  findClassAssertion(C2,Ind,Expl2,ABox),
+  get_sameind(Tab,Ind,SameIndList),
+  member(IndC,SameIndList),
+  findClassAssertion(C2,IndC,Expl2,ABox),
   and_f(M,Expl1,Expl2,ExplT),
-  and_f_ax(M,disjointUnion(Class,L),ExplT,Expl).
+  get_sameind_explanations(M,Tab,Ind,IndC,ExplSameInd),
+  and_f(M,ExplT,ExplSameInd,ExplT1),
+  and_f_ax(M,disjointUnion(Class,L),ExplT1,Expl).
 
 clash(M,P-Ind1-Ind2,Tab,Expl):-
   get_abox(Tab,ABox),
   %write('clash 11'),nl,
-  findPropertyAssertion(P,Ind1,Ind2,Expl1,ABox),
+  get_sameind(Tab,Ind1,SameIndList1),
+  get_sameind(Tab,Ind2,SameIndList2),
+  member(IndC11,SameIndList1),
+  member(IndC21,SameIndList2),
+  member(IndC12,SameIndList1),
+  member(IndC22,SameIndList2),
+  findPropertyAssertion(P,IndC11,IndC21,Expl1,ABox),
   neg_class(P,NegP), % use of neg_class with a property
-  findPropertyAssertion(NegP,Ind1,Ind2,Expl2,ABox),
-  and_f(M,Expl1,Expl2,Expl).
+  findPropertyAssertion(NegP,IndC12,IndC22,Expl2,ABox),
+  get_sameind_explanations(M,Tab,IndC11,IndC12,ExplsSameInd1),
+  get_sameind_explanations(M,Tab,IndC21,IndC22,ExplsSameInd2),
+  and_f(M,ExplsSameInd1,ExplsSameInd2,ExplsSameInd),
+  and_f(M,Expl1,Expl2,ExplT),
+  and_f(M,ExplT,ExplsSameInd,Expl).
 
 
 /*
@@ -1074,9 +1101,11 @@ make_expl(M,Ind,S,[H|T],Expl0,ABox,Expl):-
   make_expl(M,Ind,S,T,Expl1,ABox,Expl).
 */
 
+/*
 findSameIndividual(LS,(sameIndividual(LSABox),Expl),ABox):-
   find((sameIndividual(LSABox),Expl),ABox),
   all_members(LS,LSABox).
+*/
 
 findDifferentIndividuals(LS,(differentIndividuals(LSABox),Expl),ABox):-
   find((differentIndividuals(LSABox),Expl),ABox),
@@ -2282,7 +2311,7 @@ scan_max_list(M,MaxCardClass,S,C,SN,CP,Ind,Expl,Tab0,ABox,Tab_list):-
   (
     NChoices @> 1 -> (FirstChoice = -1) ; (FirstChoice = 0)
   ),
-  create_list_for_max_rule(M,Ind_couples,FirstChoice,CP,Ind,S,C,Expl,Tab0,ABox,Tab_list),
+  create_list_for_max_rule(M,FirstChoice,CP,Ind,S,C,Expl,Tab0,ABox,Ind_couples,Tab_list),
   dif(Tab_list,[]),
   ( dif(FirstChoice,-1) ->
     create_choice_point(M,Ind,mr,MaxCardClass,Ind_couples,_)
@@ -2301,9 +2330,9 @@ create_couples_for_merge_int(_,[],Ind_couples,Ind_couples).
 create_couples_for_merge_int(I,[H|T],Ind_couples0,Ind_couples):-
   create_couples_for_merge_int(I,T,[I-H|Ind_couples0],Ind_couples).
 
-create_list_for_max_rule(_,[],_,_,_,_,_,_,_,_,[]).
+%create_list_for_max_rule(_,[],_,_,_,_,_,_,_,_,[]).
 
-create_list_for_max_rule(M,[YI-YJ|Ind_couples],N0,CP,Ind,S,C,Expl0,Tab0,ABox,[Tab|Tab_list]):-
+create_list_for_max_rule(M,N0,CP,Ind,S,C,Expl0,Tab0,ABox,[YI-YJ|Ind_couples],[Tab|Tab_list]):-
   findPropertyAssertion(S,Ind,YI,ExplYI,ABox),
   findPropertyAssertion(S,Ind,YJ,ExplYJ,ABox),
   findClassAssertion(C,YI,ExplCYI,ABox),
@@ -2324,9 +2353,9 @@ create_list_for_max_rule(M,[YI-YJ|Ind_couples],N0,CP,Ind,S,C,Expl0,Tab0,ABox,[Ta
     )
   ),
   flatten([YI,YJ],LI),
-  add_all_to_tableau(M,[(sameIndividual(LI),ExplT)],Tab0,Tab1), % TODO capire perchè non va
-  merge_all_individuals(M,[(sameIndividual(LI),ExplT)],Tab1,Tab),
-  create_list_for_max_rule(M,Ind_couples,N,CP,Ind,S,C,Expl0,Tab0,ABox,Tab_list).
+  add_all_to_tableau(M,[(sameIndividual(LI),ExplT)],Tab0,Tab), % TODO capire perchè non va
+  %merge_all_individuals(M,[(sameIndividual(LI),ExplT)],Tab1,Tab),
+  create_list_for_max_rule(M,N,CP,Ind,S,C,Expl0,Tab0,ABox,Ind_couples,Tab_list).
 
 /*
 scan_max_list(M,S,SN,CP,Ind,Expl,ABox0,Tabs0,YI-YJ,ABox,Tabs):-
