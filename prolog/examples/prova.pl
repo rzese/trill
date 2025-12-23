@@ -45,7 +45,7 @@ Due to transitivity of equality:
 
 :- use_module(library(trill)).
 
-:- tornado.
+:- trill.
 
 % =============================================================================
 % Axioms

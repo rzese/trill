@@ -873,19 +873,14 @@ reset_query:-
 % adds the query into the ABox
 add_q(M,Tableau0,Query,Tableau):-
   query_empty_expl(M,Expl),
-  add_to_tableau(M,(Query,Expl),Tableau0,Tableau1),
+  add_to_tableau(Tableau0,(Query,Expl),Tableau1),
   create_tabs([(Query,Expl)],Tableau1,Tableau).
 
 
 % initialize an empty explanation for the query with the query placeholder 'qp' in teh choicepoint list
-query_empty_expl(M,Expl):-
+query_empty_expl(M,Expl):-%gtrace,
   empty_expl(M,EExpl),
   add_choice_point(M,qp,EExpl,Expl).
-
-remove_query_empty_expl(M,Expl0,Expl):-
-  query_empty_expl(M,QPExpl),!,
-  delete_qp(Expl0,QPExpl,Expl),
-  dif(Expl,[]).
 
 
 
@@ -3334,14 +3329,81 @@ get_abox(Tab,ABox):-
 set_abox(Tab0,ABox,Tab):-
   Tab = Tab0.put(abox,ABox).
 
+% SameInd dict maps each individual to a list of Other-Expls pairs, where
+% Expls collects every justification that forced the equality.
 get_sameind(Tab,SameInd):-
   SameInd = Tab.sameind.
 
-get_sameind(Tab,Ind,SameInd):-
-  SameInd = Tab.sameind.get(Ind,[]).
+get_sameind(Tab,Ind,SameIndList):-
+  SameIndDict = Tab.sameind,
+  sameind_equivalent_individuals(SameIndDict,Ind,SameIndList).
 
 set_sameind(Tab0,SameInd,Tab):-
   Tab = Tab0.put(sameind,SameInd).
+
+/**
+ * get_sameind_explanations(+Module,+Tableau,+Ind1,+Ind2,-Expls:list) is det
+ *
+ * Retrieves every explanation that justifies the equality between Ind1 and Ind2
+ * recorded in the tableau. Returns the empty list when no justification exists.
+ */
+get_sameind_explanations(M,Tab,Ind1,Ind2,Expls):-
+  ( Ind1 == Ind2 ->
+    Expls = [[]]
+  ;
+    get_sameind(Tab,SameIndDict),
+    sameind_lookup_explanations(SameIndDict,M,Ind1,Ind2,Expls)
+  ).
+
+sameind_lookup_explanations(SameIndDict,M,Ind1,Ind2,Expls):-
+  sameind_collect_path_explanations(SameIndDict,M,Ind1,Ind2,[Ind1],RawExpls),
+  sort(RawExpls,Expls).
+
+sameind_collect_path_explanations(SameIndDict,M,Current,Target,Visited,Expls):-
+  Pairs = SameIndDict.get(Current,[]),
+  sameind_collect_from_neighbors(Pairs,SameIndDict,M,Target,Visited,Expls).
+
+sameind_collect_from_neighbors([],_,_,_,_,[]).
+sameind_collect_from_neighbors([Neighbor-EdgeExpls|Rest],SameIndDict,M,Target,Visited,Expls):-
+  ( memberchk(Neighbor,Visited) ->
+    ExplsHead = []
+  ;
+    sameind_collect_through_neighbor(Neighbor,EdgeExpls,SameIndDict,M,Target,[Neighbor|Visited],ExplsHead)
+  ),
+  sameind_collect_from_neighbors(Rest,SameIndDict,M,Target,Visited,ExplsTail),
+  append(ExplsHead,ExplsTail,Expls).
+
+sameind_collect_through_neighbor(Target,EdgeExpls,_,_,Target,_,EdgeExpls):-!.
+sameind_collect_through_neighbor(Neighbor,EdgeExpls,SameIndDict,M,Target,Visited,Expls):-
+  sameind_collect_path_explanations(SameIndDict,M,Neighbor,Target,Visited,SubExpls),
+  findall(Combined,
+          ( member(EdgeExpl,EdgeExpls),
+            member(SubExpl,SubExpls),
+            and_f(M,EdgeExpl,SubExpl,Combined)
+          ),
+          Expls).
+
+sameind_equivalent_individuals(SameIndDict,Ind,SameIndList):-
+  sameind_traverse_component(SameIndDict,[Ind],[],Visited),
+  sameind_remove_ind(Visited,Ind,WithoutInd),
+  sort(WithoutInd,SameIndList).
+
+sameind_traverse_component(_,[],Visited,Visited).
+sameind_traverse_component(SameIndDict,[Current|Queue],Visited0,Visited):-
+  ( memberchk(Current,Visited0) ->
+    sameind_traverse_component(SameIndDict,Queue,Visited0,Visited)
+  ;
+    Pairs = SameIndDict.get(Current,[]),
+    findall(Neighbor,member(Neighbor-_,Pairs),Neighbors),
+    append(Queue,Neighbors,Queue1),
+    sameind_traverse_component(SameIndDict,Queue1,[Current|Visited0],Visited)
+  ).
+
+sameind_remove_ind([],_,[]).
+sameind_remove_ind([Ind|T],Ind,R):-!,
+  sameind_remove_ind(T,Ind,R).
+sameind_remove_ind([H|T],Ind,[H|R]):-
+  sameind_remove_ind(T,Ind,R).
 
 get_tabs(Tab,Tabs):-
   Tabs = Tab.tabs.
@@ -3515,11 +3577,10 @@ new_abox([]).
 
  
 /* add El to ABox */
-add_to_tableau(M,El,Tableau0,Tableau):-
-  add_all_to_abox_and_clashes(M,[El],Tableau0,Tableau).
-
-add_all_to_tableau(M,L,Tableau0,Tableau):-
-  add_all_to_abox_and_clashes(M,L,Tableau0,Tableau).
+add_to_tableau(Tableau0,El,Tableau):-
+  get_abox(Tableau0,ABox0),
+  add_to_abox(ABox0,El,ABox),
+  set_abox(Tableau0,ABox,Tableau).
 
 remove_from_tableau(Tableau0,El,Tableau):-
   get_abox(Tableau0,ABox0),
@@ -3564,18 +3625,52 @@ add_to_abox(ABox,El,[El|ABox]).
 remove_from_abox(ABox0,El,ABox):-
   delete(ABox0,El,ABox).
 
-add_to_sameind(SameInd0,LI,SameInd):-
-  findall(I1-L,(member(I1,LI),findall(I2,(member(I2,LI),dif(I1,I2)),L)),ToAdd),
-  add_to_sameind_int(SameInd0,ToAdd,SameInd).
+add_to_sameind(SameInd0,LI,Expl,SameInd):-
+  normalize_sameind_list(LI,Normalized),
+  findall(From-To,
+         ( member(From,Normalized),
+           member(To,Normalized),
+           dif(From,To)
+         ),PairsToRecord),
+  add_to_sameind_pairs(SameInd0,PairsToRecord,Expl,SameInd).
 
-add_to_sameind_int(SameInd0,[],SameInd0):-!.
+normalize_sameind_list(LI,Normalized):-
+  (   is_list(LI)
+  ->  sameind_list_to_flat(LI,Flat0)
+  ;   Flat0 = [LI]
+  ),
+  sort(Flat0,Normalized).
 
-add_to_sameind_int(SameInd0,[H-L0|TToAdd],SameInd):-
-  L1 = SameInd0.get(H,[]),
-  append(L0,L1,L2),
-  sort(L2,L),
-  SameInd1 = SameInd0.put(H,L),
-  add_to_sameind_int(SameInd1,TToAdd,SameInd).
+sameind_list_to_flat([],[]).
+sameind_list_to_flat([sameIndividual(L)|T],Flat):-
+  !,
+  sameind_list_to_flat(L,LFlat),
+  sameind_list_to_flat(T,TFlat),
+  append(LFlat,TFlat,Flat).
+sameind_list_to_flat([H|T],[H|FlatT]):-
+  sameind_list_to_flat(T,FlatT).
+
+add_to_sameind_pairs(SameInd0,[],_,SameInd0):-!.
+
+add_to_sameind_pairs(SameInd0,[From-To|Rest],Expl,SameInd):-
+  update_sameind_entry(SameInd0,From,To,Expl,SameInd1),
+  add_to_sameind_pairs(SameInd1,Rest,Expl,SameInd).
+
+update_sameind_entry(SameInd0,From,To,Expl,SameInd):-
+  Pairs0 = SameInd0.get(From,[]),
+  update_sameind_target(Pairs0,To,Expl,Pairs),
+  SameInd = SameInd0.put(From,Pairs).
+
+update_sameind_target([],To,Expl,[To-[Expl]]).
+update_sameind_target([To-Expls|Rest],To,Expl,[To-Expls1|Rest]):-
+  !,
+  add_expl_to_list(Expl,Expls,Expls1).
+update_sameind_target([Other-Expls|Rest],To,Expl,[Other-Expls|Rest1]):-
+  update_sameind_target(Rest,To,Expl,Rest1).
+
+add_expl_to_list(Expl,Expls,Expls):-
+  memberchk(Expl,Expls),!.
+add_expl_to_list(Expl,Expls,[Expl|Expls]).
 
 
 
@@ -3612,35 +3707,59 @@ add_all_to_tableau(M,L,Tableau0,Tableau):-
   set_sameind(Tableau2,SameInd,Tableau3),
   set_clashes(Tableau3,Clashes,Tableau).
 
-add_all_to_abox_structs(L,A0,A,T0,T,SameInd0,SameInd,PendingChecks):-
-  add_all_to_abox_structs_dl(L,A0,A,T0,T,SameInd0,SameInd,PendingChecks,[]).
+add_all_to_abox_structs([],A0,A0,T0,T0,SameInd0,SameInd0,[]):-!.
 
-add_all_to_abox_structs_dl([],A,A,T,T,S,S,P,P):-!.
+add_all_to_abox_structs(L,A0,A,(Graph0,RBN0,RBR0),(Graph,RBN,RBR),SameInd0,SameInd,PendingChecks):-
+  pending_checks_from_axioms(L,PendingChecks),
+  thread_create(apply_abox_ops(L,A0,A),AboxT),
+  thread_create((
+    apply_vertex_ops(L,Graph0,Graph1),
+    apply_edge_ops(L,(Graph1,RBN0,RBR0),(Graph,RBN,RBR))
+  ),TabsT),
+  thread_create(apply_sameind_ops(L,SameInd0,SameInd),SameIndT),
+  thread_join(AboxT,true),
+  thread_join(TabsT,true),
+  thread_join(SameIndT,true).
 
-add_all_to_abox_structs_dl([(classAssertion(Class,I),Expl)|Tail],A0,A,(T0,RBN,RBR),T,SameInd0,SameInd,[Class-I|PNext],PTail):-
-  add_to_abox(A0,(classAssertion(Class,I),Expl),A1),
-  add_vertices(T0,[I],T1),
-  add_all_to_abox_structs_dl(Tail,A1,A,(T1,RBN,RBR),T,SameInd0,SameInd,PNext,PTail).
+apply_abox_ops(L,A0,A):-
+  add_all_to_abox(L,A0,A).
 
-add_all_to_abox_structs_dl([(sameIndividual(LI),Expl)|Tail],A0,A,(T0,RBN,RBR),T,SameInd0,SameInd,[sameIndividual(LI)|PNext],PTail):-
-  add_to_abox(A0,(sameIndividual(LI),Expl),A1),
-  add_vertices(T0,LI,T1),
-  add_to_sameind(SameInd0,LI,SameInd1),
-  add_all_to_abox_structs_dl(Tail,A1,A,(T1,RBN,RBR),T,SameInd1,SameInd,PNext,PTail).
+apply_vertex_ops([],Graph,Graph).
+apply_vertex_ops([(classAssertion(_,I),_)|Tail],Graph0,Graph):-
+  add_vertices(Graph0,[I],Graph1),
+  apply_vertex_ops(Tail,Graph1,Graph).
+apply_vertex_ops([(sameIndividual(LI),_)|Tail],Graph0,Graph):-
+  add_vertices(Graph0,LI,Graph1),
+  apply_vertex_ops(Tail,Graph1,Graph).
+apply_vertex_ops([(differentIndividuals(LI),_)|Tail],Graph0,Graph):-
+  add_vertices(Graph0,LI,Graph1),
+  apply_vertex_ops(Tail,Graph1,Graph).
+apply_vertex_ops([_|Tail],Graph0,Graph):-
+  apply_vertex_ops(Tail,Graph0,Graph).
 
-add_all_to_abox_structs_dl([(differentIndividuals(LI),Expl)|Tail],A0,A,(T0,RBN,RBR),T,SameInd0,SameInd,[differentIndividuals(LI)|PNext],PTail):-
-  add_to_abox(A0,(differentIndividuals(LI),Expl),A1),
-  add_vertices(T0,LI,T1),
-  add_all_to_abox_structs_dl(Tail,A1,A,(T1,RBN,RBR),T,SameInd0,SameInd,PNext,PTail).
+apply_edge_ops([],Tabs,Tabs).
+apply_edge_ops([(propertyAssertion(P,S,O),_)|Tail],Tabs0,Tabs):-
+  add_edge_int(P,S,O,Tabs0,Tabs1),
+  apply_edge_ops(Tail,Tabs1,Tabs).
+apply_edge_ops([_|Tail],Tabs0,Tabs):-
+  apply_edge_ops(Tail,Tabs0,Tabs).
 
-add_all_to_abox_structs_dl([(propertyAssertion(P,S,O),Expl)|Tail],A0,A,T0,T,SameInd0,SameInd,PNext,PTail):-!,
-  add_to_abox(A0,(propertyAssertion(P,S,O),Expl),A1),
-  add_edge_int(P,S,O,T0,T1),
-  add_all_to_abox_structs_dl(Tail,A1,A,T1,T,SameInd0,SameInd,PNext,PTail).
+apply_sameind_ops([],SameInd,SameInd).
+apply_sameind_ops([(sameIndividual(LI),Expl)|Tail],SameInd0,SameInd):-
+  add_to_sameind(SameInd0,LI,Expl,SameInd1),
+  apply_sameind_ops(Tail,SameInd1,SameInd).
+apply_sameind_ops([_|Tail],SameInd0,SameInd):-
+  apply_sameind_ops(Tail,SameInd0,SameInd).
 
-add_all_to_abox_structs_dl([H|Tail],A0,A,T0,T,SameInd0,SameInd,PNext,PTail):-!,
-  add_to_abox(A0,H,A1),
-  add_all_to_abox_structs_dl(Tail,A1,A,T0,T,SameInd0,SameInd,PNext,PTail).
+pending_checks_from_axioms([],[]).
+pending_checks_from_axioms([(classAssertion(Class,I),_)|Tail],[Class-I|Rest]):-
+  pending_checks_from_axioms(Tail,Rest).
+pending_checks_from_axioms([(sameIndividual(LI),_)|Tail],[sameIndividual(LI)|Rest]):-
+  pending_checks_from_axioms(Tail,Rest).
+pending_checks_from_axioms([(differentIndividuals(LI),_)|Tail],[differentIndividuals(LI)|Rest]):-
+  pending_checks_from_axioms(Tail,Rest).
+pending_checks_from_axioms([_|Tail],Rest):-
+  pending_checks_from_axioms(Tail,Rest).
 
 process_pending_clashes(_,[],_,Clashes,Clashes):-!.
 
@@ -3654,7 +3773,7 @@ add_all_to_abox([H|T],A0,A):-
   add_to_abox(A0,H,A1),
   add_all_to_abox(T,A1,A).
 
-/* TODO needs check
+
 add_all_to_abox_and_clashes(_,[],T,T):-!.
 
 add_all_to_abox_and_clashes(M,[(classAssertion(Class,I),Expl)|Tail],Tableau0,Tableau):-!,
@@ -3674,7 +3793,7 @@ add_all_to_abox_and_clashes(M,[(sameIndividual(LI),Expl)|Tail],Tableau0,Tableau)
       add_vertices(T0,LI,T1),
       set_tabs(Tableau1,(T1,RBN,RBR),Tableau2),
       get_sameind(Tableau2,SameInd0),
-      add_to_sameind(SameInd0,LI,SameInd),
+      add_to_sameind(SameInd0,LI,Expl,SameInd),
       set_sameind(Tableau2,SameInd,Tableau3)
     )
     ;
@@ -3706,7 +3825,7 @@ add_all_to_abox_and_clashes(M,[H|Tail],Tableau0,Tableau):-!,
   add_to_abox(A0,H,A1),
   set_abox(Tableau0,A1,Tableau1),
   add_all_to_abox_and_clashes(M,Tail,Tableau1,Tableau).
-*/
+
 
 /* ************** */
 
