@@ -4032,7 +4032,6 @@ fix_duplicated_wrongly_classified_properties([_H|T],DP,KBA0,KBA):-
 
 
 
-
 parse_rdf_from_owl_rdf_pred(String):-
   open_chars_stream(String,S),
   load_owl_from_stream(S).

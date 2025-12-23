@@ -45,7 +45,7 @@ Due to transitivity of equality:
 
 :- use_module(library(trill)).
 
-:- trill.
+:- tornado.
 
 % =============================================================================
 % Axioms
@@ -55,7 +55,16 @@ Due to transitivity of equality:
 classAssertion(t,a).
 
 % Chain of individual equalities: a = b = c = d = e
+%classAssertion(complementOf(t),a).
+%classAssertion(k,a).
+%subClassOf(k,t).
+
+propertyAssertion(r,a,z).
+propertyAssertion(s,a,b).
+propertyAssertion(r,b,z).
+
 sameIndividual([a,b]).
-sameIndividual([b,c]).
-sameIndividual([c,d]).
-sameIndividual([d,e]).
+sameIndividual([a,f]).
+%sameIndividual([b,c]).
+%sameIndividual([c,d]).
+%sameIndividual([d,e]).

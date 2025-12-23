@@ -192,7 +192,7 @@ find_expls(M,[_Clash|Clashes],Tab,E):-
   find_expls(M,Clashes,Tab,E).
 
 % checks if an explanations was already found
-find_expls_from_tab_list(M,[],E):-%gtrace,
+find_expls_from_tab_list(M,[],E):-
   %findall(Exp-CPs,M:exp_found([C,I,CPs],Exp),Expl),
   %dif(Expl,[]),
   findall(Ex0,find_expls_from_choice_point_list(M,Ex0),L0),
@@ -203,7 +203,7 @@ find_expls_from_tab_list(M,[],E):-%gtrace,
   \+ M:exp_found(_,E),
   assert(M:exp_found(tc,E)).
 
-find_expls_from_tab_list(M,[Tab|_T],E):- %gtrace,  % QueryArgs
+find_expls_from_tab_list(M,[Tab|_T],E):-   % QueryArgs
   get_solved_clashes(Tab,Clashes),
   member(Clash,Clashes),
   findall(EL0,clash(M,Clash,Tab,EL0),LEL0),
@@ -227,7 +227,7 @@ find_expls_from_tab_list(M,[_Tab|T],Expl):-
   find_expls_from_tab_list(M,T,Expl).
 
 
-combine_expls_from_nondet_rules(M,cp(_,_,_,_,_,Expl),E):-%gtrace,
+combine_expls_from_nondet_rules(M,cp(_,_,_,_,_,Expl),E):-
   check_non_empty_choice(Expl,ExplList),
   and_all_f(M,ExplList,ExplanationsList),
   %check_presence_of_other_choices(ExplanationsList,Explanations,Choices),
@@ -530,11 +530,11 @@ modify_ABox(_,Tab,sameIndividual(LF),_Expl1,Tab):-
 
 modify_ABox(M,Tab0,sameIndividual(LF),Expl1,Tab):-
   get_abox(Tab0,ABox0),
-  ( find((sameIndividual(L),Expl0),ABox0) ->
-  	( sort(L,LS),
-  	  sort(LF,LFS),
-  	  LS = LFS,!,
-  	  absent(Expl0,Expl1,Expl),
+  ( ( find((sameIndividual(L),Expl0),ABox0),
+      sort(L,LS),
+      sort(LF,LFS),
+      LS = LFS) ->
+  	( absent(Expl0,Expl1,Expl),
       remove_from_abox(ABox0,[(sameIndividual(L),Expl0)],ABox)
   	)
   ;
@@ -730,7 +730,7 @@ build_abox(M,Tableau,QueryType,QueryArgs):-
   init_tableau(ABox0,Tabs0,ExpansionQueue,Tableau0),
   %append([LCA,LPA,LDIA],CreateTabsList),
   %create_tabs(CreateTabsList,Tableau0,Tableau1),
-  append([LCA,LPA,LNA,LDIA,LSIA],AddAllList),%gtrace,
+  append([LCA,LPA,LNA,LDIA,LSIA],AddAllList),
   add_all_to_tableau(M,AddAllList,Tableau0,Tableau2),
   merge_all_individuals(M,LSIA,Tableau2,Tableau3),
   add_owlThing_list(M,Tableau3,Tableau),
@@ -777,6 +777,9 @@ initial_expl(_M,[[]-[]]):-!.
 
 empty_expl(_M,[[]-[]]):-!.
 
+delete_qp(Expl0,[QPExpl],Expl):-
+  delete(Expl0,QPExpl,Expl).
+
 and_f_ax(M,Axiom,F0,F):-
   and_f(M,[[Axiom]-[]],F0,F).
 
@@ -799,7 +802,7 @@ and_f1([H1-CP1|T1],L2,L3,L):-
 and_f2(_,_,[],[]):- !.
 
 /*
-and_f2(L1,CP1,[H2-CP2|T2],[H-CP|T]):-%gtrace,
+and_f2(L1,CP1,[H2-CP2|T2],[H-CP|T]):-
   can_i_and(L1,CP1,H2,CP2),!,
   ( subset(L1,H2) -> 
     H = H2
@@ -815,7 +818,7 @@ and_f2(L1,CP1,[H2-CP2|T2],[H-CP|T]):-%gtrace,
 */
 
 
-and_f2(L1,CP1,[H2-CP2|T2],[H-CP|T]):-%gtrace,
+and_f2(L1,CP1,[H2-CP2|T2],[H-CP|T]):-
   append(L1,H2,H),
   append(CP1,CP2,CP),
   and_f2(L1,CP1,T2,T).
