@@ -3740,15 +3740,18 @@ add_all_to_abox_structs([],A0,A0,T0,T0,SameInd0,SameInd0,[]):-!.
 
 add_all_to_abox_structs(L,A0,A,(Graph0,RBN0,RBR0),(Graph,RBN,RBR),SameInd0,SameInd,PendingChecks):-
   pending_checks_from_axioms(L,PendingChecks),
-  thread_create(apply_abox_ops(L,A0,A),AboxT),
-  thread_create((
-    apply_vertex_ops(L,Graph0,Graph1),
-    apply_edge_ops(L,(Graph1,RBN0,RBR0),(Graph,RBN,RBR))
-  ),TabsT),
-  thread_create(apply_sameind_ops(L,SameInd0,SameInd),SameIndT),
-  thread_join(AboxT,true),
-  thread_join(TabsT,true),
-  thread_join(SameIndT,true).
+  concurrent_maplist(add_all_to_abox_ops(L),[abox(A0),graph((Graph0,RBN0,RBR0)),sameind(SameInd0)],
+                     [abox(A),graph((Graph,RBN,RBR)),sameind(SameInd)]).
+
+add_all_to_abox_ops(L,abox(A0),abox(A)):-
+  apply_abox_ops(L,A0,A).
+
+add_all_to_abox_ops(L,graph((Graph0,RBN0,RBR0)),graph((Graph,RBN,RBR))):-
+  apply_vertex_ops(L,Graph0,Graph1),
+  apply_edge_ops(L,(Graph1,RBN0,RBR0),(Graph,RBN,RBR)).
+
+add_all_to_abox_ops(L,samind(SameInd0),sameind(SameInd)):-
+  apply_sameind_ops(L,SameInd0,SameInd).
 
 apply_abox_ops(L,A0,A):-
   add_all_to_abox(L,A0,A).
