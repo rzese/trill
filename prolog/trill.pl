@@ -4111,38 +4111,20 @@ set_superclasses(Tab0,C,L,Tab):-
 /*
  * merge
  * 
- * Implement the Merge operation of the tableau. Merge two individuals
+ * Record the equality between two individuals on the sameInd structure
+ * without mutating the tableau ABox or graph. Use merge_old/6 for the
+ * legacy behaviour that rewrites ABox entries and tabs.
  */
-% The first three are needed because T in tabs:(T,RBN,RBR) saves sameIndividuals
-% as a list instead of a single individual sameIndividual(L).
-% The addition of sameIndividual is made after, during the update of the ABox.
-% TODO: it could be improved!
-/*
-merge(M,sameIndividual(LX),sameIndividual(LY),Expl,Tableau0,Tableau):-
+merge(_M,X,Y,Expl,Tableau0,Tableau):-
   !,
-  get_tabs(Tableau0,Tabs0),
-  merge_tabs(L,Y,Tabs0,Tabs),
-  get_abox(Tableau0,ABox0),
-  merge_abox(M,L,Y,Expl,ABox0,ABox),
-  set_tabs(Tableau0,Tabs,Tableau1),
-  set_abox(Tableau1,ABox,Tableau).
-
-merge(M,sameIndividual(L),Y,Expl,Tableau0,Tableau):-
-  !,
-  get_tabs(Tableau0,Tabs0),
-  merge_tabs(L,Y,Tabs0,Tabs),
-  get_abox(Tableau0,ABox0),
-  merge_abox(M,L,Y,Expl,ABox0,ABox),
-  set_tabs(Tableau0,Tabs,Tableau1),
-  set_abox(Tableau1,ABox,Tableau).
-*/
-
-merge(M,X,Y,Expl,Tableau0,Tableau):-
-  !,
-  get_tabs(Tableau0,Tabs0),
-  merge_tabs(X,Y,Tabs0,Tabs1),
-  set_tabs(Tableau0,Tabs1,Tableau1),
-  merge_abox(M,X,Y,Expl,Tableau1,Tableau).
+  normalize_sameind_list([X,Y],Individuals),
+  ( Individuals = [_,_|_] ->
+      get_sameind(Tableau0,SameInd0),
+      add_to_sameind(SameInd0,Individuals,Expl,SameInd),
+      set_sameind(Tableau0,SameInd,Tableau)
+    ;
+      Tableau = Tableau0
+  ).
 
 merge_old(M,X,Y,Expl,Tableau0,Tableau):-
   !,
