@@ -3854,6 +3854,23 @@ merge(M,sameIndividual(L),Y,Expl,Tableau0,Tableau):-
   set_abox(Tableau1,ABox,Tableau).
 */
 
+:- dynamic canonical_alias/2.
+
+% se X è alias di Z e Z è alias di Y allora restituisce Y.
+resolve_canonical(M, X, Y) :-
+  nonvar(X), M:canonical_alias(X, Z), !,
+  resolve_canonical(M, Z, Y).
+resolve_canonical(_, X, X).
+
+% helpers per identificare e scegliere individuo canonico
+is_anon(trillan(_)).
+is_anon(sameIndividual(_)).
+
+pick_canonical(X, Y, X, Y) :- \+ is_anon(X), is_anon(Y), !.
+pick_canonical(X, Y, Y, X) :- is_anon(X), \+ is_anon(Y), !.
+pick_canonical(X, Y, Canonical, ToReplace) :- 
+    (X @< Y -> Canonical = X, ToReplace = Y ; Canonical = Y, ToReplace = X).
+
 merge(M,X,Y,Expl,Tableau0,Tableau):-
   !,
   get_tabs(Tableau0,Tabs0),
