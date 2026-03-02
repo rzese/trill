@@ -482,7 +482,12 @@ add_q(_,it,Tableau,['inconsistent','kb'],Tableau):- !. % Do nothing
 gather_connected_individuals(M,Ind,ConnectedInds):-
   find_successors(M,Ind,SuccInds),
   find_predecessors(M,Ind,PredInds),
-  append(SuccInds,PredInds,ConnectedInds).
+  find_same_inds(M,Ind,SameInds), % NUOVO: Esplorazione sameIndividual
+  append(SuccInds,PredInds,Temp),
+  append(Temp,SameInds,ConnectedInds).
+
+find_same_inds(M,Ind,List) :- 
+  findall(OtherInd, (get_axiom_sameIndividual(M,SI), member(Ind,SI), member(OtherInd,SI), dif(Ind,OtherInd)), List).
 
 find_successors(M,Ind,List) :- findall(ConnectedInd, (get_axiom_propertyAssertion(M,_,Ind,ConnectedInd)), List).
 find_predecessors(M,Ind,List) :- findall(ConnectedInd, (get_axiom_propertyAssertion(M,_,ConnectedInd,Ind)), List).
