@@ -122,7 +122,7 @@ disponte_iri('https://ai.unife.it/disponte#probability').
  *                   maintains the referene to the ontology erapper during the entire inference
  *    - wrapper   -> uses Java OWLAPI to parse the ontology and saves the axioms n the Prolog DB
  */
-setting_trill_default(parser,java).
+setting_trill_default(parser,internal).
 
 
 /********************************
@@ -428,6 +428,7 @@ set_up_reasoner(M):-
   retractall(M:exp_found(_,_)),
   retractall(M:exp_found(_,_,_)),
   retractall(M:trillan_idx(_)),
+  retractall(M:canonical_alias(_,_)), % pulizia memoria alias ad ogni nuova esecuzione
   assert(M:trillan_idx(1)).
 
 set_up_tableau(M):-
