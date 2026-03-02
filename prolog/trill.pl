@@ -3899,20 +3899,13 @@ merge(M,X0,Y0,Expl,Tableau0,Tableau):-
  * merge node in tableau. X and Y single individuals
  */
 
-merge_tabs(X,Y,(T0,RBN0,RBR0),(T,RBN,RBR)):-
-  (neighbours(X,T0,LSX0)*->assign(LSX0,LSX);assign([],LSX)),
-  (neighbours(Y,T0,LSY0)*->assign(LSY0,LSY);assign([],LSY)),
+merge_tabs_canonical(Canonical,ToReplace,(T0,RBN0,RBR0),(T,RBN,RBR)):-
+  (neighbours(ToReplace,T0,LSToReplace0)*->assign(LSToReplace0,LSToReplace);assign([],LSToReplace)),
   transpose_ugraph(T0,TT),
-  (neighbours(X,TT,LPX0)*->assign(LPX0,LPX);assign([],LPX)),
-  (neighbours(Y,TT,LPY0)*->assign(LPY0,LPY);assign([],LPY)),
-  % list_as_sameIndividual([X,Y],SI), %TODO
-  flatten([X,Y],L0),
-  sort(L0,SI),
-  set_predecessor(SI,X,LPX,(T0,RBN0,RBR0),(T1,RBN1,RBR1)),!,
-  set_successor(SI,X,LSX,(T1,RBN1,RBR1),(T2,RBN2,RBR2)),!,
-  set_predecessor(SI,Y,LPY,(T2,RBN2,RBR2),(T3,RBN3,RBR3)),!,
-  set_successor(SI,Y,LSY,(T3,RBN3,RBR3),(T4,RBN4,RBR4)),!,
-  remove_nodes(X,Y,(T4,RBN4,RBR4),(T,RBN,RBR)).
+  (neighbours(ToReplace,TT,LPToReplace0)*->assign(LPToReplace0,LPToReplace);assign([],LPToReplace)),
+  set_predecessor_canonical(Canonical,ToReplace,LPToReplace,(T0,RBN0,RBR0),(T1,RBN1,RBR1)),!,
+  set_successor_canonical(Canonical,ToReplace,LSToReplace,(T1,RBN1,RBR1),(T2,RBN2,RBR2)),!,
+  remove_node(ToReplace,(T2,RBN2,RBR2),(T,RBN,RBR)).
 
 remove_nodes(X,Y,Tabs0,Tabs):-
   remove_node(X,Tabs0,Tabs1),
@@ -3930,53 +3923,36 @@ remove_node(X,(T0,RBN0,RBR0),(T,RBN,RBR)):-
   (vertices(T0,VS),member(X,VS)*->del_vertices(T0,[X],T);assign(T0,T)).
 
 remove_node1(_,[],RBN,RBR,RBN,RBR).
-
 remove_node1(X,[H|T],RBN0,RBR0,RBN,RBR):-
-  rb_lookup((X,H),V,RBN0),
-  remove_edges(V,X,H,RBR0,RBR1),
-  remove_all_nodes_from_tree(_,X,H,RBN0,RBN1),
-  remove_node1(X,T,RBN1,RBR1,RBN,RBR).
+  rb_lookup((X,H),V,RBN0), remove_edges(V,X,H,RBR0,RBR1), remove_all_nodes_from_tree(_,X,H,RBN0,RBN1), remove_node1(X,T,RBN1,RBR1,RBN,RBR).
 
 remove_node2(_,[],RBN,RBR,RBN,RBR).
-
 remove_node2(X,[H|T],RBN0,RBR0,RBN,RBR):-
-  rb_lookup((H,X),V,RBN0),
-  remove_edges(V,H,X,RBR0,RBR1),
-  remove_all_nodes_from_tree(_,H,X,RBN0,RBN1),
-  remove_node1(X,T,RBN1,RBR1,RBN,RBR).
+  rb_lookup((H,X),V,RBN0), remove_edges(V,H,X,RBR0,RBR1), remove_all_nodes_from_tree(_,H,X,RBN0,RBN1), remove_node1(X,T,RBN1,RBR1,RBN,RBR).
 
 remove_edges([],_,_,RBR,RBR).
-
-remove_edges([H|T],S,O,RBR0,RBR):-
-  remove_role_from_tree(H,S,O,RBR0,RBR1),
-  remove_edges(T,S,O,RBR1,RBR).
+remove_edges([H|T],S,O,RBR0,RBR):- remove_role_from_tree(H,S,O,RBR0,RBR1), remove_edges(T,S,O,RBR1,RBR).
 
 
-set_predecessor(_NN,_,[],Tabs,Tabs).
-
-set_predecessor(NN,X,[H|L],(T0,RBN0,RBR0),(T,RBN,RBR)):-
-  rb_lookup((H,X),LR,RBN0),
-  set_predecessor1(NN,H,LR,(T0,RBN0,RBR0),(T1,RBN1,RBR1)),
-  set_predecessor(NN,X,L,(T1,RBN1,RBR1),(T,RBN,RBR)).
+set_predecessor_canonical(_Canonical,_,[],Tabs,Tabs).
+set_predecessor_canonical(Canonical,ToReplace,[H|L],(T0,RBN0,RBR0),(T,RBN,RBR)):-
+  rb_lookup((H,ToReplace),LR,RBN0),
+  set_predecessor1(Canonical,H,LR,(T0,RBN0,RBR0),(T1,RBN1,RBR1)),
+  set_predecessor_canonical(Canonical,ToReplace,L,(T1,RBN1,RBR1),(T,RBN,RBR)).
 
 set_predecessor1(_NN,_H,[],Tabs,Tabs).
-
 set_predecessor1(NN,H,[R|L],(T0,RBN0,RBR0),(T,RBN,RBR)):-
-  add_edge_int(R,H,NN,(T0,RBN0,RBR0),(T1,RBN1,RBR1)),
-  set_predecessor1(NN,H,L,(T1,RBN1,RBR1),(T,RBN,RBR)).
+  add_edge_int(R,H,NN,(T0,RBN0,RBR0),(T1,RBN1,RBR1)), set_predecessor1(NN,H,L,(T1,RBN1,RBR1),(T,RBN,RBR)).
 
-set_successor(_NN,_X,[],Tabs,Tabs).
-
-set_successor(NN,X,[H|L],(T0,RBN0,RBR0),(T,RBN,RBR)):-
-  rb_lookup((X,H),LR,RBN0),
-  set_successor1(NN,H,LR,(T0,RBN0,RBR0),(T1,RBN1,RBR1)),
-  set_successor(NN,X,L,(T1,RBN1,RBR1),(T,RBN,RBR)).
+set_successor_canonical(_Canonical,_,[],Tabs,Tabs).
+set_successor_canonical(Canonical,ToReplace,[H|L],(T0,RBN0,RBR0),(T,RBN,RBR)):-
+  rb_lookup((ToReplace,H),LR,RBN0),
+  set_successor1(Canonical,H,LR,(T0,RBN0,RBR0),(T1,RBN1,RBR1)),
+  set_successor_canonical(Canonical,ToReplace,L,(T1,RBN1,RBR1),(T,RBN,RBR)).
 
 set_successor1(_NN,_H,[],Tabs,Tabs).
-
 set_successor1(NN,H,[R|L],(T0,RBN0,RBR0),(T,RBN,RBR)):-
-  add_edge_int(R,NN,H,(T0,RBN0,RBR0),(T1,RBN1,RBR1)),
-  set_successor1(NN,H,L,(T1,RBN1,RBR1),(T,RBN,RBR)).
+  add_edge_int(R,NN,H,(T0,RBN0,RBR0),(T1,RBN1,RBR1)), set_successor1(NN,H,L,(T1,RBN1,RBR1),(T,RBN,RBR)).
 
 /*
   merge node in ABox
@@ -4024,46 +4000,23 @@ substitute_in_list(Old, New, [H|T], [H|T2]) :- substitute_in_list(Old, New, T, T
  */
 
 check_merged_classes(_,[],_,[]).
-
-check_merged_classes(M,[ToCheck|TC],Tab,[ToCheck|NewClashes]):-
-  check_clash(M,ToCheck,Tab),!,
-  check_merged_classes(M,TC,Tab,NewClashes).
-
-check_merged_classes(M,[_ToCheck|TC],Tab,NewClashes):-
-  check_merged_classes(M,TC,Tab,NewClashes).
+check_merged_classes(M,[ToCheck|TC],Tab,[ToCheck|NewClashes]):- check_clash(M,ToCheck,Tab),!, check_merged_classes(M,TC,Tab,NewClashes).
+check_merged_classes(M,[_ToCheck|TC],Tab,NewClashes):- check_merged_classes(M,TC,Tab,NewClashes).
 
 /*
  update clashes ofter merge
  substitute ind in clashes with sameIndividual
  */
 
-update_clashes_after_merge(M,L,SI,Tableau,Clashes0,Clashes):-
-  update_clashes_after_merge(M,L,SI,Tableau,Clashes0,Clashes,0).
+update_clashes_after_merge_canonical(M,Canonical,ToReplace,Tableau,Clashes0,Clashes):-
+  update_clashes_after_merge_can_int(M,Canonical,ToReplace,Tableau,Clashes0,Clashes,0).
 
-% if last argument is 0 -> need to theck clash for sameIndividual/differentIndividual
-% if there is no clash (check_clash returns false), backtrack to (*)
-update_clashes_after_merge(M,_,SI,Tableau,[],[SI],0):-
-  check_clash(M,SI,Tableau),!.
-
-% (*)
-update_clashes_after_merge(_,_,_,_,[],[],_).
-
-update_clashes_after_merge(M,L,SI,Tableau,[sameIndividual(LC)|TC0],[SI|TC],0):-
-  memberchk(I,L),
-  memberchk(I,LC),!,
-  update_clashes_after_merge(M,L,SI,Tableau,TC0,TC,1).
-
-update_clashes_after_merge(M,L,SI,Tableau,[C-I|TC0],[C-SI|TC],UpdatedSI):-
-  memberchk(I,L),!,
-  update_clashes_after_merge(M,L,SI,Tableau,TC0,TC,UpdatedSI).
-
-update_clashes_after_merge(M,L,SI,Tableau,[C-sameIndividual(LOld)|TC0],[C-SI|TC],UpdatedSI):-
-  memberchk(I,L),
-  memberchk(I,LOld),!,
-  update_clashes_after_merge(M,L,SI,Tableau,TC0,TC,UpdatedSI).
-
-update_clashes_after_merge(M,L,SI,Tableau,[Clash|TC0],[Clash|TC],UpdatedSI):-
-  update_clashes_after_merge(M,L,SI,Tableau,TC0,TC,UpdatedSI).
+update_clashes_after_merge_can_int(M,Canonical,_,Tableau,[],[Canonical],0):- check_clash(M,Canonical,Tableau),!.
+update_clashes_after_merge_can_int(_,_,_,_,[],[],_).
+update_clashes_after_merge_can_int(M,Canonical,ToReplace,Tableau,[C-ToReplace|TC0],[C-Canonical|TC],UpdatedSI):-
+  !, update_clashes_after_merge_can_int(M,Canonical,ToReplace,Tableau,TC0,TC,UpdatedSI).
+update_clashes_after_merge_can_int(M,Canonical,ToReplace,Tableau,[Clash|TC0],[Clash|TC],UpdatedSI):-
+  update_clashes_after_merge_can_int(M,Canonical,ToReplace,Tableau,TC0,TC,UpdatedSI).
 
 
 
@@ -4072,27 +4025,23 @@ update_clashes_after_merge(M,L,SI,Tableau,[Clash|TC0],[Clash|TC],UpdatedSI):-
  update expansion queue ofter merge
  substitute ind in expansion queue with sameIndividual
  */
-update_expansion_queue_after_merge(L,SI,[Curr0,ExpQD0,ExpQND0],[Curr,ExpQD,ExpQND]):-
-  update_expansion_queue_after_merge_int(L,SI,Curr0,Curr),
-  update_expansion_queue_after_merge_int(L,SI,ExpQD0,ExpQD),
-  update_expansion_queue_after_merge_int(L,SI,ExpQND0,ExpQND).
+update_expansion_queue_after_merge_canonical(Canonical,ToReplace,[Curr0,ExpQD0,ExpQND0],[Curr,ExpQD,ExpQND]):-
+  update_expansion_queue_after_merge_can_int(Canonical,ToReplace,Curr0,Curr),
+  update_expansion_queue_after_merge_can_int(Canonical,ToReplace,ExpQD0,ExpQD),
+  update_expansion_queue_after_merge_can_int(Canonical,ToReplace,ExpQND0,ExpQND).
 
-update_expansion_queue_after_merge_int(_,_,[],[]).
+update_expansion_queue_after_merge_can_int(_,_,[],[]).
+update_expansion_queue_after_merge_can_int(Canonical,ToReplace,[[C,ToReplace]|TC0],[[C,Canonical]|TC]):-
+  !, update_expansion_queue_after_merge_can_int(Canonical,ToReplace,TC0,TC).
+update_expansion_queue_after_merge_can_int(Canonical,ToReplace,[[P,ToReplace,O]|TC0],[[P,Canonical,ON]|TC]):-
+  !, substitute_individual_can(Canonical,ToReplace,O,ON), update_expansion_queue_after_merge_can_int(Canonical,ToReplace,TC0,TC).
+update_expansion_queue_after_merge_can_int(Canonical,ToReplace,[[P,S,ToReplace]|TC0],[[P,SN,Canonical]|TC]):-
+  !, substitute_individual_can(Canonical,ToReplace,S,SN), update_expansion_queue_after_merge_can_int(Canonical,ToReplace,TC0,TC).
+update_expansion_queue_after_merge_can_int(Canonical,ToReplace,[H|TC0],[H|TC]):-
+  update_expansion_queue_after_merge_can_int(Canonical,ToReplace,TC0,TC).
 
-update_expansion_queue_after_merge_int(L,SI,[[C,I]|TC0],[[C,IN]|TC]):-
-  substitute_individual(L,I,SI,IN),
-  update_expansion_queue_after_merge_int(L,SI,TC0,TC).
-
-update_expansion_queue_after_merge_int(L,SI,[[P,S,O]|TC0],[[P,SN,ON]|TC]):-
-  substitute_individual(L,S,SI,SN),
-  substitute_individual(L,O,SI,ON),
-  update_expansion_queue_after_merge_int(L,SI,TC0,TC).
-
-substitute_individual(L,sameIndividual(LSI),SI,SI):-
-  memberchk(I,L),
-  memberchk(I,LSI),!.
-
-substitute_individual(_,I,_,I):-!.
+substitute_individual_can(Canonical,ToReplace,ToReplace,Canonical) :- !.
+substitute_individual_can(_,_,I,I).
 
 % ====================================================
 % NEW STUFF
