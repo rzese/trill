@@ -2683,30 +2683,17 @@ prepare_nom_list(M,[H|T],[(classAssertion('http://www.w3.org/2002/07/owl#Thing',
 /* merge nodes in (ABox,Tabs) */
 
 merge_all_individuals(_,[],Tab,Tab):-!.
+merge_all_individuals(M,[(sameIndividual(L),Expl)|T],Tab0,Tab):-
+  merge_list_of_inds(M, L, Expl, Tab0, Tab1),
+  merge_all_individuals(M, T, Tab1, Tab).
 
-merge_all_individuals(M,[(sameIndividual(H),Expl)|T],Tab0,Tab):-
-  get_abox(Tab0,ABox0),
-  find_same(H,ABox0,L,ExplL),
-  dif(L,[]),!,
-  merge_all1(M,H,Expl,L,Tab0,Tab1),
-  flatten([H,L],HL0),
-  sort(HL0,HL),
-  list_as_sameIndividual(HL,SI), %TODO
-  %flatten([H,L],L0),
-  %sort(L0,SI),
-  and_f(M,Expl,ExplL,ExplT),
-  add_to_tableau(Tab1,(SI,ExplT),Tab2),
-  remove_from_tableau(Tab2,(sameIndividual(L),ExplL),Tab3),
-  retract_sameIndividual(L),
-  merge_all_individuals(M,T,Tab3,Tab).
-
-merge_all_individuals(M,[(sameIndividual(H),Expl)|T],Tab0,Tab):-
-  %get_abox(Tab0,ABox0),
-  %find_same(H,ABox0,L,_),
-  %L==[],!,
-  merge_all2(M,H,Expl,Tab0,Tab1),
-  add_to_tableau(Tab1,(sameIndividual(H),Expl),Tab2),
-  merge_all_individuals(M,T,Tab2,Tab).
+merge_list_of_inds(_, [], _, Tab, Tab) :- !.
+merge_list_of_inds(_, [_], _, Tab, Tab) :- !.
+merge_list_of_inds(M, [X,Y|T], Expl, Tab0, Tab) :-
+  resolve_canonical(M, X, CX),
+  resolve_canonical(M, Y, CY),
+  ( CX == CY -> Tab1 = Tab0 ; merge(M, CX, CY, Expl, Tab0, Tab1) ),
+  merge_list_of_inds(M, [CX|T], Expl, Tab1, Tab).
 
 merge_all1(_M,[],_,_,Tab,Tab).
 
