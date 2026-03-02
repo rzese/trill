@@ -54,8 +54,17 @@ Due to transitivity of equality:
 % Individual a is of class t
 classAssertion(t,a).
 
+% Individual c is of class t
+classAssertion(t,c).
+
 % Chain of individual equalities: a = b = c = d = e
 sameIndividual([a,b]).
 sameIndividual([b,c]).
 sameIndividual([c,d]).
 sameIndividual([d,e]).
+
+
+% Chain of individual equalities: a = b = c = d = e
+%sameIndividual([a,x]).
+%sameIndividual([x,y]).
+%sameIndividual([y,c]).

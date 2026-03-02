@@ -3871,25 +3871,28 @@ pick_canonical(X, Y, Y, X) :- is_anon(X), \+ is_anon(Y), !.
 pick_canonical(X, Y, Canonical, ToReplace) :- 
     (X @< Y -> Canonical = X, ToReplace = Y ; Canonical = Y, ToReplace = X).
 
-merge(M,X,Y,Expl,Tableau0,Tableau):-
+merge(M,X0,Y0,Expl,Tableau0,Tableau):-
   !,
-  get_tabs(Tableau0,Tabs0),
-  merge_tabs(X,Y,Tabs0,Tabs),
-  get_abox(Tableau0,ABox0),
-  flatten([X,Y],L0),
-  sort(L0,L),
-  list_as_sameIndividual(L,SI),
-  get_clashes(Tableau0,Clashes0),
-  merge_abox(M,L,SI,Expl,ABox0,ABox,ClashesToCheck),
-  set_abox(Tableau0,ABox,Tableau1),
-  check_merged_classes(M,ClashesToCheck,Tableau1,NewClashes),
-  update_clashes_after_merge(M,L,SI,Tableau1,Clashes0,ClashesAM),
-  append(NewClashes,ClashesAM,Clashes),
-  set_tabs(Tableau1,Tabs,Tableau2),
-  set_clashes(Tableau2,Clashes,Tableau3),
-  get_expansion_queue(Tableau3,ExpQ0),
-  update_expansion_queue_after_merge(L,SI,ExpQ0,ExpQ),
-  set_expansion_queue(Tableau3,ExpQ,Tableau).
+  resolve_canonical(M,X0,X),
+  resolve_canonical(M,Y0,Y),
+  ( X == Y -> Tableau = Tableau0 ;
+    pick_canonical(X,Y,Canonical,ToReplace),
+    assert(M:canonical_alias(ToReplace, Canonical)),
+    get_tabs(Tableau0,Tabs0),
+    merge_tabs_canonical(Canonical,ToReplace,Tabs0,Tabs),
+    get_abox(Tableau0,ABox0),
+    get_clashes(Tableau0,Clashes0),
+    merge_abox_canonical(M,Canonical,ToReplace,Expl,ABox0,ABox,ClashesToCheck),
+    set_abox(Tableau0,ABox,Tableau1),
+    check_merged_classes(M,ClashesToCheck,Tableau1,NewClashes),
+    update_clashes_after_merge_canonical(M,Canonical,ToReplace,Tableau1,Clashes0,ClashesAM),
+    append(NewClashes,ClashesAM,Clashes),
+    set_tabs(Tableau1,Tabs,Tableau2),
+    set_clashes(Tableau2,Clashes,Tableau3),
+    get_expansion_queue(Tableau3,ExpQ0),
+    update_expansion_queue_after_merge_canonical(Canonical,ToReplace,ExpQ0,ExpQ),
+    set_expansion_queue(Tableau3,ExpQ,Tableau)
+  ).
 
 
 /*
