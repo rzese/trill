@@ -432,32 +432,39 @@ set_up_reasoner(M):-
   assert(M:trillan_idx(1)).
 
 set_up_tableau(M):-
-  % TO CHANGE move to KB loading
-  %setting_trill_default(det_rules,DetRules),
-  %setting_trill_default(nondet_rules,NondetRules),
-  %set_tableau_expansion_rules(M:DetRules,NondetRules). 
   prune_tableau_rules(M).
 
+canonicalize_tableau(M, Tab0, Tab) :-
+  get_abox(Tab0, ABox), % cerca tutti gli assiomi sameIndividual
+  findall((sameIndividual(L), E), member((sameIndividual(L), E), ABox), SameIndList),
+  merge_all_individuals(M, SameIndList, Tab0, Tab). % elegge il leader canonico e fonde i nodi
+
 % instanceOf
-add_q(M,io,Tableau0,[ClassEx,IndEx],Tableau):- !,
+add_q(M,io,Tableau0,[ClassEx,IndEx0],Tableau):- !,
+  canonicalize_tableau(M, Tableau0, TableauC),
+  resolve_canonical(M, IndEx0, IndEx),
   neg_class(ClassEx,NClassEx),
-  add_q(M,Tableau0,classAssertion(NClassEx,IndEx),Tableau1),
+  add_q(M,TableauC,classAssertion(NClassEx,IndEx),Tableau1),
   add_clash_to_tableau(M,Tableau1,NClassEx-IndEx,Tableau2),
   update_expansion_queue_in_tableau(M,NClassEx,IndEx,Tableau2,Tableau).
 
 % property_value
-add_q(M,pv,Tableau0,[PropEx,Ind1Ex,Ind2Ex],Tableau):-!,
-  neg_class(PropEx,NPropEx), %use of neg_class to negate property
-  add_q(M,Tableau0,propertyAssertion(NPropEx,Ind1Ex,Ind2Ex),Tableau1),
+add_q(M,pv,Tableau0,[PropEx,Ind1Ex0,Ind2Ex0],Tableau):-!,
+  canonicalize_tableau(M, Tableau0, TableauC),
+  resolve_canonical(M, Ind1Ex0, Ind1Ex),
+  resolve_canonical(M, Ind2Ex0, Ind2Ex),
+  neg_class(PropEx,NPropEx),
+  add_q(M,TableauC,propertyAssertion(NPropEx,Ind1Ex,Ind2Ex),Tableau1),
   add_clash_to_tableau(M,Tableau1,NPropEx-Ind1Ex-Ind2Ex,Tableau2),
   update_expansion_queue_in_tableau(M,NPropEx,Ind1Ex,Ind2Ex,Tableau2,Tableau).
 
 
 % sub_class
 add_q(M,sc,Tableau0,[SubClassEx,SupClassEx],Tableau):- !,
+  canonicalize_tableau(M, Tableau0, TableauC),
   neg_class(SupClassEx,NSupClassEx),
   query_ind(QInd),
-  add_q(M,Tableau0,classAssertion(intersectionOf([SubClassEx,NSupClassEx]),QInd),Tableau1),
+  add_q(M,TableauC,classAssertion(intersectionOf([SubClassEx,NSupClassEx]),QInd),Tableau1),
   add_rule_from_functor(M,intersectionOf),
   add_owlThing_ind(M,Tableau1,QInd,Tableau2),
   add_clash_to_tableau(M,Tableau2,intersectionOf([SubClassEx,NSupClassEx])-QInd,Tableau3),
@@ -465,8 +472,9 @@ add_q(M,sc,Tableau0,[SubClassEx,SupClassEx],Tableau):- !,
 
 % unsat
 add_q(M,un,Tableau0,['unsat',ClassEx],Tableau):- !,
+  canonicalize_tableau(M, Tableau0, TableauC),
   query_ind(QInd),
-  add_q(M,Tableau0,classAssertion(ClassEx,QInd),Tableau1),
+  add_q(M,TableauC,classAssertion(ClassEx,QInd),Tableau1),
   add_owlThing_ind(M,Tableau1,QInd,Tableau2),
   add_clash_to_tableau(M,Tableau2,ClassEx-QInd,Tableau3),
   update_expansion_queue_in_tableau(M,ClassEx,QInd,Tableau3,Tableau).
