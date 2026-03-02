@@ -3982,29 +3982,41 @@ set_successor1(NN,H,[R|L],(T0,RBN0,RBR0),(T,RBN,RBR)):-
   merge node in ABox
 */
 
-% TODO update
-merge_abox(_M,_L,_,_,[],[],[]).
+merge_abox_canonical(_M,_Canonical,_ToReplace,_Expl0,[],[],[]).
 
-merge_abox(M,L,SI,Expl0,[(classAssertion(C,Ind),ExplT)|T],[(classAssertion(C,SI),Expl)|ABox],[C-SI|CTC]):-
-  member(Ind,L),!,
+merge_abox_canonical(M,Canonical,ToReplace,Expl0,[(classAssertion(C,ToReplace),ExplT)|T],[(classAssertion(C,Canonical),Expl)|ABox],[C-Canonical|CTC]):-
+  !, and_f(M,Expl0,ExplT,Expl), merge_abox_canonical(M,Canonical,ToReplace,Expl0,T,ABox,CTC).
+
+merge_abox_canonical(M,Canonical,ToReplace,Expl0,[(propertyAssertion(P,ToReplace,Ind2),ExplT)|T],[(propertyAssertion(P,Canonical,Ind2),Expl)|ABox],CTC):-
+  !, and_f(M,Expl0,ExplT,Expl), merge_abox_canonical(M,Canonical,ToReplace,Expl0,T,ABox,CTC).
+
+merge_abox_canonical(M,Canonical,ToReplace,Expl0,[(propertyAssertion(P,Ind1,ToReplace),ExplT)|T],[(propertyAssertion(P,Ind1,Canonical),Expl)|ABox],CTC):-
+  !, and_f(M,Expl0,ExplT,Expl), merge_abox_canonical(M,Canonical,ToReplace,Expl0,T,ABox,CTC).
+
+merge_abox_canonical(M,Canonical,ToReplace,Expl0,[(sameIndividual(L),ExplT)|T],[(sameIndividual(LNew),Expl)|ABox],CTC):-
+  memberchk(ToReplace, L), !,
+  substitute_in_list(ToReplace, Canonical, L, LNew0),
+  sort(LNew0, LNew),
   and_f(M,Expl0,ExplT,Expl),
-  %and_f_ax(M,sameIndividual(L),Expl1,Expl),
-  merge_abox(M,L,SI,Expl0,T,ABox,CTC).
+  merge_abox_canonical(M,Canonical,ToReplace,Expl0,T,ABox,CTC).
 
-merge_abox(M,L,SI,Expl0,[(propertyAssertion(P,Ind1,Ind2),ExplT)|T],[(propertyAssertion(P,SI,Ind2),Expl)|ABox],CTC):-
-  member(Ind1,L),!,
+merge_abox_canonical(M,Canonical,ToReplace,Expl0,[(differentIndividuals(L),ExplT)|T],[(differentIndividuals(LNew),Expl)|ABox],CTC):-
+  memberchk(ToReplace, L), !,
+  substitute_in_list(ToReplace, Canonical, L, LNew0),
+  sort(LNew0, LNew),
   and_f(M,Expl0,ExplT,Expl),
-  %and_f_ax(M,sameIndividual(L),Expl1,Expl),
-  merge_abox(M,L,SI,Expl0,T,ABox,CTC).
+  merge_abox_canonical(M,Canonical,ToReplace,Expl0,T,ABox,CTC).
 
-merge_abox(M,L,SI,Expl0,[(propertyAssertion(P,Ind1,Ind2),ExplT)|T],[(propertyAssertion(P,Ind1,SI),Expl)|ABox],CTC):-
-  member(Ind2,L),!,
-  and_f(M,Expl0,ExplT,Expl),
-  %and_f_ax(M,sameIndividual(L),Expl1,Expl),
-  merge_abox(M,L,SI,Expl0,T,ABox,CTC).
+merge_abox_canonical(M,Canonical,ToReplace,Expl0,[nominal(ToReplace)|T],[nominal(Canonical)|ABox],CTC):-
+  !, merge_abox_canonical(M,Canonical,ToReplace,Expl0,T,ABox,CTC).
 
-merge_abox(M,L,SI,Expl0,[H|T],[H|ABox],CTC):-
-  merge_abox(M,L,SI,Expl0,T,ABox,CTC).
+merge_abox_canonical(M,Canonical,ToReplace,Expl0,[H|T],[H|ABox],CTC):-
+  merge_abox_canonical(M,Canonical,ToReplace,Expl0,T,ABox,CTC).
+
+% helpers per sostituire tutti gli elementi vecchi in una lista
+substitute_in_list(_, _, [], []).
+substitute_in_list(Old, New, [Old|T], [New|T2]) :- !, substitute_in_list(Old, New, T, T2).
+substitute_in_list(Old, New, [H|T], [H|T2]) :- substitute_in_list(Old, New, T, T2).
 
 
 /*
