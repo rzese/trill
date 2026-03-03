@@ -434,6 +434,7 @@ set_up_reasoner(M):-
 set_up_tableau(M):-
   prune_tableau_rules(M).
 
+% legge i sameAs e presenti in memoria e forza la fusione su tutti quanti
 canonicalize_tableau(M, Tab0, Tab) :-
   get_abox(Tab0, ABox), % cerca tutti gli assiomi sameIndividual
   findall((sameIndividual(L), E), member((sameIndividual(L), E), ABox), SameIndList),
@@ -494,6 +495,7 @@ gather_connected_individuals(M,Ind,ConnectedInds):-
   append(SuccInds,PredInds,Temp),
   append(Temp,SameInds,ConnectedInds).
 
+% funzione per aggiungere gli assiomi sameAs per garantire una visibilità sulla rete intera di alias prima del ragionamento
 find_same_inds(M,Ind,List) :- 
   findall(OtherInd, (get_axiom_sameIndividual(M,SI), member(Ind,SI), member(OtherInd,SI), dif(Ind,OtherInd)), List).
 
@@ -3856,7 +3858,8 @@ merge(M,sameIndividual(L),Y,Expl,Tableau0,Tableau):-
 
 :- dynamic canonical_alias/2.
 
-% se X è alias di Z e Z è alias di Y allora restituisce Y.
+% funzione per restituire il leader (se cerco c, il sistema sa che c punta a b e che b punta ad a,
+% allora restituisce a)
 resolve_canonical(M, X, Y) :-
   nonvar(X), M:canonical_alias(X, Z), !,
   resolve_canonical(M, Z, Y).
@@ -3871,6 +3874,8 @@ pick_canonical(X, Y, Y, X) :- is_anon(X), \+ is_anon(Y), !.
 pick_canonical(X, Y, Canonical, ToReplace) :- 
     (X @< Y -> Canonical = X, ToReplace = Y ; Canonical = Y, ToReplace = X).
 
+% nuova implementazione: tramite resolve_canonical restituisce il rappresentante di X e Y
+% e chiama tutte le funzioni canonical per spostare gli archi del grafo al rappresentante 
 merge(M,X0,Y0,Expl,Tableau0,Tableau):-
   !,
   resolve_canonical(M,X0,X),
@@ -3958,6 +3963,7 @@ set_successor1(NN,H,[R|L],(T0,RBN0,RBR0),(T,RBN,RBR)):-
   merge node in ABox
 */
 
+% funzione per mantenere la catena transitiva
 merge_abox_canonical(_M,_Canonical,_ToReplace,_Expl0,[],[],[]).
 
 merge_abox_canonical(M,Canonical,ToReplace,Expl0,[(classAssertion(C,ToReplace),ExplT)|T],[(classAssertion(C,Canonical),Expl)|ABox],[C-Canonical|CTC]):-
