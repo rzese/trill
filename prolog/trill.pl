@@ -499,7 +499,15 @@ gather_connected_individuals(M,Ind,ConnectedInds):-
 find_same_inds(M,Ind,List) :- 
   findall(OtherInd, (get_axiom_sameIndividual(M,SI), member(Ind,SI), member(OtherInd,SI), dif(Ind,OtherInd)), List).
 
-find_successors(M,Ind,List) :- findall(ConnectedInd, (get_axiom_propertyAssertion(M,_,Ind,ConnectedInd)), List).
+find_successors(M,Ind,List) :-
+  findall(ConnectedInd,
+    (
+      get_axiom_propertyAssertion(M,_,Ind,ConnectedInd),
+      \+ ConnectedInd = literal(_),
+      \+ ConnectedInd = literal(_,_),
+      \+ ConnectedInd = literal(_,_,_)
+    ),
+    List).
 find_predecessors(M,Ind,List) :- findall(ConnectedInd, (get_axiom_propertyAssertion(M,_,ConnectedInd,Ind)), List).
 
 intersect([H|_], List) :- member(H, List), !.

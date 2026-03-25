@@ -740,14 +740,14 @@ build_abox(M,Tableau,QueryType,QueryArgs):-
 get_axioms_of_individuals(M,IndividualsList,LCA,LPA,LNA,LDIA,LSIA):-
   ( dif(IndividualsList,[]) ->
     ( findall((classAssertion(Class,Individual),[[classAssertion(Class,Individual)]-[]]),(member(Individual,IndividualsList),get_axiom_classAssertion(M,Class,Individual)),LCA),
-      findall((propertyAssertion(Property,Subject, Object),[[propertyAssertion(Property,Subject, Object)]-[]]),(member(Subject,IndividualsList),get_axiom_propertyAssertion(M,Property,Subject, Object),dif('http://www.w3.org/2000/01/rdf-schema#comment',Property)),LPA),
+      findall((propertyAssertion(Property,Subject, Object),[[propertyAssertion(Property,Subject, Object)]-[]]),(member(Subject,IndividualsList),get_axiom_propertyAssertion(M,Property,Subject, Object),dif('http://www.w3.org/2000/01/rdf-schema#comment',Property),\+ Object = literal(_),\+ Object = literal(_,_),\+ Object = literal(_,_,_)),LPA),
       findall(nominal(NominalIndividual),(member(NominalIndividual,IndividualsList),get_axiom_classAssertion(M,oneOf(_),NominalIndividual)),LNA),
       findall((differentIndividuals(Ld),[[differentIndividuals(Ld)]-[]]),(get_axiom_differentIndividuals(M,Ld),intersect(Ld,IndividualsList)),LDIA),
       findall((sameIndividual(L),[[sameIndividual(L)]-[]]),(get_axiom_sameIndividual(M,L),intersect(L,IndividualsList)),LSIA)
     )
     ; % all the individuals
     ( findall((classAssertion(Class,Individual),[[classAssertion(Class,Individual)]-[]]),get_axiom_classAssertion(M,Class,Individual),LCA),
-      findall((propertyAssertion(Property,Subject, Object),[[propertyAssertion(Property,Subject, Object)]-[]]),(get_axiom_propertyAssertion(M,Property,Subject, Object),dif('http://www.w3.org/2000/01/rdf-schema#comment',Property)),LPA),
+      findall((propertyAssertion(Property,Subject, Object),[[propertyAssertion(Property,Subject, Object)]-[]]),(get_axiom_propertyAssertion(M,Property,Subject, Object),dif('http://www.w3.org/2000/01/rdf-schema#comment',Property),\+ Object = literal(_),\+ Object = literal(_,_),\+ Object = literal(_,_,_)),LPA),
       findall(nominal(NominalIndividual),get_axiom_classAssertion(M,oneOf(_),NominalIndividual),LNA),
       findall((differentIndividuals(Ld),[[differentIndividuals(Ld)]-[]]),get_axiom_differentIndividuals(M,Ld),LDIA),
       findall((sameIndividual(L),[[sameIndividual(L)]-[]]),get_axiom_sameIndividual(M,L),LSIA)
