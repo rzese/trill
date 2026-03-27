@@ -1293,6 +1293,11 @@ expand_axiom(M,propertyAssertion(A,B,C),NSList,propertyAssertion(A_full_URL,B_fu
   expand_individual(M,B,NSList,B_full_URL),
   expand_dataPropertyExpression(M,A,NSList,A_full_URL).
 
+expand_axiom(M,dataPropertyAssertion(A,B,C),NSList,propertyAssertion(A_full_URL,B_full_URL,C_full_URL)) :-
+  expand_literal(M,C,NSList,C_full_URL),
+  expand_individual(M,B,NSList,B_full_URL),
+  expand_dataPropertyExpression(M,A,NSList,A_full_URL).
+
 
 %% objectPropertyAssertion(?ObjectPropertyExpression, ?SourceIndividual:Individual, ?TargetIndividual:Individual)
 % A positive object property assertion PropertyAssertion( OPE a1 a2 ) states that the individual a1 is connected by the object property expression OPE to the individual a2
@@ -1319,6 +1324,11 @@ expand_axiom(M,negativePropertyAssertion(A,B,C),NSList,negativePropertyAssertion
   expand_individual(M,B,NSList,B_full_URL),
   expand_objectPropertyExpression(M,A,NSList,A_full_URL).
 expand_axiom(M,negativePropertyAssertion(A,B,C),NSList,negativePropertyAssertion(A_full_URL,B_full_URL,C_full_URL)) :- 
+  expand_literal(M,C,NSList,C_full_URL),
+  expand_individual(M,B,NSList,B_full_URL),
+  expand_dataPropertyExpression(M,A,NSList,A_full_URL).
+
+expand_axiom(M,negativeDataPropertyAssertion(A,B,C),NSList,negativePropertyAssertion(A_full_URL,B_full_URL,C_full_URL)) :-
   expand_literal(M,C,NSList,C_full_URL),
   expand_individual(M,B,NSList,B_full_URL),
   expand_dataPropertyExpression(M,A,NSList,A_full_URL).
@@ -1541,6 +1551,7 @@ expand_iri(_M,IRI,_NSList,IRIOut,expand):- % without :
 literal(literal(_)).			% TODO
 expand_literal(M,literal(type(Type,Val)),NSList,literal(type(ExpType,Val))) :-
   expand_datatype(M,Type,NSList,ExpType),!.
+expand_literal(_M,literal(lang(Lang,Literal)),_NSList,literal(lang(Lang,Literal))) :- !.
 expand_literal(_M,literal(Literal),_NSList,literal(Literal)).
 
 propertyExpression(E) :- objectPropertyExpression(E) ; dataPropertyExpression(E).

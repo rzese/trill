@@ -312,28 +312,3 @@ funct_to_rule(M,exactCardinality):-
   ontology_parser:add_rule(M,max_rule),
   ontology_parser:add_rule(M,ch_rule).
 
-% ========================================
-% Sandbox Safety Declarations
-% ========================================
-
-:- multifile sandbox:safe_primitive/1.
-
-% Declare all exported predicates as safe for sandboxed execution
-sandbox:safe_primitive(ontology_parser:check_query_args(_,_,_,_)).
-sandbox:safe_meta(get_axiom_subClassOf(_,_,_),[]).
-sandbox:safe_meta(get_axiom_subPropertyOf(_,_,_),[]).
-sandbox:safe_meta(get_axiom_equivalentClasses(_,_),[]).
-sandbox:safe_meta(get_axiom_differentIndividuals(_,_),[]).
-sandbox:safe_meta(get_axiom_sameIndividual(_,_),[]). 
-sandbox:safe_meta(get_axiom_propertyAssertion(_,_,_,_),[]).
-sandbox:safe_meta(get_axiom_classAssertion(_,_,_),[]). 
-sandbox:safe_meta(get_axiom_propertyRange(_,_,_),[]).
-sandbox:safe_meta(get_axiom_propertyDomain(_,_,_),[]). 
-sandbox:safe_meta(get_axiom_disjointClasses(_,_),[]).
-sandbox:safe_meta(get_axiom_disjointUnion(_,_,_),[]). 
-sandbox:safe_meta(get_axiom_transitiveProperty(_,_),[]).
-sandbox:safe_meta(get_axiom_symmetricProperty(_,_),[]). 
-sandbox:safe_meta(get_axiom_inverseProperties(_,_,_),[]).
-sandbox:safe_meta(get_axiom_equivalentProperties(_,_),[]). 
-sandbox:safe_meta(get_axiom_annotationAssertion(_,_,_,_),[]).
-%sandbox:safe_meta(get_classes_list(_,_),[]).
