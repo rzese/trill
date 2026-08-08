@@ -948,6 +948,13 @@ clash(M,owlnothing,Tab,Expl):-
   %write('clash 6'),nl,
   findClassAssertion4OWLNothing(M,ABox,Expl).
 
+clash(M,C-Ind,Tab,Expl):-  % clash diretto C / neg(C) sullo stesso individuo
+  get_abox(Tab,ABox),
+  findClassAssertion(C,Ind,Expl1,ABox),
+  neg_class(C,NegC),
+  findClassAssertion(NegC,Ind,Expl2,ABox),
+  and_f(M,Expl1,Expl2,Expl).
+
 clash(M,C-Ind,Tab,Expl):-
   get_abox(Tab,ABox),
   %write('clash 1'),nl,
@@ -3750,7 +3757,7 @@ add_all_to_abox_ops(L,graph((Graph0,RBN0,RBR0)),graph((Graph,RBN,RBR))):-
   apply_vertex_ops(L,Graph0,Graph1),
   apply_edge_ops(L,(Graph1,RBN0,RBR0),(Graph,RBN,RBR)).
 
-add_all_to_abox_ops(L,samind(SameInd0),sameind(SameInd)):-
+add_all_to_abox_ops(L,sameind(SameInd0),sameind(SameInd)):-
   apply_sameind_ops(L,SameInd0,SameInd).
 
 apply_abox_ops(L,A0,A):-
