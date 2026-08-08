@@ -119,7 +119,8 @@ add_axiom_no_check(M, Axiom) :-
 :- multifile trill:add_axioms/1.
 trill:add_axioms(M:Axioms) :-
     must_be(list, Axioms),
-    maplist(encapsulated_parser:add_axiom(M), Axioms).
+    % usa add_axiom (chiama update_tabs) e salta gli assiomi non convertibili
+    forall(member(Ax, Axioms), ( catch(trill:add_axiom(M:Ax), _, true) -> true ; true )).
 
 :- multifile trill:remove_axiom/1.
 trill:remove_axiom(M:Axiom) :-
@@ -134,7 +135,7 @@ remove_axiom(M, Ax) :- trill:remove_axiom(M:Ax).
 :- multifile trill:remove_axioms/1.
 trill:remove_axioms(M:Axioms) :-
     must_be(list, Axioms),
-    maplist(encapsulated_parser:remove_axiom(M), Axioms).
+    maplist(remove_axiom(M), Axioms).
 
 :- multifile trill:is_axiom/1.
 trill:is_axiom(subClassOf(_,_)).
@@ -273,7 +274,7 @@ trill:add_kb_prefix(M:Alias, IRI) :-
 :- multifile trill:add_kb_prefixes/1.
 trill:add_kb_prefixes(M:Pairs) :-
     must_be(list, Pairs),
-    maplist(encapsulated_parser:add_kb_prefix_pair(M), Pairs).
+    maplist(add_kb_prefix_pair(M), Pairs).
 
 add_kb_prefix_pair(M, Alias=IRI) :-
     trill:add_kb_prefix(M:Alias, IRI).
